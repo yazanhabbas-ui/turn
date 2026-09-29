@@ -4,7 +4,7 @@ An Arabic-first, fully bilingual (AR/EN) system for in-office visitor queues. Re
 
 It runs entirely on your own server (on-premises or a regional cloud), keeps working on the office LAN without internet, and sends no data to third parties.
 
-> **Status:** Milestones 1 (foundation), 2 (admin core) and 3 (queue engine) are complete. See [docs/decisions.md](docs/decisions.md) for the milestone plan.
+> **Status:** Milestones 1–4 are complete: foundation, admin core, queue engine, and the reception and agent workspaces. See [docs/decisions.md](docs/decisions.md) for the milestone plan.
 
 ## Quick start (Docker, recommended)
 

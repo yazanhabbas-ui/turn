@@ -166,3 +166,61 @@
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Thermal ticket (80 mm). Only #print-root is printed. ─────────────────────────────── */
+#print-root {
+  display: none;
+}
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+  body > *:not(#print-root) {
+    display: none !important;
+  }
+  #print-root {
+    display: block;
+  }
+  #print-root .ticket {
+    width: 72mm;
+    margin: 0 auto;
+    padding: 4mm 0 6mm;
+    font-family: var(--font-sans);
+    color: #000;
+    text-align: center;
+    line-height: 1.35;
+  }
+  #print-root .ticket-logo {
+    max-height: 18mm;
+    margin: 0 auto 2mm;
+  }
+  #print-root .ticket-company {
+    font-weight: 700;
+    font-size: 13pt;
+    margin-bottom: 2mm;
+  }
+  #print-root .ticket-number {
+    font-size: 30pt;
+    font-weight: 700;
+    margin: 2mm 0;
+    font-variant-numeric: tabular-nums;
+  }
+  #print-root .ticket-line {
+    font-size: 11pt;
+  }
+  #print-root .ticket-qr {
+    width: 32mm;
+    height: 32mm;
+    margin: 3mm auto 1mm;
+    image-rendering: pixelated;
+  }
+  #print-root .ticket-footer {
+    margin-top: 2mm;
+    font-size: 10pt;
+  }
+  #print-root .ticket-meta {
+    margin-top: 1mm;
+    font-size: 8pt;
+  }
+}

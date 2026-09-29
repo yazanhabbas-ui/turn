@@ -3,6 +3,7 @@ import type { Permission } from "@/domain/rbac/permissions";
 import type { AreaKey } from "@/lib/areas";
 import { requireAuth } from "@/server/auth/current";
 import { AppShell, Forbidden } from "./app-shell";
+import { RegisterServiceWorker } from "./pwa";
 
 /** Permission-gated workspace wrapper with an empty state until the area's UI is rendered. */
 export async function WorkspacePage({
@@ -21,6 +22,7 @@ export async function WorkspacePage({
   const { auth, allowed } = await requireAuth(locale, permission);
   return (
     <AppShell auth={auth} area={area}>
+      <RegisterServiceWorker />
       {!allowed ? (
         <Forbidden />
       ) : (

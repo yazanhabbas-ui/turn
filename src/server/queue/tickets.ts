@@ -18,7 +18,7 @@ import { can } from "@/domain/rbac/permissions";
 import { dispatch, expiredReservations, selectTicketForAgent } from "@/domain/distribution/engine";
 import { estimateWaitMinutes } from "@/domain/distribution/estimate";
 import { orderTickets } from "@/domain/distribution/ordering";
-import { looseNameMatch, nameSkeleton, normalizeArabic } from "@/domain/i18n/arabic-normalize";
+import { nameSkeleton, normalizeArabic } from "@/domain/i18n/arabic-normalize";
 import { formatTicketNumber } from "@/domain/i18n/digits";
 import { issuingState } from "@/domain/schedule/hours";
 import { nextNumber } from "@/domain/tickets/numbering";

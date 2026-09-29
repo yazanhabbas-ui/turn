@@ -27,6 +27,8 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
       template: `%s · ${pickText(branding.companyName, locale, t("name"))}`,
     },
     description: t("tagline"),
+    manifest: "/manifest.webmanifest",
+    icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
   };
 }
 

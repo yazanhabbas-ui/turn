@@ -182,12 +182,22 @@ Each entry records a choice, its reasons, and how to revisit it. Newest entries 
 - **`--dev` uses webpack:** measured warm requests are ~45 ms with webpack versus ~450 ms with Turbopack under this custom server. `DEV_BUNDLER=turbopack` opts in. The file watcher excludes `src/` and `messages/`, because Next hot-reloads those itself; restarting the process would discard its compile cache. A warm-up pass pre-compiles the main pages after startup.
 - **Background jobs:** a failure to start pg-boss (for example a transient database reset) is retried and never takes the app down. If the worker is unavailable, job handlers run inline.
 
+## D27: Reception and agent screens
+
+- **Realtime:** one shared Socket.IO connection per tab. It subscribes to the branch room and refetches on `queue.updated`, `ticket.called` and `agent.updated`, with bursts debounced to one refetch. While disconnected, pages poll every 5 s and show a "Reconnecting / Offline" pill; after reconnecting they refetch. Measured: reception issues a ticket and the agent's screen updates within 10–110 ms.
+- **Two taps to issue:** tap a reason (featured reasons come first, and each has a keyboard shortcut), then tap **Issue**. Only the reason's configured intake fields are shown; optional ones stay collapsed. The consent checkbox appears only once personal data has been typed. Every issue attempt carries an idempotency key, which is kept on retry, so a network error never creates a second ticket.
+- **Agent:** one big button changes with the state (Call next → Start service → Complete), and Enter triggers it (a USB keypad or call button works too); R recalls. No-show and complete show an 8-second Undo. Hold returns the visitor to the same agent. Transfer can go to another reason and/or a specific agent, with a note.
+- **Personal data minimisation:** visitor details in the live queue are visible to people who issue, edit or reassign tickets. Agents see details only for tickets reserved for or served by them (`queueState`).
+- **Printing:** the ticket prints from the editable bilingual `ticket_print` template, in the visitor's language and the configured ticket digits. An 80 mm `@page` print stylesheet works with ESC/POS thermal printers through the OS driver. The QR code (optional setting) links to `/t/<token>`, generated in the browser with no external service. Auto-print is a per-device setting kept in local storage.
+- **PWA:** the web manifest takes its name and colour from the branding settings. The service worker caches only hashed static assets, fonts and icons (cache-first) and pages (network-first, falling back to the last copy). It never caches the API or realtime traffic. It registers in production only.
+- **Visitor status page** `/t/<token>` (basic version; notifications arrive in Milestone 7): opens in the language chosen at reception and refreshes every 10 s until the ticket is finished.
+
 ## Milestones
 
 1. **Foundation** (done): repo, Docker, schema, auth + 2FA, RBAC, i18n/RTL, seed, health, CI.
 2. **Admin core** (done): users, roles matrix, invites, branches/desks, reasons with agent assignment, groups, schedules and prayer pauses, priority lanes, break types, settings, audit viewer.
 3. **Queue engine** (done): state machine, numbering, distribution strategies, ordering and aging, business hours and pauses, timers, distribution rules UI, simulator.
-4. Reception and agent workspaces (realtime).
+4. **Reception and agent workspaces** (done): realtime updates, two-tap issuing, thermal print with QR, appointment check-in, agent status and breaks, call/recall/start/complete/no-show/hold/transfer with undo, visitor status page, PWA.
 5. Display and voice (TTS providers, audio pack, chime, pairing).
 6. Reports, KPIs, wallboard, exports, scheduled emails.
 7. Visitor status page, messaging (WhatsApp/SMS/email), CSAT.

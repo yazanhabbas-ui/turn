@@ -136,6 +136,9 @@ async function warmUp() {
     "/api/v1/admin/users",
     "/api/v1/admin/reasons",
     "/api/v1/admin/settings",
+    "/api/v1/queue/reception",
+    "/api/v1/queue/agent",
+    "/api/v1/queue/state",
   ];
   const t0 = Date.now();
   for (const p of pages) await fetch(base + p, { headers: { cookie } }).catch(() => undefined);
