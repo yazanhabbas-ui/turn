@@ -75,7 +75,7 @@ export async function AppShell({
           </div>
         </div>
       </header>
-      <div className="flex flex-1">
+      <div className="flex flex-1 flex-col md:flex-row">
         {sidebar}
         <main className="min-w-0 flex-1 p-4 md:p-6">{children}</main>
       </div>

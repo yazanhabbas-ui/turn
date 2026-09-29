@@ -81,7 +81,7 @@ export async function listUsers(
     .select()
     .from(users)
     .where(and(eq(users.organizationId, org), isNull(users.archivedAt)))
-    .orderBy(asc(users.createdAt));
+    .orderBy(asc(users.createdAt), asc(users.email));
   const ids = rows.map((u) => u.id);
   if (!ids.length) return [];
   const [grants, profiles, members] = await Promise.all([

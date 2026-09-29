@@ -100,10 +100,44 @@ Each entry records a choice, its reasons, and how to revisit it. Newest entries 
 - The local server keeps everything working when the _internet_ drops.
 - Issuing tickets while the _local server itself_ is unreachable (the section 10 stretch goal) is deferred to the hardening milestone as optional. The planned design: pre-reserved per-device number blocks, with sync on reconnect.
 
+## D16: UTF-8 databases are mandatory
+
+- Postgres clusters initialised on Windows default to WIN1252, and every Arabic insert then fails. `runMigrations()` refuses to run unless the database encoding is UTF8. Test databases are created with `ENCODING 'UTF8' TEMPLATE template0`.
+
+## D17: Admin guard rails
+
+- **No privilege escalation:** a user cannot create a role, assign a role, or send an invite that carries a permission they do not hold themselves.
+- **Branch-scoped managers:** a user whose `users.manage` is limited to certain branches only edits grants in those branches. Grants in other branches are preserved untouched.
+- **Last administrator:** after any user change, at least one active user must keep an organization-wide grant with `roles.manage`. You cannot deactivate yourself.
+- **Built-in roles are read-only in the UI and API.** They are re-synced from code on every seed, so edits would be lost. Clone a built-in role to customise it. A custom role can only be archived once no user holds it.
+- **Nothing that history references is hard-deleted:** reasons, branches, desks, floors, roles, groups and schedules are archived. Pause windows and holidays are deleted outright because no history references them.
+
+## D18: Invites and password resets
+
+- Tokens are random, single-use, and stored only as SHA-256. They are claimed with an atomic `UPDATE … WHERE used_at IS NULL`.
+- The invite link is always shown to the admin, so a "copy link" fallback works with no email or WhatsApp provider configured. **Resend rotates the token**, so the old link stops working.
+- Accepting an invite for a role with `agent.serve` creates an agent profile in the invited branch (or the default branch).
+- "Add user" without a password returns a 72-hour set-password link. An admin reset gives a 24-hour link and signs the user out everywhere.
+- The invite expiry comes from the `security.inviteExpiryHours` setting.
+
+## D19: Messaging and jobs
+
+- **Providers:** `MessageProvider` (in `src/server/messaging`) has an SMTP email implementation and a mock (`MESSAGING_MOCK=true`, which records to an in-memory outbox). WhatsApp and SMS adapters arrive in the messaging milestone. Until then those channels report `not_configured` and the admin copies the link.
+- **Templates:** messages always render from the organization's `message_templates` for (channel, event), in the recipient's language.
+- **Delivery log:** every send is logged in `notifications_log` with a masked recipient.
+- **Jobs:** delivery runs through pg-boss (`messages.send`, 5 retries with backoff). When the worker is not running (tests, CLI scripts), `enqueue` runs the handler inline, so behaviour is identical.
+
+## D20: Admin UI conventions
+
+- Forms use native `<select>` and checkboxes (styled) rather than custom popups. They work on every tablet and kiosk browser, with screen readers, and in RTL without positioning bugs.
+- Bilingual fields are edited side by side (Arabic first), each with its own `dir`.
+- Counts use ICU plural rules (Arabic has zero/one/two/few/many/other forms). Lists are joined with `Intl.ListFormat`, so the separator follows the locale.
+- Visit-reason and priority icons come from a curated, statically bundled lucide set (`src/components/app/entity-icon.tsx`). The database stores the icon key.
+
 ## Milestones
 
 1. **Foundation** (done): repo, Docker, schema, auth + 2FA, RBAC, i18n/RTL, seed, health, CI.
-2. Admin core: users, roles matrix, invites, branches/desks, reasons with agent assignment, schedules, settings, audit viewer.
+2. **Admin core** (done): users, roles matrix, invites, branches/desks, reasons with agent assignment, groups, schedules and prayer pauses, priority lanes, break types, settings, audit viewer.
 3. Queue engine: state machine, numbering, distribution strategies, ordering and aging, simulator.
 4. Reception and agent workspaces (realtime).
 5. Display and voice (TTS providers, audio pack, chime, pairing).
