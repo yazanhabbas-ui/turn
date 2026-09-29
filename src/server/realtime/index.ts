@@ -2,11 +2,12 @@ import type { Server as HttpServer } from "node:http";
 import { Server } from "socket.io";
 import { can } from "@/domain/rbac/permissions";
 import { SESSION_COOKIE, validateSessionToken } from "../auth/session";
+import { authenticateDevice } from "../display/device";
 import { logger } from "../logger";
 
 /**
  * Realtime hub. The server is the single source of truth: clients subscribe to rooms and receive events,
- * they never compute queue state. Rooms: `org:<id>`, `branch:<id>`, `agent:<userId>`, `display:<id>`.
+ * they never compute queue state. Rooms: `org:<id>`, `branch:<id>`, `user:<id>`, `display:<id>`, `displays:<orgId>`.
  * Socket.IO falls back to HTTP long-polling automatically when WebSockets are blocked.
  */
 const g = globalThis as unknown as { __dorIo?: Server };
@@ -36,6 +37,12 @@ export function initRealtime(server: HttpServer): Server {
 
   hub.use(async (socket, next) => {
     try {
+      // Waiting-room screens authenticate with their device token instead of a user session.
+      const deviceToken = socket.handshake.auth?.deviceToken;
+      if (typeof deviceToken === "string") {
+        socket.data.display = await authenticateDevice(deviceToken);
+        return next();
+      }
       const token = readCookie(socket.handshake.headers.cookie, SESSION_COOKIE);
       const auth = token ? await validateSessionToken(token) : null;
       // Device tokens (displays) are accepted here in the display milestone.
@@ -48,6 +55,12 @@ export function initRealtime(server: HttpServer): Server {
   });
 
   hub.on("connection", (socket) => {
+    const display = socket.data.display as { id: string; branchId: string; organizationId: string } | undefined;
+    if (display) {
+      // Read-only: a screen only receives events for its own branch.
+      socket.join([`screens:${display.branchId}`, `display:${display.id}`, `displays:${display.organizationId}`]);
+      return;
+    }
     const auth = socket.data.auth;
     socket.join([`org:${auth.user.organizationId}`, `user:${auth.user.id}`]);
     logger.debug({ userId: auth.user.id }, "socket connected");

@@ -111,7 +111,8 @@
     },
     "welcome": "Welcome, {name}",
     "overviewHint": "Configure your offices, services, and how turns are distributed. Every rule here takes effect immediately.",
-    "groups": "Agent groups"
+    "groups": "Agent groups",
+    "screens": "Screens"
   },
   "workspace": {
     "receptionEmpty": "The reception console opens here: choose a visit reason and issue a ticket in two taps.",
@@ -119,7 +120,30 @@
   },
   "display": {
     "notPaired": "This screen is not paired yet",
-    "pairHint": "An administrator can pair it from Admin → Screens."
+    "pairHint": "Ask an administrator for a pairing code (Admin → Screens) and enter it here.",
+    "codeLabel": "Pairing code",
+    "pair": "Pair",
+    "pairing": "Pairing…",
+    "invalidCode": "The code is wrong or has expired",
+    "tooMany": "Too many attempts, wait a minute and try again",
+    "pairFailed": "Could not pair. Check the connection and try again",
+    "loading": "Loading…",
+    "connected": "Connected",
+    "offline": "No network connection",
+    "reconnecting": "Reconnecting…",
+    "soundOn": "Sound on",
+    "soundOff": "Sound off",
+    "unlockTitle": "Touch the screen to enable sound",
+    "unlockHint": "The browser blocks sound until the first touch",
+    "nowServing": "Now serving",
+    "desk": "Desk",
+    "free": "Available",
+    "recent": "Recent calls",
+    "waiting": "Waiting",
+    "minutes": "{count} min",
+    "noWait": "No wait",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen"
   },
   "permissionGroups": {
     "admin": "Administration",
@@ -934,5 +958,145 @@
     "minutes": "{n} min",
     "refreshes": "This page updates by itself.",
     "notFound": "This ticket was not found or the page is turned off."
+  },
+  "screens": {
+    "title": "Screens & voice",
+    "description": "Waiting-room display screens, the announcements they show, and the spoken call-out of tickets.",
+    "tabs": {
+      "screens": "Screens",
+      "announcements": "Announcements",
+      "voice": "Voice"
+    },
+    "add": "Add screen",
+    "edit": "Edit screen",
+    "empty": "No screens yet. Add one and pair it with a TV.",
+    "online": "Online",
+    "offline": "Offline",
+    "status": {
+      "paired": "Paired",
+      "unpaired": "Not paired",
+      "revoked": "Revoked"
+    },
+    "lastSeen": "Last seen",
+    "neverSeen": "never",
+    "newCode": "New pairing code",
+    "revoke": "Revoke",
+    "confirmRevoke": "Revoke this screen?",
+    "confirmRevokeBody": "The screen will stop working until it is paired again with a new code.",
+    "layout": "Layout",
+    "layouts": {
+      "classic": {
+        "name": "Classic",
+        "description": "Latest call large, recent calls in a list beside it."
+      },
+      "single": {
+        "name": "Single",
+        "description": "Only the current call, as large as possible."
+      },
+      "multi": {
+        "name": "Multi-desk",
+        "description": "A grid with the current ticket of every desk."
+      }
+    },
+    "pairing": {
+      "title": "Pair “{name}”",
+      "instructions": "Open {url} on the TV and type this code.",
+      "code": "Pairing code",
+      "validity": "The code is valid for 15 minutes and can be used once.",
+      "address": "Screen address"
+    },
+    "config": {
+      "content": "Content",
+      "rotateSeconds": "Rotate every (seconds)",
+      "zones": "Desk zones",
+      "zonesHint": "Comma-separated zone labels. Leave empty to show all desks.",
+      "showTicker": "News ticker",
+      "showSlides": "Slides",
+      "showWaiting": "Waiting list",
+      "showClock": "Clock",
+      "voice": "Voice on this screen",
+      "voiceHint": "Leave on “Inherit” to use the general voice settings.",
+      "voiceEnabled": "Voice",
+      "inherit": "Inherit",
+      "on": "On",
+      "off": "Off",
+      "volume": "Volume ({value}%)",
+      "rate": "Speech rate",
+      "rateHint": "0.5 to 1.5. Empty = inherit."
+    },
+    "ann": {
+      "add": "Add announcement",
+      "edit": "Edit announcement",
+      "empty": "No announcements yet.",
+      "always": "Always shown",
+      "seconds": "{count} s",
+      "kinds": {
+        "ticker": "Ticker line",
+        "slide": "Slide"
+      },
+      "kind": "Type",
+      "body": "Text",
+      "image": "Image",
+      "imagePath": "Or a local path",
+      "imageHint": "A file up to 1.5 MB, or a path on this server starting with /.",
+      "imageType": "Choose an image file.",
+      "imageTooBig": "The image is larger than 1.5 MB. Choose a smaller one or use a local path.",
+      "imagePathInvalid": "The path must start with /.",
+      "removeImage": "Remove image",
+      "duration": "Slide duration (seconds)",
+      "startsAt": "Starts at",
+      "endsAt": "Ends at",
+      "optional": "Optional"
+    },
+    "voice": {
+      "settingsTitle": "Voice settings",
+      "phrasesTitle": "Spoken phrases",
+      "packsTitle": "Audio packs",
+      "enabled": "Speak ticket calls",
+      "chime": "Play a chime before the call",
+      "provider": "Voice source",
+      "providers": {
+        "browser": "Browser voice",
+        "pack": "Pre-recorded audio pack",
+        "cloud": "Cloud voice (requires configuration)"
+      },
+      "cloudNote": "Cloud voice is an extension point: it needs a server-side speech service to be configured first.",
+      "mode": "Languages spoken",
+      "modes": {
+        "sequence": "Every selected language, in order",
+        "ticket": "Only the visitor's language"
+      },
+      "languages": "Languages",
+      "langAr": "Arabic",
+      "langEn": "English",
+      "order": "Speaking order",
+      "arFirst": "Arabic first",
+      "enFirst": "English first",
+      "languagesRequired": "Select at least one language.",
+      "repeat": "Repeat (times)",
+      "repeatGap": "Gap between repeats (s)",
+      "volume": "Volume ({value}%)",
+      "rate": "Speech rate",
+      "voiceNames": "Preferred voice names",
+      "voiceNamesHint": "Optional. The start of an installed voice name, per language. Empty = the first available voice.",
+      "phrasesHint": "The sentence spoken when a ticket is called, per language. Click a placeholder to insert it where the cursor is.",
+      "placeholders": "Placeholders",
+      "preview": "Preview",
+      "test": "Test voice",
+      "testHint": "Testing uses the voices installed on this computer, with the saved rate and volume.",
+      "noVoice": "No {lang} voice is installed on this device. Use a pre-recorded audio pack or a cloud voice instead, or install a voice for this language.",
+      "packsHint": "Pre-recorded clips per language. Required keys: ar.phrase.number, ar.phrase.desk, ar.digit.0 to ar.digit.9 and ar.letter.A to ar.letter.Z for the letters in use (the same with the en. prefix for English).",
+      "addPack": "Add audio pack",
+      "editPack": "Edit audio pack",
+      "packsEmpty": "No audio packs yet.",
+      "clips": "{count} clips",
+      "manifest": "Clips (JSON)",
+      "manifestHelp": "An object of clip key to audio file, for example {example}. Values start with / or data:audio/.",
+      "manifestErrors": {
+        "json": "This is not valid JSON.",
+        "shape": "The manifest must be a JSON object.",
+        "value": "Every value must be a path starting with / or a data:audio/ URI."
+      }
+    }
   }
 }

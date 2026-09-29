@@ -207,13 +207,23 @@ Each entry records a choice, its reasons, and how to revisit it. Newest entries 
 - Removed: timetables and Ramadan hours (`schedules`, `schedule_rules`, the reason `schedule_id` and `cutoff_minutes` columns, the Ramadan mode setting), the Working hours admin page and API, the open/closed state on the reception screen, and the `closed` / `cutoff` ticket errors. Migration `0002_remove_working_hours`.
 - The service day and ticket numbering reset time (`dailyResetTime`) stay: they are about numbering, not opening hours.
 
+## D31: Display screens and voice
+
+- **Pairing:** an admin creates a screen under Admin → Screens and gets a 6-character single-use code (valid 15 minutes). The TV opens `/display` and the code is typed there (or `/display?code=…`). The server returns a 160-bit device token once and stores only its SHA-256. The token lives in the TV browser storage and is sent as a Bearer header and as the Socket.IO handshake auth. Revoking, deleting or re-pairing kills the old token immediately and disconnects the socket; the TV returns to the pairing page.
+- **Least data:** a screen receives ticket numbers, desk numbers, reason names and counts only. Its socket joins a separate `screens:<branch>` room that carries `queue.updated` and `ticket.called` (without the agent id), never alerts or agent status. Screens are read-only.
+- **Layouts:** classic (row per desk), single (one giant number) and multi-zone (latest call, desks, slides, waiting counts), always with dark theme, ticker, clock, optional Hijri date and configured digits. Desks can be filtered by zone per screen. The language rotates between Arabic and English (or stays on one).
+- **Resilience:** the last state is cached in local storage, the screen keeps showing it during a network drop, polls every 5 s while the socket is down, retries with back-off, and shows a reconnecting badge. It requests a wake lock and offers fullscreen (F, double click or the corner button).
+- **Voice:** a call plays a generated chime, then each language of the sequence (or only the visitor language), repeated N times, in a queue that never overlaps. Phrases are the editable `voice/ticket_called` template (`ticket_recalled` is used for recalls when it exists). The ticket is spoken as letters plus the number without leading zeros (`A-014` → "A 14") in the voice digit system. Providers implement one interface: the browser engine (default), pre-recorded clip packs (`ar.digit.7`, `ar.letter.A`, `ar.phrase.number`…) for PCs without an Arabic voice, and cloud TTS as an extension point (it behaves like the browser provider until an adapter is added). A language with no usable voice is skipped and shown as sound trouble rather than blocking the queue.
+- **Audio unlock:** browsers block sound until a gesture. If the audio context starts suspended, a full-screen "touch to enable sound" splash appears, and any tap or key press unlocks it. Kiosk Chrome started with `--autoplay-policy=no-user-gesture-required` skips the splash.
+- **Defaults chosen:** voice settings are organization-wide (`voice` setting) with per-screen overrides for enabled, volume and rate. Media in ticker slides and audio packs must be local paths or inline data, never third-party URLs.
+
 ## Milestones
 
 1. **Foundation** (done): repo, Docker, schema, auth + 2FA, RBAC, i18n/RTL, seed, health, CI.
 2. **Admin core** (done): users, roles matrix, invites, branches/desks, reasons with agent assignment, groups, priority lanes, break types, settings, audit viewer.
 3. **Queue engine** (done): state machine, numbering, distribution strategies, ordering and aging, business hours, timers, distribution rules UI, simulator.
 4. **Reception and agent workspaces** (done): realtime updates, two-tap issuing, thermal print with QR, appointment check-in, agent status and breaks, call/recall/start/complete/no-show/hold/transfer with undo, visitor status page, PWA.
-5. Display and voice (TTS providers, audio pack, chime, pairing).
+5. **Display and voice** (done): device pairing, three layouts, live board, chime plus queued multilingual voice, TTS providers, audio unlock, wake lock, admin Screens page.
 6. Reports, KPIs, wallboard, exports, scheduled emails.
 7. Visitor status page, messaging (WhatsApp/SMS/email), CSAT.
 8. Hardening: security review, retention/PDPL tooling, backups, e2e and load tests.

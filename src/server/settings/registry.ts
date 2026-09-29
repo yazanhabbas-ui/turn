@@ -76,6 +76,27 @@ export const SETTINGS = {
       notifyTurnsAway: z.number().int().min(1).max(10).default(2),
     })
     .prefault({}),
+  /** Announcements on waiting-room screens. Individual screens can override volume and rate. */
+  voice: z
+    .object({
+      enabled: z.boolean().default(true),
+      /** browser = the screen's own speech engine; pack = pre-recorded clips; cloud = server-side TTS (extension point). */
+      provider: z.enum(["browser", "pack", "cloud"]).default("browser"),
+      /** sequence = speak every language in `languages`; ticket = only the visitor's language. */
+      mode: z.enum(["sequence", "ticket"]).default("sequence"),
+      languages: z
+        .array(z.enum(["ar", "en"]))
+        .min(1)
+        .default(["ar", "en"]),
+      repeat: z.number().int().min(1).max(5).default(2),
+      repeatGapSeconds: z.number().min(0).max(30).default(3),
+      chime: z.boolean().default(true),
+      volume: z.number().min(0).max(1).default(1),
+      rate: z.number().min(0.5).max(1.5).default(0.9),
+      /** Optional preferred voice names per language (matched by prefix against the engine's voices). */
+      voiceNames: localized.default({}),
+    })
+    .prefault({}),
 } as const;
 
 export type SettingKey = keyof typeof SETTINGS;

@@ -1,18 +1,19 @@
-import { MonitorOff } from "lucide-react";
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import { setRequestLocale } from "next-intl/server";
+import arMessages from "../../../../messages/ar.json";
+import enMessages from "../../../../messages/en.json";
+import { DisplayApp } from "@/features/display/display-app";
+import type { Dicts } from "@/features/display/text";
+import type { Metadata } from "next";
 
-/** Public display entry point. Device pairing and the live layouts ship with the display milestone. */
+export const metadata: Metadata = { robots: { index: false } };
+
+/**
+ * Public waiting-room screen. It is a device, not a person: it authenticates with a pairing token kept in the
+ * browser. Both languages' strings are passed down because the screen rotates between them.
+ */
 export default async function DisplayPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations("display");
-  return (
-    <div className="dark grid min-h-dvh place-items-center bg-neutral-950 p-8 text-center text-neutral-100">
-      <div>
-        <MonitorOff className="mx-auto size-24 text-neutral-500" aria-hidden />
-        <h1 className="mt-8 text-5xl font-bold">{t("notPaired")}</h1>
-        <p className="mt-4 text-2xl text-neutral-400">{t("pairHint")}</p>
-      </div>
-    </div>
-  );
+  const dicts: Dicts = { ar: arMessages.display, en: enMessages.display };
+  return <DisplayApp dicts={dicts} defaultLang={locale === "en" ? "en" : "ar"} />;
 }

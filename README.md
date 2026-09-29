@@ -4,7 +4,7 @@ An Arabic-first, fully bilingual (AR/EN) system for in-office visitor queues. Re
 
 It runs entirely on your own server (on-premises or a regional cloud), keeps working on the office LAN without internet, and sends no data to third parties.
 
-> **Status:** Milestones 1–4 are complete: foundation, admin core, queue engine, and the reception and agent workspaces. See [docs/decisions.md](docs/decisions.md) for the milestone plan.
+> **Status:** Milestones 1–5 are complete: foundation, admin core, queue engine, the reception and agent workspaces, and the waiting-room display with voice. See [docs/decisions.md](docs/decisions.md) for the milestone plan.
 
 ## Quick start (Docker, recommended)
 
@@ -101,6 +101,13 @@ See [.env.example](.env.example) for the full, commented list.
 6. **Health:** `GET /api/health` returns `200 {"status":"ok"}` when the app and database are up. Docker uses it as the container healthcheck.
 
 Nothing calls a service outside your network at runtime: fonts are bundled, QR codes are generated on the server, and TTS defaults to the browser engine. Optional integrations (SMTP, WhatsApp, cloud TTS) are off until configured.
+
+## Waiting-room screens
+
+1. Sign in as an administrator, open **Admin → Screens → Add screen**, choose the branch and layout (classic, single number, multi-zone), and note the 6-character pairing code (valid 15 minutes).
+2. On the TV or mini-PC open `http://<server>:3000/display` in Chrome and type the code (or open `/display?code=ABC123`). The screen stays paired across restarts; revoke it from the same page.
+3. Kiosk tips: start Chrome with `--kiosk --autoplay-policy=no-user-gesture-required http://<server>:3000/display` so sound needs no tap. Without that flag, tap the screen once to enable sound. Press **F** (or double click) for fullscreen.
+4. **Voice:** Admin → Screens → Voice. The default uses the TV browser's own speech engine; many kiosk PCs have no Arabic voice. In that case install one (Windows: Settings → Time & language → Speech) or upload a pre-recorded pack (`ar.digit.0…9`, `ar.letter.A…`, `ar.phrase.number`, `ar.phrase.desk`) and switch the provider to "Pre-recorded clips".
 
 ## Project layout
 

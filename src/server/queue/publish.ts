@@ -33,6 +33,13 @@ export function publish(events: QueueEvent[]) {
       seen.add(e.branchId);
     }
     hub.to(`branch:${e.branchId}`).emit(e.type, e);
+    // Waiting-room screens only get what they render: queue changes and calls (never agent status or alerts).
+    if (e.type === "queue.updated") hub.to(`screens:${e.branchId}`).emit(e.type, e);
+    if (e.type === "ticket.called") {
+      const forScreens: Omit<typeof e, "agentId"> & { agentId?: string } = { ...e };
+      delete forScreens.agentId;
+      hub.to(`screens:${e.branchId}`).emit(e.type, forScreens);
+    }
     if (e.type === "ticket.called" || e.type === "agent.updated") hub.to(`user:${e.agentId}`).emit(e.type, e);
   }
 }
