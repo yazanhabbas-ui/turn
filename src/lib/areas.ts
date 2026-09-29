@@ -5,6 +5,7 @@ export const AREAS = [
   { key: "admin", href: "/admin", permission: "admin.access" },
   { key: "reception", href: "/reception", permission: "tickets.issue" },
   { key: "agent", href: "/agent", permission: "agent.serve" },
+  { key: "reports", href: "/reports", permission: "reports.view" },
   { key: "wallboard", href: "/wallboard", permission: "wallboard.view" },
 ] as const satisfies readonly { key: string; href: string; permission: Permission }[];
 

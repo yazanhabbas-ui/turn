@@ -93,6 +93,35 @@ export const SETTINGS = {
       defaultLanguage: z.enum(["interface", "ar", "en"]).default("interface"),
     })
     .prefault({}),
+  /** Report definitions. */
+  reports: z
+    .object({
+      /** "X% of visitors called within Y minutes". */
+      serviceLevelMinutes: z.number().int().min(1).max(120).default(5),
+      serviceLevelTargetPct: z.number().int().min(1).max(100).default(80),
+      /** Share of an agent's working time that should be spent serving, used to size the staffing forecast. */
+      targetUtilisationPct: z.number().int().min(30).max(100).default(80),
+      /** Days of history the forecast averages. */
+      forecastHistoryDays: z.number().int().min(7).max(90).default(28),
+    })
+    .prefault({}),
+  /** Anomaly alert thresholds (evaluated every minute per branch). */
+  alerts: z
+    .object({
+      enabled: z.boolean().default(true),
+      /** A waiting visitor has waited this long. */
+      longWaitMinutes: z.number().int().min(1).max(240).default(20),
+      /** This many people are waiting in the branch. */
+      queueLimit: z.number().int().min(1).max(500).default(15),
+      /** An available agent has had nobody to serve for this long while people wait. */
+      agentIdleMinutes: z.number().int().min(1).max(240).default(15),
+      /** This many no-shows inside the window. */
+      noShowCount: z.number().int().min(1).max(50).default(3),
+      noShowWindowMinutes: z.number().int().min(5).max(240).default(30),
+      /** Supervisors who also get an email (in-app alerts always appear). */
+      notifyEmails: z.array(z.string().email()).max(20).default([]),
+    })
+    .prefault({}),
   /** Announcements on waiting-room screens. Individual screens can override volume and rate. */
   voice: z
     .object({

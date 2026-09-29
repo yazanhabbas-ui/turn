@@ -34,7 +34,7 @@ const nextConfig: NextConfig = {
   // The local launcher builds with DOR_FAST_BUILD=1: lint and typecheck already run in CI and `npm run typecheck`.
   eslint: { ignoreDuringBuilds: process.env.DOR_FAST_BUILD === "1" },
   typescript: { ignoreBuildErrors: process.env.DOR_FAST_BUILD === "1" },
-  serverExternalPackages: ["@node-rs/argon2", "pg-boss", "pino", "pg"],
+  serverExternalPackages: ["@node-rs/argon2", "pg-boss", "pino", "pg", "pdfkit", "exceljs"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

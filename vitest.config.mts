@@ -9,5 +9,8 @@ export default defineConfig({
     setupFiles: ["tests/setup-env.ts"],
     // Integration tests share one database; run files sequentially.
     fileParallelism: false,
+    // PDF/Excel generation and database resets can exceed the 5 s default on a busy machine.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
   },
 });

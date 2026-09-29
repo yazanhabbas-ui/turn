@@ -20,7 +20,7 @@ import {
   updateDisplay,
 } from "@/server/admin/screens";
 import { updateSetting } from "@/server/admin/settings-admin";
-import { now, setClock } from "@/server/clock";
+import { advanceClock, now, setClock } from "@/server/clock";
 import { authenticateDevice, pairDevice } from "@/server/display/device";
 import { displayState } from "@/server/display/state";
 import { AppError } from "@/server/http/errors";
@@ -155,6 +155,7 @@ describe.runIf(available)("display screens (database)", () => {
     const issue = (code: string, fields: Record<string, string> = {}, consent = false) =>
       issueTicket(reception, { branchId, reasonId: reason[code], language: "ar", fields, consent, source: "reception" });
     const t1 = await issue("contract", { name: "فهد السري", phone: "0501234567", national_id_last4: "9876" }, true);
+    advanceClock(0.1); // tickets issued in the same millisecond have no defined order
     await issue("general");
     const called = await callNext(khalid, {});
     expect(called.ticket?.id).toBe(t1.ticket.id);

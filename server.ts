@@ -10,6 +10,7 @@ import { startJobs, stopJobs } from "./src/server/jobs";
 import { logger } from "./src/server/logger";
 import { startQueueMaintenance, stopQueueMaintenance } from "./src/server/queue/maintenance";
 import { initRealtime } from "./src/server/realtime";
+import { startReportScheduler, stopReportScheduler } from "./src/server/reports/scheduler";
 
 async function main() {
   const config = env();
@@ -31,6 +32,7 @@ async function main() {
   initRealtime(server);
   await startJobs();
   startQueueMaintenance();
+  startReportScheduler();
 
   await listen(server, config.PORT, config.HOSTNAME);
   logger.info({ port: config.PORT, host: config.HOSTNAME, dev, turbopack }, `Dor ready on ${config.APP_URL}`);
@@ -38,6 +40,7 @@ async function main() {
   const shutdown = (signal: string) => {
     logger.info({ signal }, "shutting down");
     stopQueueMaintenance();
+    stopReportScheduler();
     server.close(() => stopJobs().finally(() => process.exit(0)));
     setTimeout(() => process.exit(1), 10_000).unref();
   };

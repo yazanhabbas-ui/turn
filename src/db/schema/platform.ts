@@ -1,4 +1,4 @@
-import { boolean, index, jsonb, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
 import { createdAt, id, ts, updatedAt } from "./_common";
 import { users } from "./identity";
 import { branches, organizations } from "./tenancy";
@@ -74,13 +74,20 @@ export const reportSchedules = pgTable("report_schedules", {
     .references(() => organizations.id),
   branchId: uuid("branch_id").references(() => branches.id),
   name: text("name").notNull(),
+  /** `daily` or `weekly`. */
   frequency: text("frequency").notNull(),
+  /** Weekly schedules: the weekday to send on (0 = Sunday), in the branch (or organization) time zone. */
+  weekday: integer("weekday"),
+  /** Hour of day (0-23) to send at, in the branch (or organization) time zone. */
+  sendHour: integer("send_hour").notNull().default(7),
   format: text("format").notNull().default("pdf"),
   filters: jsonb("filters").$type<Record<string, unknown>>().notNull().default({}),
   recipients: jsonb("recipients").$type<string[]>().notNull().default([]),
   locale: text("locale").notNull().default("ar"),
   isActive: boolean("is_active").notNull().default(true),
   lastRunAt: ts("last_run_at"),
+  /** Why the last run failed; null after a successful run. */
+  lastError: text("last_error"),
   createdByUserId: uuid("created_by_user_id").references(() => users.id),
   createdAt: createdAt(),
   updatedAt: updatedAt(),

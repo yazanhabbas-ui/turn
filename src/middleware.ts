@@ -6,7 +6,7 @@ const intl = createMiddleware(routing);
 
 const LOCALE_ALT = routing.locales.join("|");
 /** Areas that require a signed-in user. Full session validation happens server-side; this only avoids a flash. */
-const PROTECTED = new RegExp(`^/(?:(?:${LOCALE_ALT})/)?(admin|reception|agent|account|wallboard)(?:/|$)`);
+const PROTECTED = new RegExp(`^/(?:(?:${LOCALE_ALT})/)?(admin|reception|agent|account|reports|wallboard)(?:/|$)`);
 const LOCALE_PREFIX = new RegExp(`^/(${LOCALE_ALT})(?=/|$)`);
 
 export default function middleware(req: NextRequest) {

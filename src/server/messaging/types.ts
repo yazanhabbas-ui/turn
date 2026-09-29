@@ -9,7 +9,11 @@ export type OutboundMessage = {
   /** Provider-side template (WhatsApp Business requires pre-approved templates) and its variables. */
   providerTemplate?: string | null;
   variables?: Record<string, string>;
+  /** Files sent with the message (email only). */
+  attachments?: MessageAttachment[];
 };
+
+export type MessageAttachment = { filename: string; contentType: string; content: Buffer };
 
 export type SendResult = { providerMessageId?: string };
 

@@ -31,7 +31,7 @@ export type ConnectionState = "connected" | "connecting" | "offline";
 /** Subscribes to a branch's events. Returns the connection state for the status pill and polling fallback. */
 export function useBranchEvents(
   branchId: string | null | undefined,
-  handlers: { onQueue?: () => void; onCalled?: (e: CalledEvent) => void; onAgent?: () => void },
+  handlers: { onQueue?: () => void; onCalled?: (e: CalledEvent) => void; onAgent?: () => void; onAlert?: () => void },
 ): ConnectionState {
   const [state, setState] = useState<ConnectionState>("connecting");
   const ref = useRef(handlers);
@@ -51,12 +51,14 @@ export function useBranchEvents(
     const onQueue = () => ref.current.onQueue?.();
     const onCalled = (e: CalledEvent) => ref.current.onCalled?.(e);
     const onAgent = () => ref.current.onAgent?.();
+    const onAlert = () => ref.current.onAlert?.();
     s.on("connect", onConnect);
     s.on("disconnect", onDisconnect);
     s.on("connect_error", onDisconnect);
     s.on("queue.updated", onQueue);
     s.on("ticket.called", onCalled);
     s.on("agent.updated", onAgent);
+    s.on("alert.raised", onAlert);
     if (s.connected) onConnect();
     return () => {
       s.emit("unsubscribe", { branchId });
@@ -66,6 +68,7 @@ export function useBranchEvents(
       s.off("queue.updated", onQueue);
       s.off("ticket.called", onCalled);
       s.off("agent.updated", onAgent);
+      s.off("alert.raised", onAlert);
     };
   }, [branchId]);
 
@@ -85,10 +88,23 @@ function useDebounced(fn: () => void, ms = 150) {
  * A query that refetches when branch events arrive. While the socket is down it polls every 5 s so the screen never
  * goes stale; while connected it only does a slow safety refetch.
  */
-export function useLiveQuery<T>(key: unknown[], path: string | null, branchId: string | null | undefined) {
+export function useLiveQuery<T>(
+  key: unknown[],
+  path: string | null,
+  branchId: string | null | undefined,
+  opts: { onAlert?: () => void } = {},
+) {
   const qc = useQueryClient();
   const refetch = useDebounced(() => qc.invalidateQueries({ queryKey: key }));
-  const connection = useBranchEvents(branchId, { onQueue: refetch, onAgent: refetch, onCalled: refetch });
+  const connection = useBranchEvents(branchId, {
+    onQueue: refetch,
+    onAgent: refetch,
+    onCalled: refetch,
+    onAlert: () => {
+      refetch();
+      opts.onAlert?.();
+    },
+  });
   const query = useQuery<T>({
     queryKey: key,
     queryFn: () => api<T>(path!),

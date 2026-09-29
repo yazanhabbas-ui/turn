@@ -226,6 +226,18 @@ Each entry records a choice, its reasons, and how to revisit it. Newest entries 
 - **Configurable:** Admin → Settings → Reception (the reception setting: one-tap, after-issue behaviour, auto-print default, priority and language choices, default language). Which data is collected, and whether it is required, stays per visit reason (Visit reasons → Visitor information to collect). The consent question is switched off with Data protection → require consent.
 - **Auto-print** defaults to on; each reception PC can override it (kept in local storage). Silent printing needs Chrome started with `--kiosk-printing`.
 
+## D33: Reports, wallboard and alerts
+
+- **One computation path:** every KPI is computed by pure functions in `src/domain/reports/compute.ts` from flat "ticket facts" (arrival, first call, start, finish, status, recalls, transfers, returning) and the agent status log. The service only fetches and filters. This is what the unit tests pin down, and what CSV, Excel, PDF, the page and the scheduled emails all share.
+- **Definitions** (so numbers are comparable): _wait_ = arrival to the FIRST call (recalls do not extend it); _service time_ = start to finish of completed tickets; _SLA compliance_ = called tickets whose wait was within their reason's target; _service level_ = called tickets within N minutes (settings, default 80% within 5); _abandonment_ = (no-show + cancelled) / visitors, and the wait before abandonment ends at the cancel or at the unanswered call; _utilisation_ = time serving / (logged-in time minus break time); _idle_ = available time minus serving time; _fairness_ = Jain's index over served counts of agents who worked (1 = perfectly even); _returning_ = the visitor had an earlier ticket (matched by the phone hash, no numbers stored).
+- **Time zones:** date ranges are service days of the selected branch; hour/weekday buckets use each branch's own time zone. A range is limited to 92 days so a report stays interactive.
+- **Forecast:** deliberately simple and explainable: the mean of the same weekday over the last N days (default 28), by day for the next week and by hour for tomorrow. Suggested agents = expected arrivals × average service minutes ÷ (60 × target utilisation, default 80%).
+- **Anomaly alerts** (`alerts` setting, evaluated every minute per active branch): a visitor waiting too long, too many waiting, an available agent idle while people wait, and a no-show spike. Each is stored once (an hour of silence, or until acknowledged), shown live on the wallboard, pushed over Socket.IO, and optionally emailed to supervisors.
+- **Wallboard** shows ticket numbers and counts only, never visitor details. Reports and the wallboard are branch-scoped by the viewer's grants.
+- **Exports:** CSV with a UTF-8 BOM and formula-injection protection, Excel with right-to-left sheets for Arabic, PDF with shaped Arabic text. Scheduled reports cover the previous day or week and are emailed with the file attached.
+- **CSAT** is part of Milestone 7 (visitor status page and feedback) and is not in the reports yet.
+- **Demo history:** `npm run db:history` (opt-in) creates a synthetic past so reports have data; `-- --purge` removes exactly what it created.
+
 ## Milestones
 
 1. **Foundation** (done): repo, Docker, schema, auth + 2FA, RBAC, i18n/RTL, seed, health, CI.
@@ -233,6 +245,6 @@ Each entry records a choice, its reasons, and how to revisit it. Newest entries 
 3. **Queue engine** (done): state machine, numbering, distribution strategies, ordering and aging, business hours, timers, distribution rules UI, simulator.
 4. **Reception and agent workspaces** (done): realtime updates, two-tap issuing, thermal print with QR, appointment check-in, agent status and breaks, call/recall/start/complete/no-show/hold/transfer with undo, visitor status page, PWA.
 5. **Display and voice** (done): device pairing, three layouts, live board, chime plus queued multilingual voice, TTS providers, audio unlock, wake lock, admin Screens page.
-6. Reports, KPIs, wallboard, exports, scheduled emails.
+6. **Reports, KPIs, wallboard, exports, scheduled emails, forecast and anomaly alerts** (done; CSAT arrives with Milestone 7).
 7. Visitor status page, messaging (WhatsApp/SMS/email), CSAT.
 8. Hardening: security review, retention/PDPL tooling, backups, e2e and load tests.

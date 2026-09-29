@@ -5,7 +5,7 @@ import { maskRecipient, renderTemplate } from "@/domain/templates/render";
 import { pickText } from "@/i18n/locales";
 import { logger } from "../logger";
 import { providerFor } from "./providers";
-import type { Channel } from "./types";
+import type { Channel, MessageAttachment } from "./types";
 
 export type SendRequest = {
   organizationId: string;
@@ -17,6 +17,8 @@ export type SendRequest = {
   to: string;
   locale: string;
   vars: Record<string, string>;
+  /** Files to attach (email). Not serialisable, so requests carrying them are sent directly, not through the job queue. */
+  attachments?: MessageAttachment[];
 };
 
 /**
@@ -64,6 +66,7 @@ export async function sendTemplated(req: SendRequest): Promise<{ status: "sent" 
       locale: req.locale,
       providerTemplate: tpl.providerTemplate,
       variables: req.vars,
+      attachments: req.attachments,
     });
     await db()
       .insert(notificationsLog)

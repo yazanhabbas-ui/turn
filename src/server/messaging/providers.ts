@@ -28,6 +28,7 @@ export class SmtpEmailProvider implements MessageProvider {
       subject: message.subject,
       text: message.text,
       html,
+      attachments: message.attachments?.map((a) => ({ filename: a.filename, contentType: a.contentType, content: a.content })),
     });
     return { providerMessageId: info.messageId };
   }

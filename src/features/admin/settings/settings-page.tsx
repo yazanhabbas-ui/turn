@@ -2,7 +2,7 @@
 
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ConfirmButton } from "@/components/admin/confirm-button";
 import { ErrorState, Field, LocalizedInput, LoadingRows, PageHeader } from "@/components/admin/form";
 import { api, useApiMutation, useApiQuery } from "@/components/admin/use-api";
@@ -99,6 +99,8 @@ export function SettingsPage() {
     "regional",
     "ticketing",
     "reception",
+    "reports",
+    "alerts",
     "security",
     "privacy",
     "visitorStatus",
@@ -128,6 +130,12 @@ export function SettingsPage() {
         </TabsContent>
         <TabsContent value="reception" className="mt-4">
           <ReceptionForm initial={s.reception} />
+        </TabsContent>
+        <TabsContent value="reports" className="mt-4">
+          <ReportsForm initial={s.reports} />
+        </TabsContent>
+        <TabsContent value="alerts" className="mt-4">
+          <AlertsForm initial={s.alerts} />
         </TabsContent>
         <TabsContent value="security" className="mt-4">
           <SecurityForm initial={s.security} roles={lookups.data.roles} />
@@ -375,6 +383,190 @@ function ReceptionForm({ initial }: { initial: SettingValue<"reception"> }) {
             </Field>
           </div>
           <p className="text-muted-foreground text-sm">{t("receptionDataHint")}</p>
+        </>
+      )}
+    </SettingForm>
+  );
+}
+
+function NumField({
+  id,
+  label,
+  hint,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  hint?: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <Field label={label} htmlFor={id} hint={hint}>
+      <Input id={id} type="number" min={min} max={max} value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    </Field>
+  );
+}
+
+function ReportsForm({ initial }: { initial: SettingValue<"reports"> }) {
+  const t = useTranslations("settings");
+  return (
+    <SettingForm k="reports" initial={initial}>
+      {(v, set) => (
+        <>
+          <p className="text-muted-foreground text-sm">{t("reportsIntro")}</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <NumField
+              id="rp-slm"
+              label={t("serviceLevelMinutes")}
+              hint={t("serviceLevelMinutesHint")}
+              value={v.serviceLevelMinutes}
+              min={1}
+              max={120}
+              onChange={(serviceLevelMinutes) => set({ serviceLevelMinutes })}
+            />
+            <NumField
+              id="rp-slp"
+              label={t("serviceLevelTargetPct")}
+              hint={t("serviceLevelTargetPctHint")}
+              value={v.serviceLevelTargetPct}
+              min={1}
+              max={100}
+              onChange={(serviceLevelTargetPct) => set({ serviceLevelTargetPct })}
+            />
+            <NumField
+              id="rp-util"
+              label={t("targetUtilisationPct")}
+              hint={t("targetUtilisationPctHint")}
+              value={v.targetUtilisationPct}
+              min={30}
+              max={100}
+              onChange={(targetUtilisationPct) => set({ targetUtilisationPct })}
+            />
+            <NumField
+              id="rp-hist"
+              label={t("forecastHistoryDays")}
+              hint={t("forecastHistoryDaysHint")}
+              value={v.forecastHistoryDays}
+              min={7}
+              max={90}
+              onChange={(forecastHistoryDays) => set({ forecastHistoryDays })}
+            />
+          </div>
+        </>
+      )}
+    </SettingForm>
+  );
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** One email per line. Invalid lines block the form's native submit and are listed under the box. */
+function EmailsField({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const t = useTranslations("settings");
+  const [text, setText] = useState(value.join("\n"));
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => setText((cur) => (parse(cur).join("\n") === value.join("\n") ? cur : value.join("\n"))), [value]);
+  const bad = parse(text).filter((e) => !EMAIL_RE.test(e));
+  const tooMany = parse(text).length > 20;
+  useEffect(() => {
+    ref.current?.setCustomValidity(bad.length || tooMany ? t("notifyEmailsInvalid") : "");
+  }, [bad.length, tooMany, t]);
+  return (
+    <Field label={t("notifyEmails")} htmlFor="al-emails" hint={t("notifyEmailsHint")}>
+      <textarea
+        id="al-emails"
+        ref={ref}
+        dir="ltr"
+        rows={4}
+        className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          onChange(parse(e.target.value));
+        }}
+      />
+      {(bad.length > 0 || tooMany) && (
+        <p className="text-destructive mt-1 text-xs" role="alert">
+          {t("notifyEmailsInvalid")}
+          {bad.length > 0 && <span dir="ltr"> {bad.join(", ")}</span>}
+        </p>
+      )}
+    </Field>
+  );
+}
+const parse = (s: string) =>
+  s
+    .split(/[\n,;]+/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+function AlertsForm({ initial }: { initial: SettingValue<"alerts"> }) {
+  const t = useTranslations("settings");
+  return (
+    <SettingForm k="alerts" initial={initial}>
+      {(v, set) => (
+        <>
+          <p className="text-muted-foreground text-sm">{t("alertsIntro")}</p>
+          <Check
+            label={t("alertsEnabled")}
+            hint={t("alertsEnabledHint")}
+            checked={v.enabled}
+            onChange={(enabled) => set({ enabled })}
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <NumField
+              id="al-long"
+              label={t("longWaitMinutes")}
+              hint={t("longWaitMinutesHint")}
+              value={v.longWaitMinutes}
+              min={1}
+              max={240}
+              onChange={(longWaitMinutes) => set({ longWaitMinutes })}
+            />
+            <NumField
+              id="al-limit"
+              label={t("queueLimit")}
+              hint={t("queueLimitHint")}
+              value={v.queueLimit}
+              min={1}
+              max={500}
+              onChange={(queueLimit) => set({ queueLimit })}
+            />
+            <NumField
+              id="al-idle"
+              label={t("agentIdleMinutes")}
+              hint={t("agentIdleMinutesHint")}
+              value={v.agentIdleMinutes}
+              min={1}
+              max={240}
+              onChange={(agentIdleMinutes) => set({ agentIdleMinutes })}
+            />
+            <NumField
+              id="al-ns"
+              label={t("noShowCount")}
+              hint={t("noShowCountHint")}
+              value={v.noShowCount}
+              min={1}
+              max={50}
+              onChange={(noShowCount) => set({ noShowCount })}
+            />
+            <NumField
+              id="al-nsw"
+              label={t("noShowWindowMinutes")}
+              hint={t("noShowWindowMinutesHint")}
+              value={v.noShowWindowMinutes}
+              min={5}
+              max={240}
+              onChange={(noShowWindowMinutes) => set({ noShowWindowMinutes })}
+            />
+          </div>
+          <EmailsField value={v.notifyEmails} onChange={(notifyEmails) => set({ notifyEmails })} />
         </>
       )}
     </SettingForm>

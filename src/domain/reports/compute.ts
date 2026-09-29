@@ -1,0 +1,368 @@
+import { zonedParts } from "../schedule/time";
+import type { AgentReport, Forecast, ReasonReport, ReportData, ReportInput, Spread, TicketFact } from "./types";
+
+const MIN = 60_000;
+const round1 = (n: number) => Math.round(n * 10) / 10;
+const pct = (part: number, whole: number) => (whole > 0 ? round1((part / whole) * 100) : 0);
+
+export function mean(xs: number[]): number {
+  return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
+}
+
+/** Linear-interpolated percentile (p in 0..100) of an unsorted list. */
+export function percentile(xs: number[], p: number): number {
+  if (!xs.length) return 0;
+  const s = [...xs].sort((a, b) => a - b);
+  const rank = (p / 100) * (s.length - 1);
+  const lo = Math.floor(rank);
+  const hi = Math.ceil(rank);
+  return s[lo] + (s[hi] - s[lo]) * (rank - lo);
+}
+
+function spread(xs: number[]): Spread {
+  return {
+    avg: round1(mean(xs)),
+    median: round1(percentile(xs, 50)),
+    p90: round1(percentile(xs, 90)),
+    max: round1(xs.length ? Math.max(...xs) : 0),
+  };
+}
+
+/** Jain's fairness index: 1 = everyone did the same amount of work, 1/n = one person did everything. */
+export function fairnessIndex(loads: number[]): number {
+  const n = loads.length;
+  const sum = loads.reduce((a, b) => a + b, 0);
+  const sq = loads.reduce((a, b) => a + b * b, 0);
+  if (n === 0 || sq === 0) return 1;
+  return Math.round(((sum * sum) / (n * sq)) * 1000) / 1000;
+}
+
+const isOpen = (f: TicketFact) => ["WAITING", "CALLED", "SERVING", "ON_HOLD", "APPOINTMENT_PENDING"].includes(f.status);
+const waitOf = (f: TicketFact) => (f.firstCalledAt === null ? null : Math.max(0, f.firstCalledAt - f.arrivedAt) / MIN);
+const serviceOf = (f: TicketFact) =>
+  f.status === "COMPLETED" && f.startedAt !== null && f.finishedAt !== null
+    ? Math.max(0, f.finishedAt - f.startedAt) / MIN
+    : null;
+
+/** When a visitor gave up: the moment they cancelled, or the call they did not answer. */
+function abandonWaitMin(f: TicketFact): number | null {
+  if (f.status === "CANCELLED") return f.finishedAt === null ? null : Math.max(0, f.finishedAt - f.arrivedAt) / MIN;
+  if (f.status === "NO_SHOW") {
+    const at = f.firstCalledAt ?? f.finishedAt;
+    return at === null ? null : Math.max(0, at - f.arrivedAt) / MIN;
+  }
+  return null;
+}
+
+/** Time an agent spent in each state inside [fromMs, toMs), from the status log. */
+export function agentTimes(
+  log: { status: string; at: number }[],
+  fromMs: number,
+  toMs: number,
+  now: number,
+): { loginMin: number; breakMin: number; availableMin: number } {
+  const end = Math.min(toMs, now);
+  const sorted = [...log].sort((a, b) => a.at - b.at);
+  let state = "OFFLINE";
+  let cursor = fromMs;
+  const acc: Record<string, number> = {};
+  const add = (until: number) => {
+    const to = Math.min(until, end);
+    if (to > cursor) acc[state] = (acc[state] ?? 0) + (to - cursor);
+    cursor = Math.max(cursor, to);
+  };
+  for (const e of sorted) {
+    if (e.at <= fromMs) {
+      state = e.status;
+      continue;
+    }
+    if (e.at >= end) break;
+    add(e.at);
+    state = e.status;
+    cursor = Math.max(cursor, e.at);
+  }
+  add(end);
+  const ms = (s: string) => acc[s] ?? 0;
+  const login = ms("AVAILABLE") + ms("BUSY") + ms("ON_BREAK") + ms("AWAY");
+  return { loginMin: login / MIN, breakMin: ms("ON_BREAK") / MIN, availableMin: (ms("AVAILABLE") + ms("BUSY")) / MIN };
+}
+
+/** Sweep-line: how many tickets were waiting at each 15-minute mark, summarised by hour of day. */
+function queueLength(facts: TicketFact[], tzOf: (branchId: string) => string, fromMs: number, toMs: number, now: number) {
+  const step = 15 * MIN;
+  const perBranch = new Map<string, TicketFact[]>();
+  for (const f of facts) perBranch.set(f.branchId, [...(perBranch.get(f.branchId) ?? []), f]);
+  const sum = new Array(24).fill(0);
+  const cnt = new Array(24).fill(0);
+  const max = new Array(24).fill(0);
+  const end = Math.min(toMs, now);
+  for (const [branchId, list] of perBranch) {
+    const tz = tzOf(branchId);
+    const starts: number[] = [];
+    const ends: number[] = [];
+    for (const f of list) {
+      const leftAt = f.firstCalledAt ?? (f.status === "CANCELLED" ? f.finishedAt : null) ?? (isOpen(f) ? Infinity : f.finishedAt);
+      if (leftAt === null) continue;
+      starts.push(f.arrivedAt);
+      ends.push(leftAt);
+    }
+    starts.sort((a, b) => a - b);
+    ends.sort((a, b) => a - b);
+    let si = 0;
+    let ei = 0;
+    for (let t = fromMs; t < end; t += step) {
+      while (si < starts.length && starts[si] <= t) si++;
+      while (ei < ends.length && ends[ei] <= t) ei++;
+      const waiting = si - ei;
+      const hour = Math.floor(zonedParts(t, tz).minutes / 60);
+      sum[hour] += waiting;
+      cnt[hour]++;
+      max[hour] = Math.max(max[hour], waiting);
+    }
+  }
+  return sum.map((s, hour) => ({ hour, avg: cnt[hour] ? round1(s / cnt[hour]) : 0, max: max[hour] }));
+}
+
+function weekStartOf(date: string): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  const back = d.getUTCDay(); // weeks start on Sunday, matching the regional weekend setting default
+  d.setUTCDate(d.getUTCDate() - back);
+  return d.toISOString().slice(0, 10);
+}
+
+export function computeReport(input: ReportInput): ReportData {
+  const { facts, fromMs, toMs, now } = input;
+  const tzOf = (branchId: string) => input.branches.get(branchId)?.timezone ?? "Asia/Riyadh";
+  const local = new Map<string, ReturnType<typeof zonedParts>>();
+  const partsOf = (f: TicketFact) => {
+    let p = local.get(f.id);
+    if (!p) local.set(f.id, (p = zonedParts(f.arrivedAt, tzOf(f.branchId))));
+    return p;
+  };
+
+  const served = facts.filter((f) => f.status === "COMPLETED");
+  const noShow = facts.filter((f) => f.status === "NO_SHOW");
+  const cancelled = facts.filter((f) => f.status === "CANCELLED");
+  const called = facts.filter((f) => f.firstCalledAt !== null);
+  const waits = called.map((f) => waitOf(f)!);
+  const services = served.map(serviceOf).filter((x): x is number => x !== null);
+  const abandons = [...noShow, ...cancelled].map(abandonWaitMin).filter((x): x is number => x !== null);
+  const withinSla = called.filter((f) => waitOf(f)! <= f.slaTargetMinutes).length;
+  const withinLevel = called.filter((f) => waitOf(f)! <= input.serviceLevel.minutes).length;
+
+  // Agent time and workload.
+  const logByAgent = new Map<string, { status: string; at: number }[]>();
+  for (const e of input.statusLog) logByAgent.set(e.userId, [...(logByAgent.get(e.userId) ?? []), e]);
+  const agentIds = new Set<string>([...logByAgent.keys(), ...facts.map((f) => f.agentId).filter((x): x is string => !!x)]);
+  for (const f of facts) for (const a of f.transfersOut) agentIds.add(a);
+  const end = Math.min(toMs, now);
+  const agents: AgentReport[] = [...agentIds].map((agentId) => {
+    const mine = facts.filter((f) => f.agentId === agentId);
+    const doneMine = mine.filter((f) => f.status === "COMPLETED");
+    const svc = doneMine.map(serviceOf).filter((x): x is number => x !== null);
+    // Serving time counts every ticket the agent handled, clipped to the range (a ticket still open counts up to now).
+    let servingMs = 0;
+    for (const f of mine) {
+      if (f.startedAt === null) continue;
+      const s = Math.max(f.startedAt, fromMs);
+      const e = Math.min(f.finishedAt ?? end, end);
+      if (e > s) servingMs += e - s;
+    }
+    const t = agentTimes(logByAgent.get(agentId) ?? [], fromMs, toMs, now);
+    const servingMin = servingMs / MIN;
+    const working = Math.max(0, t.loginMin - t.breakMin);
+    return {
+      agentId,
+      name: input.agents.get(agentId)?.name ?? {},
+      served: doneMine.length,
+      noShow: mine.filter((f) => f.status === "NO_SHOW").length,
+      transferOut: facts.reduce((n, f) => n + f.transfersOut.filter((a) => a === agentId).length, 0),
+      transferIn: mine.filter((f) => f.transfersOut.length > 0).length,
+      avgServiceMin: round1(mean(svc)),
+      medianServiceMin: round1(percentile(svc, 50)),
+      p90ServiceMin: round1(percentile(svc, 90)),
+      loginMin: round1(t.loginMin),
+      breakMin: round1(t.breakMin),
+      availableMin: round1(t.availableMin),
+      servingMin: round1(servingMin),
+      idleMin: round1(Math.max(0, t.availableMin - servingMin)),
+      utilisationPct: working > 0 ? Math.min(100, pct(servingMin, working)) : 0,
+    };
+  });
+  agents.sort((a, b) => b.served - a.served);
+
+  // Per reason.
+  const reasonIds = [...new Set(facts.map((f) => f.reasonId))];
+  const byReason: ReasonReport[] = reasonIds
+    .map((reasonId) => {
+      const list = facts.filter((f) => f.reasonId === reasonId);
+      const c = list.filter((f) => f.firstCalledAt !== null);
+      const w = c.map((f) => waitOf(f)!);
+      const s = list.map(serviceOf).filter((x): x is number => x !== null);
+      return {
+        reasonId,
+        name: input.reasons.get(reasonId)?.name ?? {},
+        color: input.reasons.get(reasonId)?.color ?? "#888888",
+        visitors: list.length,
+        served: list.filter((f) => f.status === "COMPLETED").length,
+        avgWaitMin: round1(mean(w)),
+        p90WaitMin: round1(percentile(w, 90)),
+        avgServiceMin: round1(mean(s)),
+        p90ServiceMin: round1(percentile(s, 90)),
+        slaPct: pct(c.filter((f) => waitOf(f)! <= f.slaTargetMinutes).length, c.length),
+      };
+    })
+    .sort((a, b) => b.visitors - a.visitors);
+
+  // Time buckets in each branch's own time zone.
+  const dayMap = new Map<string, TicketFact[]>();
+  const hourMap: TicketFact[][] = Array.from({ length: 24 }, () => []);
+  const weekdayCount = new Array(7).fill(0);
+  const heat = new Map<string, number>();
+  for (const f of facts) {
+    const p = partsOf(f);
+    dayMap.set(p.date, [...(dayMap.get(p.date) ?? []), f]);
+    const hour = Math.floor(p.minutes / 60);
+    hourMap[hour].push(f);
+    weekdayCount[p.weekday]++;
+    heat.set(`${p.weekday}:${hour}`, (heat.get(`${p.weekday}:${hour}`) ?? 0) + 1);
+  }
+  const avgWaitOf = (list: TicketFact[]) => round1(mean(list.filter((f) => f.firstCalledAt !== null).map((f) => waitOf(f)!)));
+  const cells = [...heat].map(
+    ([k, count]) => [Number(k.split(":")[0]), Number(k.split(":")[1]), count] as [number, number, number],
+  );
+
+  // Per branch.
+  const byBranch = [...new Set(facts.map((f) => f.branchId))].map((branchId) => {
+    const list = facts.filter((f) => f.branchId === branchId);
+    return {
+      branchId,
+      name: input.branches.get(branchId)?.name ?? {},
+      visitors: list.length,
+      served: list.filter((f) => f.status === "COMPLETED").length,
+      avgWaitMin: avgWaitOf(list),
+    };
+  });
+
+  // Weekly reason mix.
+  const weeks = new Map<string, Record<string, number>>();
+  for (const f of facts) {
+    const w = weekStartOf(partsOf(f).date);
+    const row = weeks.get(w) ?? {};
+    row[f.reasonId] = (row[f.reasonId] ?? 0) + 1;
+    weeks.set(w, row);
+  }
+
+  const workers = agents.filter((a) => a.loginMin > 0 || a.served > 0);
+  return {
+    range: { fromMs, toMs },
+    summary: {
+      visitors: facts.length,
+      served: served.length,
+      noShow: noShow.length,
+      cancelled: cancelled.length,
+      transferred: facts.filter((f) => f.transfersOut.length > 0).length,
+      stillOpen: facts.filter(isOpen).length,
+      wait: spread(waits),
+      service: spread(services),
+      slaPct: pct(withinSla, called.length),
+      serviceLevel: {
+        minutes: input.serviceLevel.minutes,
+        targetPct: input.serviceLevel.targetPct,
+        pct: pct(withinLevel, called.length),
+      },
+      abandonmentPct: pct(noShow.length + cancelled.length, facts.length),
+      avgWaitBeforeAbandonMin: round1(mean(abandons)),
+      recallRatePct: pct(called.filter((f) => f.recalls > 0).length, called.length),
+      transferRatePct: pct(facts.filter((f) => f.transfersOut.length > 0).length, facts.length),
+      returningPct: pct(facts.filter((f) => f.returning).length, facts.length),
+      firstVisitPct: facts.length ? round1(100 - pct(facts.filter((f) => f.returning).length, facts.length)) : 0,
+      fairnessIndex: fairnessIndex(workers.map((a) => a.served)),
+    },
+    byDay: [...dayMap]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, list]) => ({
+        date,
+        visitors: list.length,
+        served: list.filter((f) => f.status === "COMPLETED").length,
+        avgWaitMin: avgWaitOf(list),
+      })),
+    byHour: hourMap.map((list, hour) => ({
+      hour,
+      visitors: list.length,
+      served: list.filter((f) => f.status === "COMPLETED").length,
+      avgWaitMin: avgWaitOf(list),
+    })),
+    byWeekday: weekdayCount.map((visitors, weekday) => ({ weekday, visitors })),
+    byBranch,
+    byReason,
+    heatmap: { cells, max: cells.reduce((m, c) => Math.max(m, c[2]), 0) },
+    agents,
+    queueLengthByHour: queueLength(facts, tzOf, fromMs, toMs, now),
+    backlogByDay: [...dayMap]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, list]) => ({ date, count: list.filter(isOpen).length })),
+    reasonMixWeekly: [...weeks].sort(([a], [b]) => a.localeCompare(b)).map(([weekStart, counts]) => ({ weekStart, counts })),
+  };
+}
+
+/**
+ * Expected volume from recent history: the mean of the same weekday over the days available (up to the window),
+ * by day for the next week and by hour for tomorrow, plus the agents needed to keep up at the target utilisation.
+ */
+export function computeForecast(input: {
+  /** Arrival time and branch of each ticket over the history window. */
+  arrivals: { at: number; branchId: string }[];
+  timezone: string;
+  /** Days of history that were actually observed (so empty days count as zero). */
+  historyDays: string[];
+  today: string;
+  avgServiceMin: number;
+  targetUtilisationPct: number;
+}): Forecast {
+  const { timezone: tz } = input;
+  const byDate = new Map<string, number[]>();
+  for (const d of input.historyDays) byDate.set(d, new Array(24).fill(0));
+  for (const a of input.arrivals) {
+    const p = zonedParts(a.at, tz);
+    const row = byDate.get(p.date);
+    if (row) row[Math.floor(p.minutes / 60)]++;
+  }
+  const weekdayOf = (date: string) => new Date(`${date}T00:00:00Z`).getUTCDay();
+  const perWeekday = new Map<number, number[][]>();
+  const all: number[][] = [];
+  for (const [date, hours] of byDate) {
+    all.push(hours);
+    perWeekday.set(weekdayOf(date), [...(perWeekday.get(weekdayOf(date)) ?? []), hours]);
+  }
+  const expectedHours = (weekday: number): number[] => {
+    const rows = perWeekday.get(weekday) ?? all;
+    if (!rows.length) return new Array(24).fill(0);
+    return Array.from({ length: 24 }, (_, h) => mean(rows.map((r) => r[h])));
+  };
+  const addDays = (date: string, n: number) => {
+    const d = new Date(`${date}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(input.today, i + 1);
+    const weekday = weekdayOf(date);
+    return { date, weekday, expected: Math.round(expectedHours(weekday).reduce((a, b) => a + b, 0)) };
+  });
+  const tomorrow = addDays(input.today, 1);
+  const util = Math.max(0.1, input.targetUtilisationPct / 100);
+  const hours = expectedHours(weekdayOf(tomorrow)).map((e, hour) => ({
+    hour,
+    expected: round1(e),
+    // Work arriving in the hour (minutes of service) divided by the minutes one agent can usefully give.
+    agentsNeeded: e > 0 ? Math.max(1, Math.ceil((e * input.avgServiceMin) / (60 * util))) : 0,
+  }));
+  return {
+    basedOnDays: input.historyDays.length,
+    days,
+    tomorrow: { date: tomorrow, hours },
+    avgServiceMin: round1(input.avgServiceMin),
+    targetUtilisationPct: input.targetUtilisationPct,
+  };
+}

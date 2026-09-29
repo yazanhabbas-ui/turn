@@ -366,6 +366,26 @@ async function createDemo(tx: Tx, organizationId: string) {
     },
     {
       organizationId,
+      channel: "email",
+      event: "report_scheduled",
+      subject: voice("التقرير المجدول: {name} ({period})", "Scheduled report: {name} ({period})"),
+      body: voice(
+        "مرحباً،\nمرفق التقرير المجدول «{name}» عن الفترة {period} ({branch}).\nأُرسلت هذه الرسالة تلقائياً من نظام دور.",
+        'Hello,\nAttached is the scheduled report "{name}" for {period} ({branch}).\nThis message was sent automatically by Dor.',
+      ),
+    },
+    {
+      organizationId,
+      channel: "email",
+      event: "alert_raised",
+      subject: voice("تنبيه من الطابور: {type} - {branch}", "Queue alert: {type} - {branch}"),
+      body: voice(
+        "مرحباً،\nتم رصد تنبيه في {branch}: {type}.\n{details}\nنرجو مراجعة العرض المباشر واتخاذ ما يلزم.",
+        "Hello,\nAn alert was raised at {branch}: {type}.\n{details}\nPlease review the live view and take action if needed.",
+      ),
+    },
+    {
+      organizationId,
       channel: "whatsapp",
       event: "invite",
       body: voice(

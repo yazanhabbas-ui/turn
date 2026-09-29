@@ -1,4 +1,4 @@
-import { LayoutDashboard, MonitorPlay, Presentation, UserRoundCheck } from "lucide-react";
+import { BarChart3, LayoutDashboard, MonitorPlay, Presentation, UserRoundCheck } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { AppShell } from "@/components/app/app-shell";
 import { can } from "@/domain/rbac/permissions";
@@ -6,7 +6,13 @@ import { Link, redirect } from "@/i18n/navigation";
 import { AREAS } from "@/lib/areas";
 import { requireAuth } from "@/server/auth/current";
 
-const ICONS = { admin: LayoutDashboard, reception: UserRoundCheck, agent: MonitorPlay, wallboard: Presentation } as const;
+const ICONS = {
+  admin: LayoutDashboard,
+  reception: UserRoundCheck,
+  agent: MonitorPlay,
+  reports: BarChart3,
+  wallboard: Presentation,
+} as const;
 
 /** Sends users with a single workspace straight to it; otherwise lets them choose. */
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {

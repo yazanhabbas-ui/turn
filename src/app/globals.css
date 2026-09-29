@@ -281,3 +281,37 @@
 .dor-fade {
   animation: dor-fade 0.8s ease-out;
 }
+
+/* ── Reports: clean A4 print. `reports-print` is set on <body> while the reports page is mounted. ── */
+.print-only {
+  display: none;
+}
+@page report {
+  size: A4;
+  margin: 12mm;
+}
+@media print {
+  body.reports-print > *:not(#print-root) {
+    display: block !important;
+  }
+  body.reports-print #print-root {
+    display: none !important;
+  }
+  body.reports-print header,
+  body.reports-print .no-print {
+    display: none !important;
+  }
+  body.reports-print .report-root {
+    page: report;
+    max-width: none;
+  }
+  body.reports-print .print-only {
+    display: block;
+  }
+  body.reports-print .report-card {
+    break-inside: avoid;
+  }
+  body.reports-print details:not([open]) {
+    display: none;
+  }
+}
