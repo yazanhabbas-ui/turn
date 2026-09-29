@@ -46,8 +46,6 @@ export type Branch = {
   address: L | null;
   timezone: string;
   weekend: number[];
-  latitude: string | null;
-  longitude: string | null;
   isDefault: boolean;
   floors: Floor[];
   desks: Desk[];
@@ -106,24 +104,6 @@ export type ScheduleRule = {
   validTo?: string | null;
 };
 export type Schedule = { id: string; name: L; rules: ScheduleRule[] };
-export type PauseWindow = {
-  id: string;
-  branchId: string;
-  kind: "prayer" | "custom";
-  name: L;
-  mode: "manual" | "auto";
-  prayer: string | null;
-  startsAt: string | null;
-  endsAt: string | null;
-  offsetMinutes: number;
-  durationMinutes: number;
-  weekdays: number[];
-  season: "always" | "ramadan" | "regular";
-  message: L | null;
-  isActive: boolean;
-};
-export type Holiday = { id: string; branchId: string | null; name: L; dateFrom: string; dateTo: string };
-
 export type Lookups = {
   branches: Branch[];
   roles: RoleRow[];

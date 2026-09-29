@@ -30,12 +30,10 @@ export type Ticket = {
 };
 
 export type Position = { ahead: number; estimatedWaitMinutes: number };
-export type Paused = { name: L; message: L | null; endsAtMinute?: number } | null;
 
 export type QueueState = {
   now: string;
   serviceDay: string;
-  paused: Paused;
   waitingOrder: string[];
   positions: Record<string, Position>;
   tickets: Ticket[];
@@ -74,7 +72,6 @@ export type ReceptionContext = {
   visitorStatus: { enabled: boolean };
   regional: { digitsTicket: "latn" | "arab"; digitsScreen: "latn" | "arab" };
   print: { template: L | null; footer: L; companyName: L; logoUrl: string | null };
-  paused: Paused;
   canReassign: boolean;
   canCancel: boolean;
   canEdit: boolean;
@@ -110,5 +107,4 @@ export type AgentWorkspace = {
   onHold: Ticket[];
   queues: { reasonId: string; waiting: number; oldestWaitMinutes: number; primary: boolean }[];
   agents: { id: string; displayName: L; status: string; reasons: string[] }[];
-  paused: Paused;
 };

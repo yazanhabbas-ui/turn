@@ -27,9 +27,6 @@ export const branches = pgTable(
     address: jsonb("address").$type<LocalizedText>(),
     timezone: text("timezone").notNull().default("Asia/Riyadh"),
     weekend: jsonb("weekend").$type<Weekend>().notNull().default([5, 6]),
-    /** Latitude/longitude used only for optional offline prayer-time calculation. */
-    latitude: text("latitude"),
-    longitude: text("longitude"),
     isDefault: boolean("is_default").notNull().default(false),
     archivedAt: archivedAt(),
     createdAt: createdAt(),

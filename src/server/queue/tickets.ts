@@ -284,12 +284,11 @@ export async function issueTicket(actor: QueueActor, input: IssueInput): Promise
     if (privacy.requireConsent && Object.keys(fields).length > 0 && !input.consent)
       throw new AppError("validation", { reason: "consent_required" });
 
-    // Business hours, holidays, Ramadan hours and cut-off.
-    const rules = await loadIssuingRules(tx, org, bctx.branch.id, reason.scheduleId);
+    // Timetable (if any), Ramadan hours and cut-off.
+    const rules = await loadIssuingRules(tx, reason.scheduleId);
     const open = issuingState(bctx.now, bctx.branch.timezone, rules.rules, {
       cutoffMinutes: reason.cutoffMinutes,
       ramadan: bctx.ramadan,
-      holidays: rules.holidays,
     });
     if (!open.open)
       throw new AppError("conflict", { reason: open.reason === "cutoff" ? "cutoff" : "closed", opensAt: open.opensAt });

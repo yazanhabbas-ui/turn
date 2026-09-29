@@ -29,7 +29,6 @@
     "@oslojs/encoding": "^1.1.0",
     "@oslojs/otp": "^1.1.0",
     "@tanstack/react-query": "^5.104.0",
-    "adhan": "^4.4.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cn": "^0.4.0",

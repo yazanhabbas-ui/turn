@@ -116,9 +116,6 @@ export async function queueState(actor: Actor, branchId: string, opts: { q?: str
     return {
       now: new Date(s.now).toISOString(),
       serviceDay: bctx.serviceDay,
-      paused: bctx.pause
-        ? { name: bctx.pause.pause.name, message: bctx.pause.pause.message, endsAtMinute: bctx.pause.endsAtMinute }
-        : null,
       waitingOrder,
       positions: Object.fromEntries(positionsFor(bctx)),
       tickets: list,
@@ -185,11 +182,10 @@ export async function receptionContext(actor: Actor, requestedBranchId?: string 
 
   const reasons = await Promise.all(
     reasonRows.map(async (r) => {
-      const rules = await loadIssuingRules(db(), org, branch.id, r.scheduleId);
+      const rules = await loadIssuingRules(db(), r.scheduleId);
       const open = issuingState(ctx.now, branch.timezone, rules.rules, {
         cutoffMinutes: r.cutoffMinutes,
         ramadan: ctx.ramadan,
-        holidays: rules.holidays,
       });
       const waiting = ctx.snapshot.tickets.filter((t) => t.reasonId === r.id && t.status === "WAITING").length;
       return {
@@ -253,7 +249,6 @@ export async function receptionContext(actor: Actor, requestedBranchId?: string 
       companyName: branding.companyName,
       logoUrl: branding.logoUrl,
     },
-    paused: ctx.pause ? { name: ctx.pause.pause.name, message: ctx.pause.pause.message } : null,
     canReassign: can(actor.auth.grants, "tickets.reassign", branch.id),
     canCancel: can(actor.auth.grants, "tickets.cancel", branch.id),
     canEdit: can(actor.auth.grants, "tickets.edit", branch.id),
@@ -367,9 +362,6 @@ export async function agentWorkspace(actor: Actor) {
           status: a.status,
           reasons: [...a.skills.keys()],
         })),
-      paused: bctx.pause
-        ? { name: bctx.pause.pause.name, message: bctx.pause.pause.message, endsAtMinute: bctx.pause.endsAtMinute }
-        : null,
     };
   });
 }

@@ -55,8 +55,6 @@ export type EngineSnapshot = {
   priorities: Map<string, PriorityInfo>;
   /** Configuration effective for a queue. */
   configFor: (queueId: string) => DistributionConfig;
-  /** Service paused (prayer time / custom pause) — no new calls or assignments. */
-  paused?: boolean;
   /** Deterministic randomness (seeded in simulation and tests). */
   random?: () => number;
 };

@@ -37,47 +37,6 @@ export const scheduleRules = pgTable(
   (t) => [index("schedule_rules_schedule_idx").on(t.scheduleId)],
 );
 
-export const holidays = pgTable("holidays", {
-  id: id(),
-  organizationId: uuid("organization_id")
-    .notNull()
-    .references(() => organizations.id),
-  branchId: uuid("branch_id").references(() => branches.id),
-  name: jsonb("name").$type<LocalizedText>().notNull(),
-  dateFrom: date("date_from").notNull(),
-  dateTo: date("date_to").notNull(),
-  createdAt: createdAt(),
-});
-
-/**
- * Service pause (prayer time or custom). `mode = manual` uses start/end times;
- * `mode = auto` computes the time offline from the branch coordinates for `prayer`.
- */
-export const pauseWindows = pgTable("pause_windows", {
-  id: id(),
-  organizationId: uuid("organization_id")
-    .notNull()
-    .references(() => organizations.id),
-  branchId: uuid("branch_id")
-    .notNull()
-    .references(() => branches.id),
-  kind: text("kind").notNull().default("prayer"),
-  name: jsonb("name").$type<LocalizedText>().notNull(),
-  mode: text("mode").notNull().default("manual"),
-  prayer: text("prayer"),
-  startsAt: text("starts_at"),
-  endsAt: text("ends_at"),
-  offsetMinutes: integer("offset_minutes").notNull().default(0),
-  durationMinutes: integer("duration_minutes").notNull().default(20),
-  weekdays: jsonb("weekdays").$type<number[]>().notNull().default([0, 1, 2, 3, 4, 5, 6]),
-  /** Only in Ramadan mode, only outside it, or always. */
-  season: text("season").notNull().default("always"),
-  message: jsonb("message").$type<LocalizedText>(),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: createdAt(),
-  updatedAt: updatedAt(),
-});
-
 /** Priority lanes / flags (VIP, Sheikh/guest, elderly, disabled, pregnant, urgent, ladies/family). Data, not an enum. */
 export const priorityLevels = pgTable(
   "priority_levels",

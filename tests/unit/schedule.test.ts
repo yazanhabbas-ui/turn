@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activePause, intervalsFor, issuingState, type PauseWindowInput } from "@/domain/schedule/hours";
-import { prayerMinutes } from "@/domain/schedule/prayer";
+import { intervalsFor, issuingState } from "@/domain/schedule/hours";
 import { serviceDay, zonedParts, zonedToUtc } from "@/domain/schedule/time";
 import { nextNumber } from "@/domain/tickets/numbering";
 
@@ -43,52 +42,14 @@ describe("business hours", () => {
     });
   });
 
-  it("uses Ramadan hours during Ramadan mode and closes on holidays", () => {
+  it("uses Ramadan hours during Ramadan mode", () => {
     const ramadan = { enabled: true, from: "2026-09-20", to: "2026-10-19" };
     expect(intervalsFor("2026-09-29", 2, rules, { ramadan })).toEqual([[600, 900]]);
     expect(issuingState(at("2026-09-29", "09:00"), TZ, rules, { ramadan })).toMatchObject({ open: false });
-    expect(
-      issuingState(at("2026-09-29", "09:00"), TZ, rules, { holidays: [{ dateFrom: "2026-09-29", dateTo: "2026-09-29" }] }),
-    ).toMatchObject({ open: false });
   });
 
   it("no schedule means always open", () => {
     expect(issuingState(at("2026-10-02", "03:00"), TZ, null)).toMatchObject({ open: true });
-  });
-});
-
-describe("pauses and prayer times", () => {
-  const pause = (p: Partial<PauseWindowInput>): PauseWindowInput => ({
-    id: "p",
-    isActive: true,
-    mode: "manual",
-    prayer: "dhuhr",
-    startsAt: "12:05",
-    endsAt: "12:25",
-    offsetMinutes: 0,
-    durationMinutes: 20,
-    weekdays: [0, 1, 2, 3, 4, 5, 6],
-    season: "always",
-    name: { ar: "صلاة الظهر" },
-    message: null,
-    ...p,
-  });
-
-  it("detects manual pause windows", () => {
-    expect(activePause(at("2026-09-29", "12:10"), TZ, [pause({})])?.endsAtMinute).toBe(745);
-    expect(activePause(at("2026-09-29", "12:30"), TZ, [pause({})])).toBeNull();
-    expect(activePause(at("2026-09-29", "12:10"), TZ, [pause({ season: "ramadan" })])).toBeNull();
-  });
-
-  it("computes prayer times offline for Riyadh", () => {
-    const p = prayerMinutes("2026-09-29", TZ, 24.7136, 46.6753);
-    expect(p.dhuhr).toBe(11 * 60 + 44);
-    expect(p.fajr).toBeLessThan(p.dhuhr);
-    expect(p.isha).toBeGreaterThan(p.maghrib);
-    const auto = pause({ mode: "auto", prayer: "dhuhr", offsetMinutes: 5, durationMinutes: 20 });
-    const fn = (name: string) => p[name as keyof typeof p];
-    expect(activePause(at("2026-09-29", "11:50"), TZ, [auto], { prayerMinute: fn })).not.toBeNull();
-    expect(activePause(at("2026-09-29", "11:45"), TZ, [auto], { prayerMinute: fn })).toBeNull();
   });
 });
 

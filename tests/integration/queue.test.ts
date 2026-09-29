@@ -5,7 +5,6 @@ import {
   agentProfiles,
   branches,
   distributionRules,
-  pauseWindows,
   reasonAssignments,
   ticketEvents,
   tickets,
@@ -29,7 +28,7 @@ async function expectCode(p: Promise<unknown>, code: string, reason?: string) {
   );
 }
 
-/** Tuesday 29 Sep 2026, 10:00 Riyadh — inside office hours, outside prayer pauses. */
+/** Tuesday 29 Sep 2026, 10:00 Riyadh — inside office hours. */
 const TUESDAY_10AM = zonedToUtc("2026-09-29", "10:00", "Asia/Riyadh");
 
 describe.runIf(available)("queue engine (database)", () => {
@@ -292,14 +291,10 @@ describe.runIf(available)("queue engine (database)", () => {
     expect((await callNext(khalid)).ticket?.id).not.toBe(t1.ticket.id);
   });
 
-  it("prayer pause blocks calling; tickets can still be issued", async () => {
+  it("calling is never blocked by the time of day (there are no service pauses)", async () => {
     setClock(zonedToUtc("2026-09-29", "12:10", "Asia/Riyadh"));
     await issue("general");
     await available_(khalid);
-    expect(await callNext(khalid)).toMatchObject({ ticket: null, reason: "paused" });
-    const state = await queueState(reception, branchId);
-    expect(state.paused?.name.ar).toBe("صلاة الظهر");
-    await db().delete(pauseWindows);
     expect((await callNext(khalid)).ticket).not.toBeNull();
   });
 

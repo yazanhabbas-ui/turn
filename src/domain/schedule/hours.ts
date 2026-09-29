@@ -10,7 +10,6 @@ export type ScheduleRuleInput = {
 };
 
 export type RamadanPeriod = { enabled: boolean; from: string | null; to: string | null };
-export type HolidayInput = { dateFrom: string; dateTo: string };
 
 export function isRamadan(date: string, ramadan: RamadanPeriod | undefined): boolean {
   return !!ramadan?.enabled && !!ramadan.from && !!ramadan.to && date >= ramadan.from && date <= ramadan.to;
@@ -18,15 +17,14 @@ export function isRamadan(date: string, ramadan: RamadanPeriod | undefined): boo
 
 /**
  * Open intervals (minutes since local midnight) for a local date. Precedence: `special` rules valid on that
- * date, then `ramadan` rules during Ramadan mode, then `regular` rules. Holidays close the day.
+ * date, then `ramadan` rules during Ramadan mode, then `regular` rules.
  */
 export function intervalsFor(
   date: string,
   weekday: number,
   rules: ScheduleRuleInput[],
-  opts: { ramadan?: RamadanPeriod; holidays?: HolidayInput[] } = {},
+  opts: { ramadan?: RamadanPeriod } = {},
 ): [number, number][] {
-  if (opts.holidays?.some((h) => date >= h.dateFrom && date <= h.dateTo)) return [];
   const valid = (r: ScheduleRuleInput) => (!r.validFrom || date >= r.validFrom) && (!r.validTo || date <= r.validTo);
   const ofKind = (kind: string) => rules.filter((r) => r.kind === kind && valid(r));
   const special = ofKind("special");
@@ -49,7 +47,7 @@ export function issuingState(
   at: number,
   tz: string,
   rules: ScheduleRuleInput[] | null,
-  opts: { cutoffMinutes?: number; ramadan?: RamadanPeriod; holidays?: HolidayInput[] } = {},
+  opts: { cutoffMinutes?: number; ramadan?: RamadanPeriod } = {},
 ): OpenState {
   if (!rules) return { open: true, closesInMinutes: Infinity };
   const p = zonedParts(at, tz);
@@ -62,49 +60,4 @@ export function issuingState(
   const closesIn = current[1] - p.minutes;
   if (opts.cutoffMinutes && closesIn <= opts.cutoffMinutes) return { open: false, reason: "cutoff" };
   return { open: true, closesInMinutes: closesIn };
-}
-
-export type PauseWindowInput = {
-  id: string;
-  isActive: boolean;
-  mode: string;
-  prayer: string | null;
-  startsAt: string | null;
-  endsAt: string | null;
-  offsetMinutes: number;
-  durationMinutes: number;
-  weekdays: number[];
-  season: string;
-  name: Record<string, string>;
-  message: Record<string, string> | null;
-};
-
-/** Resolved local [start, end) minutes of a pause today. `prayerMinute` supplies auto-calculated times. */
-export function pauseInterval(p: PauseWindowInput, prayerMinute?: (prayer: string) => number | null): [number, number] | null {
-  if (p.mode === "manual") {
-    if (!p.startsAt || !p.endsAt) return null;
-    return [toMinutes(p.startsAt), toMinutes(p.endsAt)];
-  }
-  const base = p.prayer && prayerMinute ? prayerMinute(p.prayer) : null;
-  if (base === null || base === undefined) return null;
-  const start = base + p.offsetMinutes;
-  return [start, start + p.durationMinutes];
-}
-
-/** The pause window active at an instant, if any. */
-export function activePause(
-  at: number,
-  tz: string,
-  pauses: PauseWindowInput[],
-  opts: { ramadan?: RamadanPeriod; prayerMinute?: (prayer: string) => number | null } = {},
-): { pause: PauseWindowInput; endsAtMinute: number } | null {
-  const p = zonedParts(at, tz);
-  const inRamadan = isRamadan(p.date, opts.ramadan);
-  for (const pause of pauses) {
-    if (!pause.isActive || !pause.weekdays.includes(p.weekday)) continue;
-    if ((pause.season === "ramadan" && !inRamadan) || (pause.season === "regular" && inRamadan)) continue;
-    const iv = pauseInterval(pause, opts.prayerMinute);
-    if (iv && p.minutes >= iv[0] && p.minutes < iv[1]) return { pause, endsAtMinute: iv[1] };
-  }
-  return null;
 }

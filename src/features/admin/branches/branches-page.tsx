@@ -243,8 +243,6 @@ function BranchDialog({
     address: {} as L,
     timezone: "Asia/Riyadh",
     weekend: [5, 6],
-    latitude: "",
-    longitude: "",
     isDefault: false,
   };
   const [f, setF] = useState(blank);
@@ -257,15 +255,13 @@ function BranchDialog({
   useEffect(() => {
     if (!open) return;
     const v = branch
-      ? { ...branch, address: branch.address ?? {}, latitude: branch.latitude ?? "", longitude: branch.longitude ?? "" }
+      ? { ...branch, address: branch.address ?? {} }
       : {
           code: "",
           name: {},
           address: {},
           timezone: "Asia/Riyadh",
           weekend: [5, 6],
-          latitude: "",
-          longitude: "",
           isDefault: false,
         };
     setF(v);
@@ -274,7 +270,7 @@ function BranchDialog({
 
   const save = useApiMutation(
     () => {
-      const body = { ...f, latitude: f.latitude || null, longitude: f.longitude || null };
+      const body = f;
       return branch ? api(`${BRANCHES}/${branch.id}`, { method: "PUT", body }) : api(BRANCHES, { body });
     },
     { invalidate, success: tu("saved"), onSuccess: () => onOpenChange(false) },
@@ -361,25 +357,6 @@ function BranchDialog({
               ))}
             </div>
           )}
-          <fieldset>
-            <legend className="mb-1.5 text-sm font-medium">{t("coordinates")}</legend>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input
-                dir="ltr"
-                aria-label={t("latitude")}
-                placeholder={t("latitude")}
-                value={f.latitude}
-                onChange={(e) => setF({ ...f, latitude: e.target.value })}
-              />
-              <Input
-                dir="ltr"
-                aria-label={t("longitude")}
-                placeholder={t("longitude")}
-                value={f.longitude}
-                onChange={(e) => setF({ ...f, longitude: e.target.value })}
-              />
-            </div>
-          </fieldset>
           <DialogFooter className="gap-2">
             {branch && (
               <ConfirmButton

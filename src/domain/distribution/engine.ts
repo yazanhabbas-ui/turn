@@ -124,14 +124,13 @@ export function canServe(s: EngineSnapshot, agent: EngineAgent, ticket: EngineTi
 }
 
 export type CallDecision =
-  { ticket: EngineTicket; reserved: boolean } | { ticket: null; reason: "paused" | "not_working" | "at_capacity" | "empty" };
+  { ticket: EngineTicket; reserved: boolean } | { ticket: null; reason: "not_working" | "at_capacity" | "empty" };
 
 /**
  * "Call next" for an agent. Tickets reserved for the agent come first (the distribution already chose them),
  * then the shared pool in queue order. Manual-mode queues never hand out unassigned tickets.
  */
 export function selectTicketForAgent(s: EngineSnapshot, agentId: string): CallDecision {
-  if (s.paused) return { ticket: null, reason: "paused" };
   const agent = s.agents.find((a) => a.id === agentId);
   if (!agent || !isWorking(agent)) return { ticket: null, reason: "not_working" };
   const v = new View(s);
@@ -150,7 +149,7 @@ export function selectTicketForAgent(s: EngineSnapshot, agentId: string): CallDe
 export type AssignDecision = { agentId: string; via: "sticky" | "push" } | null;
 
 function decide(s: EngineSnapshot, v: View, ticket: EngineTicket, cfg: DistributionConfig): AssignDecision {
-  if (s.paused || ticket.status !== "WAITING" || ticket.assignedAgentId || cfg.mode === "manual") return null;
+  if (ticket.status !== "WAITING" || ticket.assignedAgentId || cfg.mode === "manual") return null;
 
   if (cfg.sticky.enabled && ticket.lastAgentId) {
     const prev = s.agents.find((a) => a.id === ticket.lastAgentId);
@@ -183,7 +182,6 @@ export type Assignment = { ticketId: string; agentId: string; via: "sticky" | "p
  * snapshot as it goes so each decision sees the load created by the previous one.
  */
 export function dispatch(s: EngineSnapshot): Assignment[] {
-  if (s.paused) return [];
   const v = new View(s);
   const candidates = v.waiting.filter((t) => {
     if (t.assignedAgentId) return false;

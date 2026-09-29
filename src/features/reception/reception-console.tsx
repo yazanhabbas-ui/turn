@@ -7,7 +7,7 @@ import { ErrorState, LoadingRows } from "@/components/admin/form";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { pickText } from "@/i18n/locales";
-import { ConnectionPill, PauseBanner } from "../queue/bits";
+import { ConnectionPill } from "../queue/bits";
 import type { QueueState, ReceptionContext, Ticket } from "../queue/types";
 import { useLiveQuery } from "../queue/use-queue";
 import { AppointmentDialog, type FoundAppointment } from "./appointment-dialog";
@@ -144,7 +144,6 @@ export function ReceptionConsole() {
           )}
         </div>
       </div>
-      <PauseBanner paused={c.paused} locale={locale} />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]">
         <div className="space-y-4">

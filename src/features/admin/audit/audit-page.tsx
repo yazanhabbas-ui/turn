@@ -35,8 +35,6 @@ const ENTITY_TYPES = [
   "visit_reason",
   "agent_group",
   "schedule",
-  "pause_window",
-  "holiday",
   "priority_level",
   "break_type",
   "setting",

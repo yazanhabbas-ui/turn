@@ -176,7 +176,7 @@ describe("pull: call next", () => {
     expect(selectTicketForAgent(s, "k")).toMatchObject({ ticket: { id: "forK" }, reserved: true });
   });
 
-  it("respects status, capacity and pauses", () => {
+  it("respects status and capacity", () => {
     const busy = snapshot({
       agents: [agent("k")],
       tickets: [ticket({ status: "SERVING", servingAgentId: "k" }), ticket({ id: "next" })],
@@ -184,8 +184,6 @@ describe("pull: call next", () => {
     expect(selectTicketForAgent(busy, "k")).toMatchObject({ ticket: null, reason: "at_capacity" });
     const onBreak = snapshot({ agents: [agent("k", { status: "ON_BREAK" })], tickets: [ticket()] });
     expect(selectTicketForAgent(onBreak, "k")).toMatchObject({ ticket: null, reason: "not_working" });
-    const paused = snapshot({ paused: true, agents: [agent("k")], tickets: [ticket()] });
-    expect(selectTicketForAgent(paused, "k")).toMatchObject({ ticket: null, reason: "paused" });
     const two = snapshot({
       agents: [agent("k", { maxConcurrent: 2 })],
       tickets: [ticket({ status: "SERVING", servingAgentId: "k" }), ticket({ id: "next" })],

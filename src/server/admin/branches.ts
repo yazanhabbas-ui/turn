@@ -18,16 +18,6 @@ export const branchInput = z.object({
   address: localizedText({ max: 300, required: false }).optional(),
   timezone,
   weekend: weekdays,
-  latitude: z
-    .string()
-    .regex(/^-?\d{1,2}(\.\d+)?$/)
-    .nullable()
-    .optional(),
-  longitude: z
-    .string()
-    .regex(/^-?\d{1,3}(\.\d+)?$/)
-    .nullable()
-    .optional(),
   isDefault: z.boolean().optional(),
 });
 

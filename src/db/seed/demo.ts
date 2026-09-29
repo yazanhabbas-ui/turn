@@ -35,8 +35,6 @@ async function createDemo(tx: Tx, organizationId: string) {
       address: { ar: "طريق الملك فهد، الرياض", en: "King Fahd Road, Riyadh" },
       timezone: "Asia/Riyadh",
       weekend: [5, 6],
-      latitude: "24.7136",
-      longitude: "46.6753",
       isDefault: true,
     })
     .returning();
@@ -210,31 +208,6 @@ async function createDemo(tx: Tx, organizationId: string) {
       ...workdays.map((weekday) => ({ scheduleId: schedule.id, kind: "ramadan", weekday, opensAt: "10:00", closesAt: "15:00" })),
     ]);
 
-  await tx.insert(s.pauseWindows).values([
-    {
-      organizationId,
-      branchId: branch.id,
-      kind: "prayer",
-      prayer: "dhuhr",
-      name: { ar: "صلاة الظهر", en: "Dhuhr prayer" },
-      mode: "manual",
-      startsAt: "12:05",
-      endsAt: "12:25",
-      message: { ar: "الخدمة متوقفة مؤقتاً لأداء الصلاة", en: "Service is paused for prayer" },
-    },
-    {
-      organizationId,
-      branchId: branch.id,
-      kind: "prayer",
-      prayer: "asr",
-      name: { ar: "صلاة العصر", en: "Asr prayer" },
-      mode: "manual",
-      startsAt: "15:20",
-      endsAt: "15:40",
-      message: { ar: "الخدمة متوقفة مؤقتاً لأداء الصلاة", en: "Service is paused for prayer" },
-    },
-  ]);
-
   const reasons = await tx
     .insert(s.visitReasons)
     .values([
@@ -347,12 +320,6 @@ async function createDemo(tx: Tx, organizationId: string) {
       channel: "voice",
       event: "ticket_called",
       body: voice("رقم {ticket}، الرجاء التوجه إلى المكتب {desk}", "Number {ticket}, please go to desk {desk}"),
-    },
-    {
-      organizationId,
-      channel: "display",
-      event: "prayer_pause",
-      body: voice("الخدمة متوقفة مؤقتاً لأداء الصلاة", "Service is paused for prayer"),
     },
     {
       organizationId,

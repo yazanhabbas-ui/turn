@@ -5,8 +5,6 @@ import {
   agentProfiles,
   branches,
   distributionRules,
-  holidays,
-  pauseWindows,
   priorityLevels,
   reasonAssignments,
   scheduleRules,
@@ -15,9 +13,7 @@ import {
 } from "@/db/schema";
 import { resolveConfig, type DistributionConfig } from "@/domain/distribution/config";
 import type { AgentSkill, EngineAgent, EngineSnapshot, EngineTicket } from "@/domain/distribution/types";
-import { activePause, type PauseWindowInput } from "@/domain/schedule/hours";
-import { prayerMinutes } from "@/domain/schedule/prayer";
-import { serviceDay, zonedParts } from "@/domain/schedule/time";
+import { serviceDay } from "@/domain/schedule/time";
 import { now as clockNow } from "../clock";
 import { getSetting } from "../settings/service";
 
@@ -33,7 +29,6 @@ export type BranchContext = {
   now: number;
   serviceDay: string;
   snapshot: EngineSnapshot;
-  pause: { pause: PauseWindowInput; endsAtMinute: number } | null;
   ramadan: { enabled: boolean; from: string | null; to: string | null };
   /** Resolved distribution configuration per queue id. */
   configFor: (queueId: string) => DistributionConfig;
@@ -52,7 +47,7 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
   ]);
   const day = serviceDay(now, branch.timezone, ticketing.dailyResetTime);
 
-  const [ticketRows, profileRows, reasonRows, priorityRows, ruleRows, pauseRows, todayStats] = await Promise.all([
+  const [ticketRows, profileRows, reasonRows, priorityRows, ruleRows, todayStats] = await Promise.all([
     tx
       .select({
         id: tickets.id,
@@ -78,7 +73,6 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
       .from(priorityLevels)
       .where(and(eq(priorityLevels.organizationId, org), isNull(priorityLevels.archivedAt))),
     tx.select().from(distributionRules).where(eq(distributionRules.organizationId, org)),
-    tx.select().from(pauseWindows).where(eq(pauseWindows.branchId, branchId)),
     tx.execute<{ agent_id: string; handled: number; last_at: Date | null }>(sql`
       select serving_agent_id as agent_id, count(*)::int as handled, max(called_at) as last_at
       from tickets where branch_id = ${branchId} and service_day = ${day} and serving_agent_id is not null
@@ -141,17 +135,6 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
     return c;
   };
 
-  const lat = branch.latitude ? Number(branch.latitude) : null;
-  const lng = branch.longitude ? Number(branch.longitude) : null;
-  const today = zonedParts(now, branch.timezone).date;
-  let prayers: Record<string, number> | null = null;
-  const prayerMinute = (name: string) => {
-    if (lat === null || lng === null) return null;
-    prayers ??= prayerMinutes(today, branch.timezone, lat, lng);
-    return prayers[name] ?? null;
-  };
-  const pause = activePause(now, branch.timezone, pauseRows, { ramadan: regional.ramadanMode, prayerMinute });
-
   const engineTickets: EngineTicket[] = ticketRows.map((t) => ({
     id: t.id,
     queueId: t.queueId,
@@ -170,7 +153,6 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
     branch,
     now,
     serviceDay: day,
-    pause,
     ramadan: regional.ramadanMode,
     configFor,
     snapshot: {
@@ -185,19 +167,11 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
       ),
       priorities: new Map(priorityRows.map((p) => [p.key, { weight: p.weight, isLane: p.isLane }])),
       configFor,
-      paused: !!pause,
     },
   };
 }
 
-/** Schedule rules and holidays relevant to issuing tickets for a reason in a branch. */
-export async function loadIssuingRules(tx: DbOrTx, organizationId: string, branchId: string, scheduleId: string | null) {
-  const [rules, hols] = await Promise.all([
-    scheduleId ? tx.select().from(scheduleRules).where(eq(scheduleRules.scheduleId, scheduleId)) : Promise.resolve(null),
-    tx
-      .select()
-      .from(holidays)
-      .where(and(eq(holidays.organizationId, organizationId), or(isNull(holidays.branchId), eq(holidays.branchId, branchId)))),
-  ]);
-  return { rules, holidays: hols };
+/** Timetable rules of a reason (null = the reason is always open). */
+export async function loadIssuingRules(tx: DbOrTx, scheduleId: string | null) {
+  return { rules: scheduleId ? await tx.select().from(scheduleRules).where(eq(scheduleRules.scheduleId, scheduleId)) : null };
 }

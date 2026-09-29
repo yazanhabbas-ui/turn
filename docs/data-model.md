@@ -36,7 +36,7 @@ erDiagram
 | Table           | Purpose                                                                                |
 | --------------- | -------------------------------------------------------------------------------------- |
 | `organizations` | Tenant: name, slug, default locale, enabled locales                                    |
-| `branches`      | Office: code, name, **timezone**, **weekend days**, coordinates (offline prayer times) |
+| `branches`      | Office: code, name, **timezone**, **weekend days** |
 | `floors`        | Optional grouping of desks                                                             |
 | `desks`         | Counter/office; `number` is announced ("Desk 3"); `zone` for multi-zone displays       |
 
@@ -75,8 +75,6 @@ erDiagram
 | `distribution_rules`          | Mode, strategies and ordering config as validated JSON; scope global → branch → queue; versioned                                                                                                              |
 | `priority_levels`             | Data-driven lanes/flags (VIP/guest, elderly, disabled, pregnant, ladies/families, urgent) with weight                                                                                                         |
 | `schedules`, `schedule_rules` | Weekly hours; `kind` = regular / ramadan / special with date ranges                                                                                                                                           |
-| `holidays`                    | Closed date ranges                                                                                                                                                                                            |
-| `pause_windows`               | Prayer or custom pauses: manual times or auto-calculated, with a display message                                                                                                                              |
 | `ticket_counters`             | (branch, prefix, service_day) → last number, incremented under a row lock                                                                                                                                     |
 
 ## Tickets

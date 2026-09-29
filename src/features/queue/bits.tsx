@@ -1,11 +1,10 @@
 "use client";
 
-import { Moon, Wifi, WifiOff } from "lucide-react";
+import { Wifi, WifiOff } from "lucide-react";
 import { useNow, useTranslations } from "next-intl";
-import { pickText } from "@/i18n/locales";
 import { cn } from "@/lib/utils";
 import type { ConnectionState } from "./use-queue";
-import type { Paused, TicketStatus } from "./types";
+import type { TicketStatus } from "./types";
 
 /** Status colours are identical on every screen (tokens --status-*). */
 const STATUS_CLASS: Record<TicketStatus, string> = {
@@ -95,19 +94,5 @@ export function ConnectionPill({ state }: { state: ConnectionState }) {
       {label}
       {state === "connected" && <span className="bg-status-serving size-1.5 animate-pulse rounded-full" aria-hidden />}
     </span>
-  );
-}
-
-export function PauseBanner({ paused, locale }: { paused: Paused; locale: string }) {
-  const t = useTranslations("queue");
-  if (!paused) return null;
-  return (
-    <div
-      role="status"
-      className="border-status-hold/30 bg-status-hold/10 text-status-hold flex items-center gap-2 rounded-xl border px-4 py-3 font-medium"
-    >
-      <Moon className="size-5 shrink-0" aria-hidden />
-      <span>{pickText(paused.message, locale) || t("paused", { name: pickText(paused.name, locale) })}</span>
-    </div>
   );
 }

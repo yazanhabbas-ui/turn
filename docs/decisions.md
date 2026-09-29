@@ -110,7 +110,7 @@ Each entry records a choice, its reasons, and how to revisit it. Newest entries 
 - **Branch-scoped managers:** a user whose `users.manage` is limited to certain branches only edits grants in those branches. Grants in other branches are preserved untouched.
 - **Last administrator:** after any user change, at least one active user must keep an organization-wide grant with `roles.manage`. You cannot deactivate yourself.
 - **Built-in roles are read-only in the UI and API.** They are re-synced from code on every seed, so edits would be lost. Clone a built-in role to customise it. A custom role can only be archived once no user holds it.
-- **Nothing that history references is hard-deleted:** reasons, branches, desks, floors, roles, groups and schedules are archived. Pause windows and holidays are deleted outright because no history references them.
+- **Nothing that history references is hard-deleted:** reasons, branches, desks, floors, roles, groups and schedules are archived. Nothing else is deleted outright because no history references them.
 
 ## D18: Invites and password resets
 
@@ -163,8 +163,7 @@ Each entry records a choice, its reasons, and how to revisit it. Newest entries 
 
 ## D24: Issuing rules
 
-- Tickets can be issued only while the reason's timetable is open. The timetable accounts for Ramadan hours (when Ramadan mode is on and the date is in range), holidays, and the reason's cut-off minutes before closing. A reason with no timetable is always open.
-- During a prayer or custom pause, tickets can still be issued, but nobody is called or assigned. Automatic prayer times are calculated offline (Umm al-Qura) from the branch coordinates.
+- Tickets can be issued only while the reason's timetable is open. The timetable accounts for Ramadan hours (when Ramadan mode is on and the date is in range), and the reason's cut-off minutes before closing. A reason with no timetable is always open.
 - **Data minimisation:** only the reason's configured intake fields are accepted; anything else is rejected. Required fields are enforced. When personal data is provided and `privacy.requireConsent` is on, consent is required.
 - Phones are normalized (Western digits, `00` becomes `+`) and hashed with `PHONE_HASH_KEY` to recognise returning visitors.
 
@@ -195,14 +194,19 @@ Each entry records a choice, its reasons, and how to revisit it. Newest entries 
 ## D28: Visit reasons are always open by default
 
 - Decided with the product owner on 2026-09-29: no working-hours restriction by default. The demo seed no longer attaches a timetable to visit reasons, so tickets can be issued at any time.
-- The working-hours feature itself is kept: timetables (with Ramadan hours), holidays and cut-off still apply to any reason that is given a timetable in Admin → Visit reasons. The demo seed still creates an example timetable ("Office hours", Sunday–Thursday 08:00–16:00), unattached, ready to use.
-- Prayer-time pauses stay active. They block calling, not issuing.
+- The working-hours feature itself is kept: timetables (with Ramadan hours) and cut-off still apply to any reason that is given a timetable in Admin → Visit reasons. The demo seed still creates an example timetable ("Office hours", Sunday–Thursday 08:00–16:00), unattached, ready to use.
+
+## D29: No pauses, no holidays
+
+- Decided with the product owner on 2026-09-29: service pauses (prayer and custom), holidays and closures are removed entirely. Reception controls the flow: if nobody prints a ticket, nobody is waiting, so the system never needs to block issuing or calling by time of day.
+- Removed: the `pause_windows` and `holidays` tables, the branch latitude/longitude (they existed only for offline prayer times), the `adhan` dependency, the API routes, the admin UI sections, the pause banners and the `paused` reason of call-next. Migration `0001_remove_pauses_holidays`.
+- Kept: optional timetables with Ramadan hours and cut-off for reasons that an admin chooses to restrict (D28). Break types (including a prayer break an agent takes) are unrelated and stay.
 
 ## Milestones
 
 1. **Foundation** (done): repo, Docker, schema, auth + 2FA, RBAC, i18n/RTL, seed, health, CI.
-2. **Admin core** (done): users, roles matrix, invites, branches/desks, reasons with agent assignment, groups, schedules and prayer pauses, priority lanes, break types, settings, audit viewer.
-3. **Queue engine** (done): state machine, numbering, distribution strategies, ordering and aging, business hours and pauses, timers, distribution rules UI, simulator.
+2. **Admin core** (done): users, roles matrix, invites, branches/desks, reasons with agent assignment, groups, schedules, priority lanes, break types, settings, audit viewer.
+3. **Queue engine** (done): state machine, numbering, distribution strategies, ordering and aging, business hours, timers, distribution rules UI, simulator.
 4. **Reception and agent workspaces** (done): realtime updates, two-tap issuing, thermal print with QR, appointment check-in, agent status and breaks, call/recall/start/complete/no-show/hold/transfer with undo, visitor status page, PWA.
 5. Display and voice (TTS providers, audio pack, chime, pairing).
 6. Reports, KPIs, wallboard, exports, scheduled emails.

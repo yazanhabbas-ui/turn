@@ -17,7 +17,7 @@ import { pickText } from "@/i18n/locales";
 import { Link } from "@/i18n/navigation";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { ConnectionPill, Elapsed, PauseBanner, SlaTimer, StatusBadge } from "../queue/bits";
+import { ConnectionPill, Elapsed, SlaTimer, StatusBadge } from "../queue/bits";
 import type { AgentWorkspace, Ticket } from "../queue/types";
 import { useLiveQuery } from "../queue/use-queue";
 
@@ -195,7 +195,6 @@ export function AgentWorkspaceView() {
           <ConnectionPill state={ws.connection} />
         </div>
       </div>
-      <PauseBanner paused={data.paused} locale={locale} />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
         {/* Current visitor */}
