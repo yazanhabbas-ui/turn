@@ -55,7 +55,6 @@ export type ReceptionReason = {
   shortcutKey: string | null;
   allowAppointments: boolean;
   expectedServiceMinutes: number;
-  open: { open: true; closesInMinutes: number } | { open: false; reason: "closed" | "cutoff"; opensAt?: number };
   waiting: number;
   agentsAvailable: number;
 };

@@ -8,7 +8,7 @@ import { advanceClock, setClock } from "@/server/clock";
 import { AppError } from "@/server/http/errors";
 import { callNext, issueTicket, setAgentStatus, ticketAction } from "@/server/queue/tickets";
 import { agentWorkspace, lookupAppointment, publicTicketStatus, queueState, receptionContext } from "@/server/queue/views";
-import { actorFor, attachOfficeHours, resetDemo } from "./fixtures";
+import { actorFor, resetDemo } from "./fixtures";
 import { prepareTestDatabase } from "./helpers";
 
 const available = await prepareTestDatabase();
@@ -45,23 +45,17 @@ describe.runIf(available)("queue views (database)", () => {
     await pool().end();
   });
 
-  it("reception context lists reasons with open state, waiting counts and permissions", async () => {
+  it("reception context lists reasons with waiting counts and permissions", async () => {
     await issue("general");
     const ctx = await receptionContext(reception, null);
     expect(ctx.branch.id).toBe(branchId);
     const general = ctx.reasons.find((r) => r.code === "general")!;
-    expect(general.open.open).toBe(true);
     expect(general.waiting).toBe(1);
     expect(ctx.modes[reason.general]).toBe("pull");
     expect(ctx.priorities.map((p) => p.key)).toContain("vip");
     expect(ctx.canCancel).toBe(true);
     expect(ctx.canReassign).toBe(false);
     await expect(receptionContext(khalid, null)).rejects.toBeInstanceOf(AppError);
-
-    await attachOfficeHours();
-    setClock(zonedToUtc("2026-10-02", "10:00", "Asia/Riyadh")); // Friday
-    const closed = await receptionContext(reception, null);
-    expect(closed.reasons.every((r) => !r.open.open)).toBe(true);
   });
 
   it("agent workspace shows the current ticket, queues served and reference data", async () => {

@@ -20,7 +20,6 @@ import { estimateWaitMinutes } from "@/domain/distribution/estimate";
 import { orderTickets } from "@/domain/distribution/ordering";
 import { nameSkeleton, normalizeArabic } from "@/domain/i18n/arabic-normalize";
 import { formatTicketNumber } from "@/domain/i18n/digits";
-import { issuingState } from "@/domain/schedule/hours";
 import { nextNumber } from "@/domain/tickets/numbering";
 import { normalizePhone } from "@/domain/tickets/phone";
 import {
@@ -39,7 +38,7 @@ import { AppError } from "../http/errors";
 import { now as clockNow } from "../clock";
 import { getSetting } from "../settings/service";
 import { publish, type QueueEvent } from "./publish";
-import { loadBranchContext, loadIssuingRules, lockBranch, type BranchContext } from "./snapshot";
+import { loadBranchContext, lockBranch, type BranchContext } from "./snapshot";
 
 type TicketRow = typeof tickets.$inferSelect;
 /** Who performed a queue operation: a signed-in user, or the system (timers). */
@@ -283,15 +282,6 @@ export async function issueTicket(actor: QueueActor, input: IssueInput): Promise
     const privacy = await getSetting(org, "privacy", bctx.branch.id, tx);
     if (privacy.requireConsent && Object.keys(fields).length > 0 && !input.consent)
       throw new AppError("validation", { reason: "consent_required" });
-
-    // Timetable (if any), Ramadan hours and cut-off.
-    const rules = await loadIssuingRules(tx, reason.scheduleId);
-    const open = issuingState(bctx.now, bctx.branch.timezone, rules.rules, {
-      cutoffMinutes: reason.cutoffMinutes,
-      ramadan: bctx.ramadan,
-    });
-    if (!open.open)
-      throw new AppError("conflict", { reason: open.reason === "cutoff" ? "cutoff" : "closed", opensAt: open.opensAt });
 
     // Number: atomic per (branch, prefix, service day).
     const prefix = queue.prefix || reason.prefix;

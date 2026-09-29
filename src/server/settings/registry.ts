@@ -27,13 +27,6 @@ export const SETTINGS = {
       digitsVoice: z.enum(["latn", "arab"]).default("latn"),
       timeFormat: z.enum(["12h", "24h"]).default("12h"),
       showHijri: z.boolean().default(true),
-      ramadanMode: z
-        .object({
-          enabled: z.boolean().default(false),
-          from: z.string().nullable().default(null),
-          to: z.string().nullable().default(null),
-        })
-        .prefault({}),
     })
     .prefault({}),
   ticketing: z

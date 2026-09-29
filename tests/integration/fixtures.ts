@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { schedules, users, visitReasons } from "@/db/schema";
+import { users } from "@/db/schema";
 import { seedOrganization } from "@/db/seed/demo";
 import type { Actor } from "@/server/admin/actor";
 import { loadGrants } from "@/server/auth/session";
@@ -35,10 +35,4 @@ export async function actorFor(email: string): Promise<Actor> {
       },
     },
   };
-}
-
-/** Demo reasons are always open; tests about opening hours attach the demo timetable (Sun–Thu 08:00–16:00). */
-export async function attachOfficeHours() {
-  const [schedule] = await db().select({ id: schedules.id }).from(schedules).limit(1);
-  await db().update(visitReasons).set({ scheduleId: schedule.id });
 }

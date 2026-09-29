@@ -45,7 +45,7 @@ export function ReceptionConsole() {
     }
   }, []);
 
-  // The context (waiting counts, open/closed) refreshes on the same live events as the queue.
+  // The context (waiting counts) refreshes on the same live events as the queue.
   const [liveBranch, setLiveBranch] = useState<string | null>(null);
   const ctx = useLiveQuery<ReceptionContext>(
     ["reception-ctx", branchId],
@@ -78,9 +78,7 @@ export function ReceptionConsole() {
     const onKey = (e: KeyboardEvent) => {
       if (isTyping(e) || issued || checkIn || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.key === "Escape") return setSelected(null);
-      const r = ctx.data?.reasons.find(
-        (x) => x.shortcutKey && x.shortcutKey.toLowerCase() === e.key.toLowerCase() && x.open.open,
-      );
+      const r = ctx.data?.reasons.find((x) => x.shortcutKey && x.shortcutKey.toLowerCase() === e.key.toLowerCase());
       if (r) {
         e.preventDefault();
         setSelected(r.id);

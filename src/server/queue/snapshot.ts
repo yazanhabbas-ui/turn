@@ -1,5 +1,5 @@
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
-import type { DbOrTx, Tx } from "@/db/client";
+import type { Tx } from "@/db/client";
 import {
   agentGroupMembers,
   agentProfiles,
@@ -7,7 +7,6 @@ import {
   distributionRules,
   priorityLevels,
   reasonAssignments,
-  scheduleRules,
   tickets,
   visitReasons,
 } from "@/db/schema";
@@ -29,7 +28,6 @@ export type BranchContext = {
   now: number;
   serviceDay: string;
   snapshot: EngineSnapshot;
-  ramadan: { enabled: boolean; from: string | null; to: string | null };
   /** Resolved distribution configuration per queue id. */
   configFor: (queueId: string) => DistributionConfig;
 };
@@ -41,10 +39,7 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
   const [branch] = await tx.select().from(branches).where(eq(branches.id, branchId));
   if (!branch) throw new Error(`branch ${branchId} not found`);
   const org = branch.organizationId;
-  const [ticketing, regional] = await Promise.all([
-    getSetting(org, "ticketing", branchId, tx),
-    getSetting(org, "regional", branchId, tx),
-  ]);
+  const ticketing = await getSetting(org, "ticketing", branchId, tx);
   const day = serviceDay(now, branch.timezone, ticketing.dailyResetTime);
 
   const [ticketRows, profileRows, reasonRows, priorityRows, ruleRows, todayStats] = await Promise.all([
@@ -153,7 +148,6 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
     branch,
     now,
     serviceDay: day,
-    ramadan: regional.ramadanMode,
     configFor,
     snapshot: {
       now,
@@ -169,9 +163,4 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
       configFor,
     },
   };
-}
-
-/** Timetable rules of a reason (null = the reason is always open). */
-export async function loadIssuingRules(tx: DbOrTx, scheduleId: string | null) {
-  return { rules: scheduleId ? await tx.select().from(scheduleRules).where(eq(scheduleRules.scheduleId, scheduleId)) : null };
 }

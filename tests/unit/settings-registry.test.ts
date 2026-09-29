@@ -6,7 +6,6 @@ describe("settings registry", () => {
     const s = defaultSetting("security");
     expect(s.passwordPolicy.minLength).toBe(10);
     expect(s.maxFailedLogins).toBe(5);
-    expect(defaultSetting("regional").ramadanMode.enabled).toBe(false);
   });
 
   it("keeps stored values and adds fields introduced later", () => {

@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Link, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import type { Assignment, IntakeField, L, Reason, Schedule } from "../types";
+import type { Assignment, IntakeField, L, Reason } from "../types";
 import { LOOKUPS, useLookups, useText } from "../use-lookups";
 import { REASONS } from "./reasons-list";
 
@@ -33,8 +33,6 @@ const EMPTY: Form = {
   slaTargetWaitMinutes: 15,
   intakeFields: [],
   allowAppointments: false,
-  scheduleId: null,
-  cutoffMinutes: 0,
   isFeatured: false,
   shortcutKey: null,
   sortOrder: 0,
@@ -58,7 +56,6 @@ export function ReasonEditor({ id, canManage }: { id: string | null; canManage: 
   const router = useRouter();
   const reasons = useApiQuery<{ items: Reason[] }>(`${REASONS}?archived=true`);
   const lookups = useLookups();
-  const hours = useApiQuery<{ schedules: Schedule[] }>("/api/v1/admin/schedules");
   const reason = id ? reasons.data?.items.find((r) => r.id === id) : null;
   const [form, setForm] = useState<Form>(EMPTY);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -94,7 +91,6 @@ export function ReasonEditor({ id, canManage }: { id: string | null; canManage: 
       const body = {
         ...form,
         shortcutKey: form.shortcutKey || null,
-        scheduleId: form.scheduleId || null,
         defaultPriorityKey: form.defaultPriorityKey || null,
       };
       const targetId = id
@@ -391,32 +387,6 @@ export function ReasonEditor({ id, canManage }: { id: string | null; canManage: 
         </Section>
 
         <Section title={t("hours")}>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={t("schedule")} htmlFor="rs-schedule">
-              <NativeSelect
-                id="rs-schedule"
-                value={form.scheduleId ?? ""}
-                onChange={(e) => set("scheduleId", e.target.value || null)}
-              >
-                <option value="">{t("noSchedule")}</option>
-                {hours.data?.schedules.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {text(s.name)}
-                  </option>
-                ))}
-              </NativeSelect>
-            </Field>
-            <Field label={t("cutoff")} htmlFor="rs-cutoff">
-              <Input
-                id="rs-cutoff"
-                type="number"
-                min={0}
-                max={480}
-                value={form.cutoffMinutes}
-                onChange={(e) => set("cutoffMinutes", Number(e.target.value))}
-              />
-            </Field>
-          </div>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"

@@ -86,8 +86,6 @@ export type Reason = {
   slaTargetWaitMinutes: number;
   intakeFields: IntakeField[];
   allowAppointments: boolean;
-  scheduleId: string | null;
-  cutoffMinutes: number;
   isFeatured: boolean;
   shortcutKey: string | null;
   sortOrder: number;
@@ -95,15 +93,6 @@ export type Reason = {
   assignments: Assignment[];
 };
 
-export type ScheduleRule = {
-  kind: "regular" | "ramadan" | "special";
-  weekday: number;
-  opensAt: string;
-  closesAt: string;
-  validFrom?: string | null;
-  validTo?: string | null;
-};
-export type Schedule = { id: string; name: L; rules: ScheduleRule[] };
 export type Lookups = {
   branches: Branch[];
   roles: RoleRow[];

@@ -111,8 +111,7 @@
     },
     "welcome": "Welcome, {name}",
     "overviewHint": "Configure your offices, services, and how turns are distributed. Every rule here takes effect immediately.",
-    "groups": "Agent groups",
-    "hours": "Working hours"
+    "groups": "Agent groups"
   },
   "workspace": {
     "receptionEmpty": "The reception console opens here: choose a visit reason and issue a ticket in two taps.",
@@ -503,10 +502,7 @@
       "email": "Email",
       "notes": "Notes"
     },
-    "hours": "Hours & appointments",
-    "schedule": "Working hours",
-    "noSchedule": "Branch opening hours",
-    "cutoff": "Stop issuing tickets before closing (min)",
+    "hours": "Appointments",
     "allowAppointments": "Allow appointments",
     "assignments": "Who serves this reason",
     "assignmentsHint": "Proficiency 1–5 is used by the “highest proficiency first” strategy. Backups receive tickets when primaries are busy.",
@@ -523,19 +519,6 @@
     "created": "Visit reason created",
     "saved": "Visit reason saved",
     "archivedNotice": "This reason is archived and cannot be chosen at reception."
-  },
-  "hours": {
-    "title": "Working hours",
-    "description": "Timetables and Ramadan hours. All times are in the branch's time zone.",
-    "schedules": "Timetables",
-    "addSchedule": "Add timetable",
-    "editSchedule": "Edit timetable",
-    "regular": "Regular hours",
-    "ramadan": "Ramadan hours",
-    "closed": "Closed",
-    "addInterval": "Add period",
-    "opens": "Opens",
-    "closes": "Closes"
   },
   "settings": {
     "title": "Settings",
@@ -568,8 +551,6 @@
     "time12": "12-hour",
     "time24": "24-hour",
     "showHijri": "Show Hijri date",
-    "ramadanMode": "Ramadan mode",
-    "ramadanHint": "Uses Ramadan working hours between these dates.",
     "numberPad": "Number digits",
     "numberPadHint": "3 → A-007",
     "separator": "Separator",
@@ -625,7 +606,6 @@
       "desk": "Desk",
       "visit_reason": "Visit reason",
       "agent_group": "Group",
-      "schedule": "Timetable",
       "priority_level": "Priority",
       "break_type": "Break type",
       "setting": "Setting"
@@ -805,9 +785,6 @@
     "title": "Reception",
     "chooseReason": "Choose the visit reason",
     "search": "Search reasons…",
-    "closed": "Closed",
-    "cutoff": "No more tickets today",
-    "opensAt": "Opens at {time}",
     "shortcut": "Key {key}",
     "visitor": "Visitor details",
     "optionalDetails": "Add details (optional)",
@@ -863,8 +840,6 @@
     "branch": "Branch",
     "agent": "Agent",
     "errors": {
-      "closed": "This service is closed now.",
-      "cutoff": "Ticket issuing for this service has stopped for today.",
       "consent_required": "Please confirm the visitor's consent.",
       "missing_field": "Please fill in: {field}",
       "invalid_field": "Please check: {field}",

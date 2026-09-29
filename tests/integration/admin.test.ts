@@ -240,7 +240,6 @@ describe.runIf(available)("admin core (database)", () => {
       slaTargetWaitMinutes: 12,
       intakeFields: [{ key: "phone", required: true }],
       allowAppointments: false,
-      cutoffMinutes: 10,
       isFeatured: false,
       sortOrder: 9,
     };

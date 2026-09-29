@@ -15,6 +15,13 @@
       "when": 1790698471541,
       "tag": "0001_remove_pauses_holidays",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790698711272,
+      "tag": "0002_remove_working_hours",
+      "breakpoints": true
     }
   ]
 }

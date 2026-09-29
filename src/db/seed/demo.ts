@@ -196,18 +196,6 @@ async function createDemo(tx: Tx, organizationId: string) {
     },
   ]);
 
-  const [schedule] = await tx
-    .insert(s.schedules)
-    .values({ organizationId, name: { ar: "الدوام الرسمي", en: "Office hours" } })
-    .returning();
-  const workdays = [0, 1, 2, 3, 4]; // Sunday–Thursday
-  await tx
-    .insert(s.scheduleRules)
-    .values([
-      ...workdays.map((weekday) => ({ scheduleId: schedule.id, kind: "regular", weekday, opensAt: "08:00", closesAt: "16:00" })),
-      ...workdays.map((weekday) => ({ scheduleId: schedule.id, kind: "ramadan", weekday, opensAt: "10:00", closesAt: "15:00" })),
-    ]);
-
   const reasons = await tx
     .insert(s.visitReasons)
     .values([
@@ -271,7 +259,6 @@ async function createDemo(tx: Tx, organizationId: string) {
         isFeatured: true,
         shortcutKey: "4",
         sortOrder: 3,
-        cutoffMinutes: 15,
       },
       {
         organizationId,

@@ -223,7 +223,6 @@ function DigitsSelect({
 
 function RegionalForm({ initial }: { initial: SettingValue<"regional"> }) {
   const t = useTranslations("settings");
-  const th = useTranslations("hours");
   return (
     <SettingForm k="regional" initial={initial}>
       {(v, set) => (
@@ -259,32 +258,6 @@ function RegionalForm({ initial }: { initial: SettingValue<"regional"> }) {
             </Field>
           </div>
           <Check label={t("showHijri")} checked={v.showHijri} onChange={(showHijri) => set({ showHijri })} />
-          <fieldset className="space-y-3 rounded-lg border p-3">
-            <Check
-              label={t("ramadanMode")}
-              hint={t("ramadanHint")}
-              checked={v.ramadanMode.enabled}
-              onChange={(enabled) => set({ ramadanMode: { ...v.ramadanMode, enabled } })}
-            />
-            {v.ramadanMode.enabled && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Input
-                  type="date"
-                  dir="ltr"
-                  aria-label={th("from")}
-                  value={v.ramadanMode.from ?? ""}
-                  onChange={(e) => set({ ramadanMode: { ...v.ramadanMode, from: e.target.value || null } })}
-                />
-                <Input
-                  type="date"
-                  dir="ltr"
-                  aria-label={th("to")}
-                  value={v.ramadanMode.to ?? ""}
-                  onChange={(e) => set({ ramadanMode: { ...v.ramadanMode, to: e.target.value || null } })}
-                />
-              </div>
-            )}
-          </fieldset>
         </>
       )}
     </SettingForm>

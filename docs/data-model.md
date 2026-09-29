@@ -33,12 +33,12 @@ erDiagram
 
 ## Tenancy and locations
 
-| Table           | Purpose                                                                                |
-| --------------- | -------------------------------------------------------------------------------------- |
-| `organizations` | Tenant: name, slug, default locale, enabled locales                                    |
-| `branches`      | Office: code, name, **timezone**, **weekend days** |
-| `floors`        | Optional grouping of desks                                                             |
-| `desks`         | Counter/office; `number` is announced ("Desk 3"); `zone` for multi-zone displays       |
+| Table           | Purpose                                                                          |
+| --------------- | -------------------------------------------------------------------------------- |
+| `organizations` | Tenant: name, slug, default locale, enabled locales                              |
+| `branches`      | Office: code, name, **timezone**, **weekend days**                               |
+| `floors`        | Optional grouping of desks                                                       |
+| `desks`         | Counter/office; `number` is announced ("Desk 3"); `zone` for multi-zone displays |
 
 ## Identity and access
 
@@ -67,15 +67,14 @@ erDiagram
 
 ## Services and distribution
 
-| Table                         | Purpose                                                                                                                                                                                                       |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `visit_reasons`               | Name, icon, colour, **prefix** (Latin or Arabic), default priority, expected service minutes, SLA target wait, `intake_fields`, appointments allowed, schedule, cut-off, featured/shortcut for fast reception |
-| `reason_assignments`          | Reason → agent **or** group, proficiency 1–5, primary/backup, optional branch                                                                                                                                 |
-| `queues`                      | Reason × branch: prefix override, number range                                                                                                                                                                |
-| `distribution_rules`          | Mode, strategies and ordering config as validated JSON; scope global → branch → queue; versioned                                                                                                              |
-| `priority_levels`             | Data-driven lanes/flags (VIP/guest, elderly, disabled, pregnant, ladies/families, urgent) with weight                                                                                                         |
-| `schedules`, `schedule_rules` | Weekly hours; `kind` = regular / ramadan / special with date ranges                                                                                                                                           |
-| `ticket_counters`             | (branch, prefix, service_day) → last number, incremented under a row lock                                                                                                                                     |
+| Table                | Purpose                                                                                                                                                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `visit_reasons`      | Name, icon, colour, **prefix** (Latin or Arabic), default priority, expected service minutes, SLA target wait, `intake_fields`, appointments allowed, schedule, cut-off, featured/shortcut for fast reception |
+| `reason_assignments` | Reason → agent **or** group, proficiency 1–5, primary/backup, optional branch                                                                                                                                 |
+| `queues`             | Reason × branch: prefix override, number range                                                                                                                                                                |
+| `distribution_rules` | Mode, strategies and ordering config as validated JSON; scope global → branch → queue; versioned                                                                                                              |
+| `priority_levels`    | Data-driven lanes/flags (VIP/guest, elderly, disabled, pregnant, ladies/families, urgent) with weight                                                                                                         |
+| `ticket_counters`    | (branch, prefix, service_day) → last number, incremented under a row lock                                                                                                                                     |
 
 ## Tickets
 

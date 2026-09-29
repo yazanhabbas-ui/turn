@@ -124,7 +124,6 @@ async function warmUp() {
     "/admin/branches",
     "/admin/reasons",
     "/admin/groups",
-    "/admin/hours",
     "/admin/distribution",
     "/admin/simulate",
     "/admin/settings",

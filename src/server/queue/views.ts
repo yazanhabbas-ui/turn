@@ -18,11 +18,10 @@ import { estimateWaitMinutes } from "@/domain/distribution/estimate";
 import { orderTickets } from "@/domain/distribution/ordering";
 import { looseNameMatch } from "@/domain/i18n/arabic-normalize";
 import { branchesFor, can } from "@/domain/rbac/permissions";
-import { issuingState } from "@/domain/schedule/hours";
 import type { Actor } from "../admin/actor";
 import { AppError } from "../http/errors";
 import { getSetting } from "../settings/service";
-import { loadBranchContext, loadIssuingRules, type BranchContext } from "./snapshot";
+import { loadBranchContext, type BranchContext } from "./snapshot";
 import { viewOf, type TicketView, type VisitorRow } from "./tickets";
 
 type TicketRow = typeof tickets.$inferSelect;
@@ -182,11 +181,6 @@ export async function receptionContext(actor: Actor, requestedBranchId?: string 
 
   const reasons = await Promise.all(
     reasonRows.map(async (r) => {
-      const rules = await loadIssuingRules(db(), r.scheduleId);
-      const open = issuingState(ctx.now, branch.timezone, rules.rules, {
-        cutoffMinutes: r.cutoffMinutes,
-        ramadan: ctx.ramadan,
-      });
       const waiting = ctx.snapshot.tickets.filter((t) => t.reasonId === r.id && t.status === "WAITING").length;
       return {
         id: r.id,
@@ -201,7 +195,6 @@ export async function receptionContext(actor: Actor, requestedBranchId?: string 
         shortcutKey: r.shortcutKey,
         allowAppointments: r.allowAppointments,
         expectedServiceMinutes: r.expectedServiceMinutes,
-        open,
         waiting,
         agentsAvailable: ctx.snapshot.agents.filter((a) => a.skills.has(r.id) && a.status === "AVAILABLE").length,
       };

@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { agentGroups, queues, reasonAssignments, schedules, users, visitReasons } from "@/db/schema";
+import { agentGroups, queues, reasonAssignments, users, visitReasons } from "@/db/schema";
 import { hexColor, localizedText, ticketPrefix, uuid } from "@/domain/validation";
 import { audit } from "../audit";
 import { AppError } from "../http/errors";
@@ -43,8 +43,6 @@ export const reasonInput = z.object({
     .max(12)
     .refine((f) => new Set(f.map((x) => x.key)).size === f.length, { message: "duplicate_key" }),
   allowAppointments: z.boolean(),
-  scheduleId: uuid.nullable().optional(),
-  cutoffMinutes: z.number().int().min(0).max(480),
   isFeatured: z.boolean(),
   shortcutKey: z.string().trim().max(1).nullable().optional(),
   sortOrder: z.number().int().default(0),
@@ -113,13 +111,6 @@ async function validateRefs(actor: Actor, input: z.infer<typeof reasonInput>, ex
       );
     if (clash) throw new AppError("conflict", { field: "shortcutKey" });
   }
-  if (input.scheduleId) {
-    const [s] = await db()
-      .select({ id: schedules.id })
-      .from(schedules)
-      .where(and(eq(schedules.id, input.scheduleId), eq(schedules.organizationId, org)));
-    if (!s) throw new AppError("validation", { field: "scheduleId" });
-  }
 }
 
 function values(input: z.infer<typeof reasonInput>) {
@@ -127,7 +118,6 @@ function values(input: z.infer<typeof reasonInput>) {
     ...input,
     description: input.description ?? null,
     defaultPriorityKey: input.defaultPriorityKey ?? null,
-    scheduleId: input.scheduleId ?? null,
     shortcutKey: input.shortcutKey || null,
   };
 }

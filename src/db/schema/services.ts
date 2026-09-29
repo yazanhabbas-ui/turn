@@ -4,39 +4,6 @@ import { agentGroups } from "./agents";
 import { users } from "./identity";
 import { branches, organizations } from "./tenancy";
 
-/** Named weekly timetable, reusable by branches and reasons. */
-export const schedules = pgTable("schedules", {
-  id: id(),
-  organizationId: uuid("organization_id")
-    .notNull()
-    .references(() => organizations.id),
-  name: jsonb("name").$type<LocalizedText>().notNull(),
-  archivedAt: archivedAt(),
-  createdAt: createdAt(),
-  updatedAt: updatedAt(),
-});
-
-/**
- * One open interval on one weekday. `kind` groups rules: `regular` always applies; `ramadan` / `special` apply
- * only between `valid_from` and `valid_to` and then replace the regular rules for that day.
- */
-export const scheduleRules = pgTable(
-  "schedule_rules",
-  {
-    id: id(),
-    scheduleId: uuid("schedule_id")
-      .notNull()
-      .references(() => schedules.id, { onDelete: "cascade" }),
-    kind: text("kind").notNull().default("regular"),
-    weekday: integer("weekday").notNull(),
-    opensAt: text("opens_at").notNull(),
-    closesAt: text("closes_at").notNull(),
-    validFrom: date("valid_from"),
-    validTo: date("valid_to"),
-  },
-  (t) => [index("schedule_rules_schedule_idx").on(t.scheduleId)],
-);
-
 /** Priority lanes / flags (VIP, Sheikh/guest, elderly, disabled, pregnant, urgent, ladies/family). Data, not an enum. */
 export const priorityLevels = pgTable(
   "priority_levels",
@@ -89,9 +56,6 @@ export const visitReasons = pgTable(
     slaTargetWaitMinutes: integer("sla_target_wait_minutes").notNull().default(15),
     intakeFields: jsonb("intake_fields").$type<IntakeField[]>().notNull().default([]),
     allowAppointments: boolean("allow_appointments").notNull().default(false),
-    scheduleId: uuid("schedule_id").references(() => schedules.id),
-    /** Stop issuing tickets this many minutes before closing. */
-    cutoffMinutes: integer("cutoff_minutes").notNull().default(0),
     /** Shown first on the reception screen for two-tap issuing. */
     isFeatured: boolean("is_featured").notNull().default(false),
     shortcutKey: text("shortcut_key"),

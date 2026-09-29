@@ -24,10 +24,6 @@ function newKey() {
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function minutesToTime(m: number) {
-  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-}
-
 /** Large touch buttons; featured reasons first; searchable (Arabic-normalized); keyboard shortcuts. */
 export function ReasonPicker({
   ctx,
@@ -67,19 +63,16 @@ export function ReasonPicker({
       </div>
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
         {reasons.map((r) => {
-          const closed = !r.open.open;
           const active = selected === r.id;
           return (
             <button
               key={r.id}
               type="button"
-              disabled={closed}
               onClick={() => onSelect(r.id)}
               aria-pressed={active}
               className={cn(
                 "bg-card relative flex min-h-24 items-center gap-3 rounded-2xl border-2 p-4 text-start shadow-sm transition active:scale-[0.99]",
                 active ? "border-brand ring-brand/30 ring-4" : "hover:border-brand/40 border-transparent",
-                closed && "cursor-not-allowed opacity-50",
               )}
             >
               <span
@@ -92,16 +85,7 @@ export function ReasonPicker({
                 <span className="block text-base leading-tight font-semibold">{pickText(r.name, locale)}</span>
                 <span className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 text-xs">
                   <span className="text-foreground font-bold">{r.prefix}</span>
-                  {closed ? (
-                    <span>
-                      {r.open.open === false && r.open.reason === "cutoff" ? t("cutoff") : t("closed")}
-                      {r.open.open === false &&
-                        r.open.opensAt !== undefined &&
-                        ` · ${t("opensAt", { time: minutesToTime(r.open.opensAt) })}`}
-                    </span>
-                  ) : (
-                    <span>{tq("waitingN", { count: r.waiting })}</span>
-                  )}
+                  <span>{tq("waitingN", { count: r.waiting })}</span>
                 </span>
               </span>
               {r.shortcutKey && (
