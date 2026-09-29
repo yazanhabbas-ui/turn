@@ -69,6 +69,14 @@ export type ReceptionContext = {
   privacy: { consentText: L; requireConsent: boolean };
   ticketing: { numberPad: number; separator: string; showQrOnTicket: boolean };
   visitorStatus: { enabled: boolean };
+  reception: {
+    oneTapIssue: boolean;
+    afterIssue: "print" | "dialog";
+    autoPrint: boolean;
+    askPriority: boolean;
+    askLanguage: boolean;
+    defaultLanguage: "interface" | "ar" | "en";
+  };
   regional: { digitsTicket: "latn" | "arab"; digitsScreen: "latn" | "arab" };
   print: { template: L | null; footer: L; companyName: L; logoUrl: string | null };
   canReassign: boolean;

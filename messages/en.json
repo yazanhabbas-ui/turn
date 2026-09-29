@@ -556,7 +556,8 @@
       "privacy": "Data protection",
       "visitorStatus": "Visitor page",
       "priorities": "Priority lanes",
-      "breaks": "Break types"
+      "breaks": "Break types",
+      "reception": "Reception"
     },
     "companyName": "Company name",
     "logoUrl": "Logo URL",
@@ -605,7 +606,22 @@
     "addPriority": "Add priority",
     "maxMinutes": "Maximum minutes",
     "productive": "Counts as productive time",
-    "addBreak": "Add break type"
+    "addBreak": "Add break type",
+    "receptionIntro": "Choose how fast the receptionist can issue tickets. The data to collect is set per visit reason.",
+    "oneTapIssue": "One-tap issuing",
+    "oneTapIssueHint": "A reason with no required data issues its ticket the moment it is tapped, with no form.",
+    "autoPrintDefault": "Print tickets automatically",
+    "autoPrintDefaultHint": "Default for new devices. Each reception PC can change it for itself.",
+    "askPriority": "Show priority choices",
+    "askPriorityHint": "Priority buttons (VIP, elderly…) appear above the reasons and are chosen before tapping a reason.",
+    "askLanguage": "Show visitor language choice",
+    "askLanguageHint": "Sets the language of the ticket and of the voice announcement.",
+    "afterIssue": "After a ticket is issued",
+    "afterIssuePrint": "Print at once with a small confirmation (fastest)",
+    "afterIssueDialog": "Big confirmation window that must be closed",
+    "defaultLanguage": "Default visitor language",
+    "languageInterface": "The receptionist's interface language",
+    "receptionDataHint": "To choose which data the receptionist enters (name, mobile, ID…) and which is required, edit the visit reason → \"Visitor information to collect\". To drop the consent question, go to Data protection."
   },
   "audit": {
     "title": "Audit log",
@@ -868,7 +884,8 @@
       "missing_field": "Please fill in: {field}",
       "invalid_field": "Please check: {field}",
       "range_exhausted": "The ticket numbers for today are used up for this service."
-    }
+    },
+    "dismiss": "Dismiss"
   },
   "agent": {
     "title": "Agent workspace",

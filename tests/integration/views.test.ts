@@ -51,6 +51,7 @@ describe.runIf(available)("queue views (database)", () => {
     expect(ctx.branch.id).toBe(branchId);
     const general = ctx.reasons.find((r) => r.code === "general")!;
     expect(general.waiting).toBe(1);
+    expect(ctx.reception).toMatchObject({ oneTapIssue: true, afterIssue: "print" });
     expect(ctx.modes[reason.general]).toBe("pull");
     expect(ctx.priorities.map((p) => p.key)).toContain("vip");
     expect(ctx.canCancel).toBe(true);

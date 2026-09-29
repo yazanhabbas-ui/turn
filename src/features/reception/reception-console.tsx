@@ -2,22 +2,27 @@
 
 import { CalendarCheck, UsersRound } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { ErrorState, LoadingRows } from "@/components/admin/form";
+import { useErrorMessage } from "@/components/admin/use-api";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { pickText } from "@/i18n/locales";
+import { ApiError } from "@/lib/api";
 import { ConnectionPill } from "../queue/bits";
 import type { QueueState, ReceptionContext, Ticket } from "../queue/types";
 import { useLiveQuery } from "../queue/use-queue";
 import { AppointmentDialog, type FoundAppointment } from "./appointment-dialog";
 import { IssuedDialog } from "./issued-dialog";
-import { IssuePanel, ReasonPicker, type IssueResult } from "./issue-panel";
+import { IssuePanel, ReasonPicker, issueRequest, newKey, type IssueResult } from "./issue-panel";
 import { LiveQueue } from "./live-queue";
 import { PrintTicket, type PrintJob } from "./print-ticket";
+import { IssuedBanner, QuickBar } from "./quick-bar";
 
 const BRANCH_KEY = "dor.reception.branch";
 const AUTOPRINT_KEY = "dor.reception.autoPrint";
+const LANGUAGE_KEY = "dor.reception.language";
 
 function isTyping(e: KeyboardEvent) {
   const el = e.target as HTMLElement | null;
@@ -33,13 +38,21 @@ export function ReceptionConsole() {
   const [appointment, setAppointment] = useState<FoundAppointment | null>(null);
   const [issued, setIssued] = useState<IssueResult | null>(null);
   const [printJob, setPrintJob] = useState<PrintJob | null>(null);
-  const [autoPrint, setAutoPrint] = useState(false);
+  // null = follow the organization default; a reception PC without a printer can switch it off for itself.
+  const [autoPrintOverride, setAutoPrintOverride] = useState<boolean | null>(null);
+  const [last, setLast] = useState<IssueResult | null>(null);
+  const [priorityKey, setPriorityKey] = useState<string | null>(null);
+  const [language, setLanguage] = useState<string | null>(null);
+  const issuing = useRef(false);
+  const message = useErrorMessage();
   const [checkIn, setCheckIn] = useState(false);
 
   useEffect(() => {
     try {
       setBranchId(localStorage.getItem(BRANCH_KEY));
-      setAutoPrint(localStorage.getItem(AUTOPRINT_KEY) === "1");
+      const v = localStorage.getItem(AUTOPRINT_KEY);
+      setAutoPrintOverride(v === "1" ? true : v === "0" ? false : null);
+      setLanguage(localStorage.getItem(LANGUAGE_KEY));
     } catch {
       /* private mode */
     }
@@ -61,16 +74,66 @@ export function ReceptionConsole() {
   );
   const reason = useMemo(() => ctx.data?.reasons.find((r) => r.id === selected) ?? null, [ctx.data, selected]);
 
+  const setAutoPrint = (v: boolean) => {
+    setAutoPrintOverride(v);
+    try {
+      localStorage.setItem(AUTOPRINT_KEY, v ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  };
+  const reception = ctx.data?.reception;
+  const autoPrint = autoPrintOverride ?? reception?.autoPrint ?? false;
+  const visitorLanguage =
+    language ?? (reception?.defaultLanguage === "ar" || reception?.defaultLanguage === "en" ? reception.defaultLanguage : locale);
+
   const onIssued = useCallback(
     (r: IssueResult) => {
-      setIssued(r);
       setSelected(null);
       setAppointment(null);
+      setPriorityKey(null);
+      if (reception?.afterIssue === "dialog") setIssued(r);
+      else setLast(r);
       void state.refetch();
       void ctx.refetch();
       if (autoPrint) setPrintJob(r);
     },
-    [autoPrint, state, ctx],
+    [autoPrint, state, ctx, reception?.afterIssue],
+  );
+
+  // The fast path: a reason with nothing to type issues on the first tap.
+  const issueNow = useCallback(
+    async (r: NonNullable<typeof reason>) => {
+      const c = ctx.data;
+      if (!c || issuing.current) return;
+      issuing.current = true;
+      try {
+        onIssued(await issueRequest(c, r, { priorityKey, language: visitorLanguage, idempotencyKey: newKey() }));
+      } catch (err) {
+        // Anything the quick path cannot settle by itself (a missing field, a rule) opens the form with the message.
+        if (err instanceof ApiError && (err.details?.reason === "missing_field" || err.details?.reason === "invalid_field")) {
+          setSelected(r.id);
+        } else toast.error(message(err));
+      } finally {
+        issuing.current = false;
+      }
+    },
+    [ctx.data, onIssued, priorityKey, visitorLanguage, message],
+  );
+
+  const pick = useCallback(
+    (id: string) => {
+      const r = ctx.data?.reasons.find((x) => x.id === id);
+      if (!r || !ctx.data) return;
+      const needsForm =
+        !ctx.data.reception.oneTapIssue ||
+        !!appointment ||
+        r.intakeFields.some((f) => f.required) ||
+        ctx.data.modes[r.id] === "manual";
+      if (needsForm) setSelected((cur) => (cur === id ? null : id));
+      else void issueNow(r);
+    },
+    [ctx.data, appointment, issueNow],
   );
 
   // Keyboard: a reason's shortcut key selects it; Escape clears.
@@ -81,12 +144,12 @@ export function ReceptionConsole() {
       const r = ctx.data?.reasons.find((x) => x.shortcutKey && x.shortcutKey.toLowerCase() === e.key.toLowerCase());
       if (r) {
         e.preventDefault();
-        setSelected(r.id);
+        pick(r.id);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [ctx.data, issued, checkIn]);
+  }, [ctx.data, issued, checkIn, pick]);
 
   if (ctx.isLoading) return <LoadingRows rows={6} />;
   if (ctx.isError || !ctx.data) return <ErrorState onRetry={() => ctx.refetch()} />;
@@ -134,6 +197,15 @@ export function ReceptionConsole() {
             <UsersRound className="size-4" aria-hidden />
             {tq("agentsAvailable")}: <b className="text-foreground tabular">{available}</b>
           </span>
+          <label className="inline-flex items-center gap-2">
+            <input
+              type="checkbox"
+              className="accent-brand size-4"
+              checked={autoPrint}
+              onChange={(e) => setAutoPrint(e.target.checked)}
+            />
+            {t("autoPrint")}
+          </label>
           {c.canCheckIn && (
             <Button variant="outline" onClick={() => setCheckIn(true)}>
               <CalendarCheck aria-hidden />
@@ -145,12 +217,29 @@ export function ReceptionConsole() {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]">
         <div className="space-y-4">
-          <ReasonPicker ctx={c} selected={selected} onSelect={(id) => setSelected((s) => (s === id ? null : id))} />
+          <IssuedBanner result={last} ctx={c} onPrint={() => last && setPrintJob(last)} onDismiss={() => setLast(null)} />
+          <QuickBar
+            ctx={c}
+            priorityKey={priorityKey}
+            onPriority={setPriorityKey}
+            language={visitorLanguage}
+            onLanguage={(code) => {
+              setLanguage(code);
+              try {
+                localStorage.setItem(LANGUAGE_KEY, code);
+              } catch {
+                /* ignore */
+              }
+            }}
+          />
+          <ReasonPicker ctx={c} selected={selected} onSelect={pick} />
           {reason && (
             <IssuePanel
               ctx={c}
               reason={reason}
               appointmentId={appointment?.id}
+              priorityKey={priorityKey}
+              language={visitorLanguage}
               onIssued={onIssued}
               onClear={() => (setSelected(null), setAppointment(null))}
             />
@@ -172,14 +261,7 @@ export function ReceptionConsole() {
         result={issued}
         ctx={c}
         autoPrint={autoPrint}
-        onAutoPrint={(v) => {
-          setAutoPrint(v);
-          try {
-            localStorage.setItem(AUTOPRINT_KEY, v ? "1" : "0");
-          } catch {
-            /* ignore */
-          }
-        }}
+        onAutoPrint={setAutoPrint}
         onPrint={() => issued && setPrintJob(issued)}
         onClose={() => setIssued(null)}
       />

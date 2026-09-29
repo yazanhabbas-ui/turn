@@ -94,7 +94,17 @@ export function SettingsPage() {
   if (settings.isLoading || lookups.isLoading) return <LoadingRows rows={6} />;
   if (settings.isError || !settings.data || !lookups.data) return <ErrorState onRetry={() => settings.refetch()} />;
   const s = settings.data;
-  const tabs = ["branding", "regional", "ticketing", "security", "privacy", "visitorStatus", "priorities", "breaks"] as const;
+  const tabs = [
+    "branding",
+    "regional",
+    "ticketing",
+    "reception",
+    "security",
+    "privacy",
+    "visitorStatus",
+    "priorities",
+    "breaks",
+  ] as const;
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -115,6 +125,9 @@ export function SettingsPage() {
         </TabsContent>
         <TabsContent value="ticketing" className="mt-4">
           <TicketingForm initial={s.ticketing} />
+        </TabsContent>
+        <TabsContent value="reception" className="mt-4">
+          <ReceptionForm initial={s.reception} />
         </TabsContent>
         <TabsContent value="security" className="mt-4">
           <SecurityForm initial={s.security} roles={lookups.data.roles} />
@@ -301,6 +314,67 @@ function TicketingForm({ initial }: { initial: SettingValue<"ticketing"> }) {
             </Field>
           </div>
           <Check label={t("showQrOnTicket")} checked={v.showQrOnTicket} onChange={(showQrOnTicket) => set({ showQrOnTicket })} />
+        </>
+      )}
+    </SettingForm>
+  );
+}
+
+function ReceptionForm({ initial }: { initial: SettingValue<"reception"> }) {
+  const t = useTranslations("settings");
+  return (
+    <SettingForm k="reception" initial={initial}>
+      {(v, set) => (
+        <>
+          <p className="text-muted-foreground text-sm">{t("receptionIntro")}</p>
+          <Check
+            label={t("oneTapIssue")}
+            hint={t("oneTapIssueHint")}
+            checked={v.oneTapIssue}
+            onChange={(oneTapIssue) => set({ oneTapIssue })}
+          />
+          <Check
+            label={t("autoPrintDefault")}
+            hint={t("autoPrintDefaultHint")}
+            checked={v.autoPrint}
+            onChange={(autoPrint) => set({ autoPrint })}
+          />
+          <Check
+            label={t("askPriority")}
+            hint={t("askPriorityHint")}
+            checked={v.askPriority}
+            onChange={(askPriority) => set({ askPriority })}
+          />
+          <Check
+            label={t("askLanguage")}
+            hint={t("askLanguageHint")}
+            checked={v.askLanguage}
+            onChange={(askLanguage) => set({ askLanguage })}
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={t("afterIssue")} htmlFor="rc-after">
+              <NativeSelect
+                id="rc-after"
+                value={v.afterIssue}
+                onChange={(e) => set({ afterIssue: e.target.value as typeof v.afterIssue })}
+              >
+                <option value="print">{t("afterIssuePrint")}</option>
+                <option value="dialog">{t("afterIssueDialog")}</option>
+              </NativeSelect>
+            </Field>
+            <Field label={t("defaultLanguage")} htmlFor="rc-lang">
+              <NativeSelect
+                id="rc-lang"
+                value={v.defaultLanguage}
+                onChange={(e) => set({ defaultLanguage: e.target.value as typeof v.defaultLanguage })}
+              >
+                <option value="interface">{t("languageInterface")}</option>
+                <option value="ar">العربية</option>
+                <option value="en">English</option>
+              </NativeSelect>
+            </Field>
+          </div>
+          <p className="text-muted-foreground text-sm">{t("receptionDataHint")}</p>
         </>
       )}
     </SettingForm>

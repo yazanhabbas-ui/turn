@@ -148,7 +148,7 @@ export async function receptionContext(actor: Actor, requestedBranchId?: string 
   const branch = allowed.find((b) => b.id === requestedBranchId) ?? allowed[0];
   const org = actor.auth.user.organizationId;
 
-  const [reasonRows, priorityRows, ctx, privacy, ticketing, visitorStatus, branding, regional, printTpl, queueRows] =
+  const [reasonRows, priorityRows, ctx, privacy, ticketing, visitorStatus, reception, branding, regional, printTpl, queueRows] =
     await Promise.all([
       db()
         .select()
@@ -164,6 +164,7 @@ export async function receptionContext(actor: Actor, requestedBranchId?: string 
       getSetting(org, "privacy", branch.id),
       getSetting(org, "ticketing", branch.id),
       getSetting(org, "visitorStatus", branch.id),
+      getSetting(org, "reception", branch.id),
       getSetting(org, "branding", branch.id),
       getSetting(org, "regional", branch.id),
       db()
@@ -234,6 +235,7 @@ export async function receptionContext(actor: Actor, requestedBranchId?: string 
     modes: Object.fromEntries(queueRows.map((q) => [q.reasonId, ctx.configFor(q.id).mode])),
     privacy: { consentText: privacy.consentText, requireConsent: privacy.requireConsent },
     ticketing,
+    reception,
     visitorStatus,
     regional: { digitsTicket: regional.digitsTicket, digitsScreen: regional.digitsScreen },
     print: {

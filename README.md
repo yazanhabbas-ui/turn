@@ -109,6 +109,10 @@ Nothing calls a service outside your network at runtime: fonts are bundled, QR c
 3. Kiosk tips: start Chrome with `--kiosk --autoplay-policy=no-user-gesture-required http://<server>:3000/display` so sound needs no tap. Without that flag, tap the screen once to enable sound. Press **F** (or double click) for fullscreen.
 4. **Voice:** Admin → Screens → Voice. The default uses the TV browser's own speech engine; many kiosk PCs have no Arabic voice. In that case install one (Windows: Settings → Time & language → Speech) or upload a pre-recorded pack (`ar.digit.0…9`, `ar.letter.A…`, `ar.phrase.number`, `ar.phrase.desk`) and switch the provider to "Pre-recorded clips".
 
+## Reception speed
+
+Admin → Settings → Reception controls the desk: one-tap issuing, auto-print, whether priority and language are asked, and what happens after a ticket. The visitor details collected (and which are required) are set per visit reason. For printing without the browser dialog, start Chrome on the reception PC with `--kiosk-printing` and set the thermal printer as the default printer.
+
 ## Project layout
 
 ```

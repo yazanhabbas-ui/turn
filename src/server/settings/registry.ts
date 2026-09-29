@@ -76,6 +76,23 @@ export const SETTINGS = {
       notifyTurnsAway: z.number().int().min(1).max(10).default(2),
     })
     .prefault({}),
+  /** How fast the reception desk is: what happens when a reason is tapped and after a ticket is issued. */
+  reception: z
+    .object({
+      /** A reason with no required fields issues its ticket on the first tap (no form, no extra click). */
+      oneTapIssue: z.boolean().default(true),
+      /** print = print at once and show a small confirmation; dialog = big confirmation to close first. */
+      afterIssue: z.enum(["print", "dialog"]).default("print"),
+      /** Default for new devices; each reception PC can override it. */
+      autoPrint: z.boolean().default(true),
+      /** Show the priority chips above the reasons (choose before tapping the reason). */
+      askPriority: z.boolean().default(true),
+      /** Show the language toggle above the reasons. */
+      askLanguage: z.boolean().default(true),
+      /** interface = the receptionist's own language. */
+      defaultLanguage: z.enum(["interface", "ar", "en"]).default("interface"),
+    })
+    .prefault({}),
   /** Announcements on waiting-room screens. Individual screens can override volume and rate. */
   voice: z
     .object({

@@ -8,6 +8,16 @@ describe("settings registry", () => {
     expect(s.maxFailedLogins).toBe(5);
   });
 
+  it("defaults reception to the fastest flow", () => {
+    expect(defaultSetting("reception")).toMatchObject({
+      oneTapIssue: true,
+      afterIssue: "print",
+      autoPrint: true,
+      defaultLanguage: "interface",
+    });
+    expect(parseSetting("reception", { afterIssue: "nope" }).afterIssue).toBe("print");
+  });
+
   it("keeps stored values and adds fields introduced later", () => {
     const s = parseSetting("branding", { primaryColor: "#123456" });
     expect(s.primaryColor).toBe("#123456");

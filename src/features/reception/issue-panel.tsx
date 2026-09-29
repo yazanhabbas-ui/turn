@@ -11,14 +11,14 @@ import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { looseNameMatch } from "@/domain/i18n/arabic-normalize";
-import { LOCALE_CODES, LOCALES, pickText } from "@/i18n/locales";
+import { pickText } from "@/i18n/locales";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { ReceptionContext, ReceptionReason, Ticket } from "../queue/types";
 
 const BUILTIN_TYPES: Record<string, "text" | "tel" | "email"> = { phone: "tel", email: "email" };
 
-function newKey() {
+export function newKey() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -106,17 +106,53 @@ export function ReasonPicker({
 
 export type IssueResult = { ticket: Ticket; ahead: number; estimatedWaitMinutes: number };
 
+/** The single place that turns a reception choice into a ticket (used by one-tap issuing and by the form). */
+export function issueRequest(
+  ctx: ReceptionContext,
+  reason: ReceptionReason,
+  opts: {
+    priorityKey: string | null;
+    language: string;
+    fields?: Record<string, string>;
+    consent?: boolean;
+    assignToAgentId?: string | null;
+    appointmentId?: string | null;
+    idempotencyKey: string;
+  },
+) {
+  const priority = opts.priorityKey ?? reason.defaultPriorityKey ?? null;
+  return api<IssueResult & { duplicate: boolean }>("/api/v1/queue/tickets", {
+    body: {
+      branchId: ctx.branch.id,
+      reasonId: reason.id,
+      priorityKey: priority === "normal" ? null : priority,
+      language: opts.language,
+      fields: opts.fields ?? {},
+      consent: opts.consent ?? false,
+      assignToAgentId: opts.assignToAgentId ?? null,
+      appointmentId: opts.appointmentId ?? null,
+      source: opts.appointmentId ? "appointment" : "reception",
+    },
+    idempotencyKey: opts.idempotencyKey,
+  });
+}
+
 /** Intake fields, priority, language, consent and the big Issue button for the selected reason. */
 export function IssuePanel({
   ctx,
   reason,
   appointmentId,
+  priorityKey,
+  language,
   onIssued,
   onClear,
 }: {
   ctx: ReceptionContext;
   reason: ReceptionReason;
   appointmentId?: string | null;
+  /** Chosen in the bar above the reasons; null = the reason's default. */
+  priorityKey: string | null;
+  language: string;
   onIssued: (r: IssueResult) => void;
   onClear: () => void;
 }) {
@@ -125,8 +161,6 @@ export function IssuePanel({
   const locale = useLocale();
   const message = useErrorMessage();
   const [fields, setFields] = useState<Record<string, string>>({});
-  const [priorityKey, setPriorityKey] = useState<string>(reason.defaultPriorityKey ?? "normal");
-  const [language, setLanguage] = useState(locale);
   const [assignTo, setAssignTo] = useState("");
   const [consent, setConsent] = useState(false);
   const [showOptional, setShowOptional] = useState(false);
@@ -137,14 +171,17 @@ export function IssuePanel({
 
   useEffect(() => {
     setFields({});
-    setPriorityKey(reason.defaultPriorityKey ?? "normal");
     setAssignTo("");
     setConsent(false);
     setError(null);
     setShowOptional(false);
     key.current = newKey();
-    issueRef.current?.focus();
-  }, [reason.id, reason.defaultPriorityKey]);
+    // Straight into the first thing to type; with nothing to type, onto the Issue button.
+    const first = reason.intakeFields.find((f) => f.required);
+    if (first) document.getElementById(`f-${first.key}`)?.focus();
+    else issueRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reason.id]);
 
   const required = reason.intakeFields.filter((f) => f.required);
   const optional = reason.intakeFields.filter((f) => !f.required);
@@ -159,18 +196,13 @@ export function IssuePanel({
     setBusy(true);
     setError(null);
     try {
-      const res = await api<IssueResult & { duplicate: boolean }>("/api/v1/queue/tickets", {
-        body: {
-          branchId: ctx.branch.id,
-          reasonId: reason.id,
-          priorityKey: priorityKey === "normal" ? null : priorityKey,
-          language,
-          fields,
-          consent,
-          assignToAgentId: assignTo || null,
-          appointmentId: appointmentId ?? null,
-          source: appointmentId ? "appointment" : "reception",
-        },
+      const res = await issueRequest(ctx, reason, {
+        priorityKey,
+        language,
+        fields,
+        consent,
+        assignToAgentId: assignTo || null,
+        appointmentId,
         idempotencyKey: key.current,
       });
       key.current = newKey();
@@ -253,51 +285,7 @@ export function IssuePanel({
           </Button>
         ))}
 
-      <fieldset>
-        <legend className="mb-1.5 text-sm font-medium">{t("priority")}</legend>
-        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("priority")}>
-          {ctx.priorities.map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              role="radio"
-              aria-checked={priorityKey === p.key}
-              onClick={() => setPriorityKey(p.key)}
-              className={cn(
-                "flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm",
-                priorityKey === p.key ? "text-white" : "hover:bg-muted",
-              )}
-              style={priorityKey === p.key ? { backgroundColor: p.color, borderColor: p.color } : undefined}
-            >
-              {p.icon && <EntityIcon name={p.icon} className="size-4" />}
-              {pickText(p.name, locale)}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label>{t("language")}</Label>
-          <div className="flex gap-2" role="radiogroup" aria-label={t("language")}>
-            {LOCALE_CODES.map((c) => (
-              <button
-                key={c}
-                type="button"
-                role="radio"
-                aria-checked={language === c}
-                onClick={() => setLanguage(c)}
-                className={cn(
-                  "h-10 flex-1 rounded-lg border text-sm",
-                  language === c ? "border-brand bg-brand/10 text-brand font-semibold" : "hover:bg-muted",
-                )}
-                lang={c}
-              >
-                {LOCALES[c].label}
-              </button>
-            ))}
-          </div>
-        </div>
         {(manual || ctx.canReassign) && agents.length > 0 && (
           <div className="space-y-1.5">
             <Label htmlFor="assign-to">{t("assignTo")}</Label>

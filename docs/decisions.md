@@ -217,6 +217,15 @@ Each entry records a choice, its reasons, and how to revisit it. Newest entries 
 - **Audio unlock:** browsers block sound until a gesture. If the audio context starts suspended, a full-screen "touch to enable sound" splash appears, and any tap or key press unlocks it. Kiosk Chrome started with `--autoplay-policy=no-user-gesture-required` skips the splash.
 - **Defaults chosen:** voice settings are organization-wide (`voice` setting) with per-screen overrides for enabled, volume and rate. Media in ticker slides and audio packs must be local paths or inline data, never third-party URLs.
 
+## D32: Faster ticket issuing at reception
+
+- Requested by the product owner: fewer steps to print a ticket, with the collected data configurable, on the basis that only the receptionist types visitor data.
+- **One tap:** a visit reason with no required intake fields issues its ticket on the first tap or shortcut key, and prints at once. Reasons with required fields, manual-distribution reasons and appointment check-ins still open the form, focused on the first required field, and Enter submits.
+- **Priority and language moved above the reasons** (chips and a toggle) and are chosen before the tap. Priority resets to normal after each ticket; the language sticks per device. Both can be hidden.
+- **No blocking dialog:** after issuing, a small banner (number, people ahead, wait, reprint) replaces the confirmation window, so the next visitor can be served immediately. The old window remains as an option.
+- **Configurable:** Admin → Settings → Reception (the reception setting: one-tap, after-issue behaviour, auto-print default, priority and language choices, default language). Which data is collected, and whether it is required, stays per visit reason (Visit reasons → Visitor information to collect). The consent question is switched off with Data protection → require consent.
+- **Auto-print** defaults to on; each reception PC can override it (kept in local storage). Silent printing needs Chrome started with `--kiosk-printing`.
+
 ## Milestones
 
 1. **Foundation** (done): repo, Docker, schema, auth + 2FA, RBAC, i18n/RTL, seed, health, CI.
