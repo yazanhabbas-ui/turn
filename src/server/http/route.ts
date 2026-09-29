@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ZodError, type ZodType } from "zod";
 import { can, type Permission } from "@/domain/rbac/permissions";
+import type { Actor } from "../admin/actor";
 import { SESSION_COOKIE, validateSessionToken, type AuthContext } from "../auth/session";
 import { cookieSecure, env } from "../env";
 import { logger } from "../logger";
@@ -23,6 +24,10 @@ type Ctx<A extends AuthMode, B> = {
   ip: string;
   params: Record<string, string>;
   auth: A extends "public" ? AuthContext | null : AuthContext;
+  /** auth + client info, for services that check permissions and write the audit trail. */
+  actor: A extends "public" ? Actor | null : Actor;
+  /** Parsed query string. */
+  query: URLSearchParams;
 };
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -131,6 +136,8 @@ export function route<B = undefined, A extends AuthMode = "session">(
         ip,
         params: (await segment?.params) ?? {},
         auth: auth as Ctx<A, B>["auth"],
+        actor: (auth ? { auth, ip, userAgent: req.headers.get("user-agent") } : null) as Ctx<A, B>["actor"],
+        query: req.nextUrl.searchParams,
       });
       const res = result instanceof NextResponse ? result : NextResponse.json(result ?? { ok: true });
       res.headers.set("Cache-Control", "no-store");

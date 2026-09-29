@@ -1,11 +1,12 @@
 /**
  * Production and development entry point: one Node process serving Next.js pages + REST API,
- * the Socket.IO realtime hub and (from the admin-core milestone) background jobs.
+ * the Socket.IO realtime hub and pg-boss background jobs.
  */
 import "dotenv/config";
 import { createServer } from "node:http";
 import next from "next";
 import { env } from "./src/server/env";
+import { startJobs, stopJobs } from "./src/server/jobs";
 import { logger } from "./src/server/logger";
 import { initRealtime } from "./src/server/realtime";
 
@@ -24,6 +25,7 @@ async function main() {
   });
 
   initRealtime(server);
+  await startJobs();
 
   server.listen(config.PORT, config.HOSTNAME, () => {
     logger.info({ port: config.PORT, dev }, `Dor ready on ${config.APP_URL}`);
@@ -31,7 +33,7 @@ async function main() {
 
   const shutdown = (signal: string) => {
     logger.info({ signal }, "shutting down");
-    server.close(() => process.exit(0));
+    server.close(() => stopJobs().finally(() => process.exit(0)));
     setTimeout(() => process.exit(1), 10_000).unref();
   };
   process.on("SIGTERM", () => shutdown("SIGTERM"));
