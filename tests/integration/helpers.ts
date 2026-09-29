@@ -16,7 +16,9 @@ export async function prepareTestDatabase(): Promise<boolean> {
     return false;
   }
   const exists = await admin.query("select 1 from pg_database where datname = $1", [dbName]);
-  if (exists.rowCount === 0) await admin.query(`create database "${dbName.replace(/"/g, "")}"`);
+  if (exists.rowCount === 0) {
+    await admin.query(`create database "${dbName.replace(/"/g, "")}" encoding 'UTF8' template template0`);
+  }
   await admin.end();
   await runMigrations();
   return true;
