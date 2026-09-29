@@ -14,7 +14,8 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { pickText } from "@/i18n/locales";
-import { api } from "@/lib/api";
+import { Link } from "@/i18n/navigation";
+import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ConnectionPill, Elapsed, PauseBanner, SlaTimer, StatusBadge } from "../queue/bits";
 import type { AgentWorkspace, Ticket } from "../queue/types";
@@ -137,6 +138,7 @@ export function AgentWorkspaceView() {
   }, [primary, current, action, completeFor, transferFor, breakPicker]);
 
   if (ws.isLoading) return <LoadingRows rows={6} />;
+  if (ws.error instanceof ApiError && ws.error.details?.reason === "not_an_agent") return <NotAnAgent />;
   if (ws.isError || !data) return <ErrorState onRetry={refresh} />;
 
   const reasonOf = (id: string) => data.reasons.find((r) => r.id === id);
@@ -377,6 +379,21 @@ export function AgentWorkspaceView() {
           void action(tk, { action: "transfer", ...body }, t("transferred", { number: tk.displayNumber }));
         }}
       />
+    </div>
+  );
+}
+
+/** Shown to users whose role allows serving visitors but who have no agent profile (desk, capacity) yet. */
+function NotAnAgent() {
+  const t = useTranslations("agent");
+  return (
+    <div className="mx-auto mt-16 max-w-md text-center">
+      <UserRoundX className="text-muted-foreground mx-auto size-12" aria-hidden />
+      <h1 className="mt-4 text-xl font-bold">{t("notAgentTitle")}</h1>
+      <p className="text-muted-foreground mt-2">{t("notAgentBody")}</p>
+      <Button className="mt-6" nativeButton={false} render={<Link href="/admin/users" />}>
+        {t("notAgentAction")}
+      </Button>
     </div>
   );
 }

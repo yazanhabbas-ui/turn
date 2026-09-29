@@ -979,7 +979,10 @@
     "completed": "{number} completed",
     "noShowDone": "{number} marked as no-show",
     "transferred": "{number} transferred",
-    "waitedFor": "Waited"
+    "waitedFor": "Waited",
+    "notAgentTitle": "You are not set up to serve visitors",
+    "notAgentBody": "Your role allows the agent workspace, but your account has no agent profile yet. In Admin → Users, open your user and tick “Serves visitors” to choose the branch, desk and capacity.",
+    "notAgentAction": "Open users"
   },
   "visitorStatus": {
     "title": "Your turn",
