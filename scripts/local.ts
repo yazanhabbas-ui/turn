@@ -86,13 +86,13 @@ async function main() {
   log(`PostgreSQL running on localhost:${PORT}`);
   await ensureDatabases();
 
-  let app: ChildProcess | undefined;
+  const state: { app?: ChildProcess } = {};
   let stopping = false;
   const stop = async () => {
     if (stopping) return;
     stopping = true;
     log("stopping…");
-    app?.kill("SIGINT");
+    state.app?.kill("SIGINT");
     await pg.stop().catch(() => undefined);
     process.exit(0);
   };
@@ -113,7 +113,7 @@ async function main() {
   if (prod && !existsSync(path.join(root, ".next", "BUILD_ID")))
     throw new Error("No production build found. Run `npm run build` first.");
   log(prod ? "starting production server" : "starting development server (hot reload)");
-  app = prod
+  state.app = prod
     ? run("npx", ["tsx", "server.ts"], { ...env, NODE_ENV: "production" })
     : run(
         "npx",
@@ -131,7 +131,7 @@ async function main() {
         ],
         env,
       );
-  app.on("exit", () => void stop());
+  state.app.on("exit", () => void stop());
 }
 
 main().catch(async (err) => {
