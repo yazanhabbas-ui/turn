@@ -250,7 +250,6 @@ async function createDemo(tx: Tx, organizationId: string) {
         isFeatured: true,
         shortcutKey: "1",
         sortOrder: 0,
-        scheduleId: schedule.id,
       },
       {
         organizationId,
@@ -269,7 +268,6 @@ async function createDemo(tx: Tx, organizationId: string) {
         isFeatured: true,
         shortcutKey: "2",
         sortOrder: 1,
-        scheduleId: schedule.id,
       },
       {
         organizationId,
@@ -286,7 +284,6 @@ async function createDemo(tx: Tx, organizationId: string) {
         ],
         shortcutKey: "3",
         sortOrder: 2,
-        scheduleId: schedule.id,
       },
       {
         organizationId,
@@ -301,7 +298,6 @@ async function createDemo(tx: Tx, organizationId: string) {
         isFeatured: true,
         shortcutKey: "4",
         sortOrder: 3,
-        scheduleId: schedule.id,
         cutoffMinutes: 15,
       },
       {
@@ -321,7 +317,6 @@ async function createDemo(tx: Tx, organizationId: string) {
         allowAppointments: true,
         shortcutKey: "5",
         sortOrder: 4,
-        scheduleId: schedule.id,
       },
     ])
     .returning();

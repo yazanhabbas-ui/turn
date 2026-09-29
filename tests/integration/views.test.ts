@@ -8,7 +8,7 @@ import { advanceClock, setClock } from "@/server/clock";
 import { AppError } from "@/server/http/errors";
 import { callNext, issueTicket, setAgentStatus, ticketAction } from "@/server/queue/tickets";
 import { agentWorkspace, lookupAppointment, publicTicketStatus, queueState, receptionContext } from "@/server/queue/views";
-import { actorFor, resetDemo } from "./fixtures";
+import { actorFor, attachOfficeHours, resetDemo } from "./fixtures";
 import { prepareTestDatabase } from "./helpers";
 
 const available = await prepareTestDatabase();
@@ -58,6 +58,7 @@ describe.runIf(available)("queue views (database)", () => {
     expect(ctx.canReassign).toBe(false);
     await expect(receptionContext(khalid, null)).rejects.toBeInstanceOf(AppError);
 
+    await attachOfficeHours();
     setClock(zonedToUtc("2026-10-02", "10:00", "Asia/Riyadh")); // Friday
     const closed = await receptionContext(reception, null);
     expect(closed.reasons.every((r) => !r.open.open)).toBe(true);

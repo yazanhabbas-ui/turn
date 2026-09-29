@@ -192,6 +192,12 @@ Each entry records a choice, its reasons, and how to revisit it. Newest entries 
 - **PWA:** the web manifest takes its name and colour from the branding settings. The service worker caches only hashed static assets, fonts and icons (cache-first) and pages (network-first, falling back to the last copy). It never caches the API or realtime traffic. It registers in production only.
 - **Visitor status page** `/t/<token>` (basic version; notifications arrive in Milestone 7): opens in the language chosen at reception and refreshes every 10 s until the ticket is finished.
 
+## D28: Visit reasons are always open by default
+
+- Decided with the product owner on 2026-09-29: no working-hours restriction by default. The demo seed no longer attaches a timetable to visit reasons, so tickets can be issued at any time.
+- The working-hours feature itself is kept: timetables (with Ramadan hours), holidays and cut-off still apply to any reason that is given a timetable in Admin → Visit reasons. The demo seed still creates an example timetable ("Office hours", Sunday–Thursday 08:00–16:00), unattached, ready to use.
+- Prayer-time pauses stay active. They block calling, not issuing.
+
 ## Milestones
 
 1. **Foundation** (done): repo, Docker, schema, auth + 2FA, RBAC, i18n/RTL, seed, health, CI.

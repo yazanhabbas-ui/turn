@@ -18,7 +18,7 @@ import { advanceClock, setClock } from "@/server/clock";
 import { AppError } from "@/server/http/errors";
 import { callNext, issueTicket, maintainBranch, setAgentStatus, ticketAction } from "@/server/queue/tickets";
 import { queueState } from "@/server/queue/views";
-import { actorFor, resetDemo } from "./fixtures";
+import { actorFor, attachOfficeHours, resetDemo } from "./fixtures";
 import { prepareTestDatabase } from "./helpers";
 
 const available = await prepareTestDatabase();
@@ -112,7 +112,13 @@ describe.runIf(available)("queue engine (database)", () => {
     );
   });
 
+  it("reasons without a timetable are always open", async () => {
+    setClock(zonedToUtc("2026-10-02", "23:30", "Asia/Riyadh")); // Friday night
+    expect((await issue("general")).ticket.status).toBe("WAITING");
+  });
+
   it("refuses tickets outside business hours and during the cut-off", async () => {
+    await attachOfficeHours();
     setClock(zonedToUtc("2026-10-02", "10:00", "Asia/Riyadh")); // Friday
     await expectCode(issue("general"), "conflict", "closed");
     setClock(zonedToUtc("2026-09-29", "15:50", "Asia/Riyadh"));
