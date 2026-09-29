@@ -909,8 +909,10 @@ export type TicketView = {
   appointmentId: string | null;
 };
 
-export async function toView(tx: DbOrTx, t: TicketRow): Promise<TicketView> {
-  const [v] = t.visitorId ? await tx.select().from(visitors).where(eq(visitors.id, t.visitorId)) : [];
+export type VisitorRow = typeof visitors.$inferSelect;
+
+/** Maps a ticket (and its visitor) to the API shape. Pure; callers batch-load visitors. */
+export function viewOf(t: TicketRow, v: VisitorRow | null | undefined): TicketView {
   return {
     id: t.id,
     displayNumber: t.displayNumber,
@@ -939,69 +941,7 @@ export async function toView(tx: DbOrTx, t: TicketRow): Promise<TicketView> {
   };
 }
 
-/** Live queue state for reception, agents and supervisors. */
-export async function queueState(actor: Actor, branchId: string, opts: { q?: string } = {}) {
-  if (!can(actor.auth.grants, "tickets.view", branchId) && !can(actor.auth.grants, "agent.serve", branchId))
-    throw new AppError("forbidden");
-  return db().transaction(async (tx) => {
-    const bctx = await loadBranchContext(tx, branchId);
-    if (bctx.branch.organizationId !== actor.auth.user.organizationId) throw new AppError("not_found");
-    const s = bctx.snapshot;
-    const rows = await tx
-      .select()
-      .from(tickets)
-      .where(and(eq(tickets.branchId, branchId), eq(tickets.serviceDay, bctx.serviceDay)))
-      .orderBy(desc(tickets.createdAt))
-      .limit(500);
-    const older = await tx
-      .select()
-      .from(tickets)
-      .where(
-        and(
-          eq(tickets.branchId, branchId),
-          sql`${tickets.status} in ('WAITING','CALLED','SERVING','ON_HOLD')`,
-          sql`${tickets.serviceDay} <> ${bctx.serviceDay}`,
-        ),
-      );
-    const all = [...rows, ...older];
-    const views = await Promise.all(all.map((t) => toView(tx, t)));
-    let list = views;
-    if (opts.q) {
-      const q = opts.q.trim();
-      list = views.filter(
-        (v) =>
-          v.displayNumber.toLowerCase().includes(q.toLowerCase()) ||
-          (v.visitor?.name && looseNameMatch(v.visitor.name, q)) ||
-          (v.visitor?.phone ?? "").includes(q),
-      );
-    }
-    const orderedWaiting = orderTickets(
-      s.tickets.filter((t) => t.status === "WAITING"),
-      s.now,
-      s.configFor,
-      s.reasons,
-      s.priorities,
-    ).map((t) => t.id);
-    return {
-      now: new Date(s.now).toISOString(),
-      serviceDay: bctx.serviceDay,
-      paused: bctx.pause
-        ? { name: bctx.pause.pause.name, message: bctx.pause.pause.message, endsAtMinute: bctx.pause.endsAtMinute }
-        : null,
-      waitingOrder: orderedWaiting,
-      tickets: list,
-      agents: s.agents.map((a) => ({
-        id: a.id,
-        status: a.status,
-        maxConcurrent: a.maxConcurrent,
-        handledToday: a.handledToday,
-        reasons: [...a.skills.keys()],
-      })),
-      positions: Object.fromEntries(
-        views
-          .filter((v) => v.status === "WAITING")
-          .map((v) => [v.id, positionIn(bctx, { ...(all.find((x) => x.id === v.id) as TicketRow) })]),
-      ),
-    };
-  });
+export async function toView(tx: DbOrTx, t: TicketRow): Promise<TicketView> {
+  const [v] = t.visitorId ? await tx.select().from(visitors).where(eq(visitors.id, t.visitorId)) : [];
+  return viewOf(t, v);
 }

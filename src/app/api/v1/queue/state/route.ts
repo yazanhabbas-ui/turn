@@ -1,6 +1,6 @@
 import { AppError } from "@/server/http/errors";
 import { route } from "@/server/http/route";
-import { queueState } from "@/server/queue/tickets";
+import { queueState } from "@/server/queue/views";
 
 export const GET = route({}, async ({ actor, query }) => {
   const branchId = query.get("branchId");

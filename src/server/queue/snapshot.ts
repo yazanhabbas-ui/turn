@@ -1,5 +1,5 @@
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
-import type { Tx } from "@/db/client";
+import type { DbOrTx, Tx } from "@/db/client";
 import {
   agentGroupMembers,
   agentProfiles,
@@ -191,7 +191,7 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
 }
 
 /** Schedule rules and holidays relevant to issuing tickets for a reason in a branch. */
-export async function loadIssuingRules(tx: Tx, organizationId: string, branchId: string, scheduleId: string | null) {
+export async function loadIssuingRules(tx: DbOrTx, organizationId: string, branchId: string, scheduleId: string | null) {
   const [rules, hols] = await Promise.all([
     scheduleId ? tx.select().from(scheduleRules).where(eq(scheduleRules.scheduleId, scheduleId)) : Promise.resolve(null),
     tx

@@ -16,7 +16,8 @@ import { zonedToUtc } from "@/domain/schedule/time";
 import type { Actor } from "@/server/admin/actor";
 import { advanceClock, setClock } from "@/server/clock";
 import { AppError } from "@/server/http/errors";
-import { callNext, issueTicket, maintainBranch, queueState, setAgentStatus, ticketAction } from "@/server/queue/tickets";
+import { callNext, issueTicket, maintainBranch, setAgentStatus, ticketAction } from "@/server/queue/tickets";
+import { queueState } from "@/server/queue/views";
 import { actorFor, resetDemo } from "./fixtures";
 import { prepareTestDatabase } from "./helpers";
 
