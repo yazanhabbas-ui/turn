@@ -97,3 +97,19 @@ export const EVENT_TYPE: Record<TicketAction, string> = {
   assign: "ASSIGNED",
   release: "RELEASED",
 };
+
+/**
+ * Accidental final actions that can be undone within the configured window: the ticket returns to the
+ * status recorded as `fromStatus` on that event (e.g. NO_SHOW → CALLED, COMPLETED → SERVING).
+ */
+export const UNDOABLE_EVENTS: ReadonlySet<string> = new Set(["NO_SHOW", "COMPLETED", "CANCELLED"]);
+
+export function undoTarget(
+  lastEvent: { type: string; fromStatus: TicketStatus | null; at: number },
+  now: number,
+  windowSeconds: number,
+): TicketStatus | null {
+  if (!UNDOABLE_EVENTS.has(lastEvent.type) || !lastEvent.fromStatus) return null;
+  if (now - lastEvent.at > windowSeconds * 1000) return null;
+  return lastEvent.fromStatus;
+}

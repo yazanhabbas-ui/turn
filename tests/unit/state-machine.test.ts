@@ -65,3 +65,19 @@ describe("ticket state machine", () => {
     expect(allowedActions("CALLED").sort()).toEqual(["cancel", "hold", "no_show", "recall", "requeue", "start", "transfer"]);
   });
 });
+
+describe("undo", () => {
+  it("restores the previous status within the window only", async () => {
+    const { undoTarget } = await import("@/domain/tickets/state-machine");
+    expect(undoTarget({ type: "NO_SHOW", fromStatus: "CALLED", at: 0 }, 60_000, 120)).toBe("CALLED");
+    expect(undoTarget({ type: "COMPLETED", fromStatus: "SERVING", at: 0 }, 121_000, 120)).toBeNull();
+    expect(undoTarget({ type: "CALLED", fromStatus: "WAITING", at: 0 }, 1_000, 120)).toBeNull();
+  });
+
+  it("normalizes phone numbers for hashing", async () => {
+    const { normalizePhone } = await import("@/domain/tickets/phone");
+    expect(normalizePhone("٠٥٠ ١٢٣ ٤٥٦٧")).toBe("0501234567");
+    expect(normalizePhone("00966-50-123-4567")).toBe("+966501234567");
+    expect(normalizePhone("abc")).toBeNull();
+  });
+});
