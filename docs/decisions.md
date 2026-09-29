@@ -238,6 +238,12 @@ Each entry records a choice, its reasons, and how to revisit it. Newest entries 
 - **CSAT** is part of Milestone 7 (visitor status page and feedback) and is not in the reports yet.
 - **Demo history:** `npm run db:history` (opt-in) creates a synthetic past so reports have data; `-- --purge` removes exactly what it created.
 
+## D34: Bundled Arabic voice
+
+- Most kiosk PCs (including this one) have no Arabic text-to-speech voice, and installing one needs administrator rights and the internet. The project therefore ships a pre-recorded Arabic pack: 66 clips (phrase "رقم", the desk phrase, digits 0-9, Latin A-Z and Arabic letter names) in `public/audio/ar`, generated offline with Piper and its `ar_JO-kareem-medium` voice. `npm run voice:install-arabic` registers the pack and switches the provider to pre-recorded clips; Arabic then plays from the clips while English still uses the browser voice.
+- The pack speaks a ticket as "رقم" + letter + each digit + the desk phrase + the desk digits (for example A-012 at desk 1: "number, A, one, two, please go to desk, one"). Other phrase wording only applies to the browser voice.
+- **Licence:** the voice model's dataset licence is listed as "see URL" (github.com/AliMokhammad/arabicttstrain). Confirm it allows commercial redistribution before shipping this pack to customers, or record your own clips into the same file names.
+
 ## Milestones
 
 1. **Foundation** (done): repo, Docker, schema, auth + 2FA, RBAC, i18n/RTL, seed, health, CI.

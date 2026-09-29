@@ -346,7 +346,7 @@ export const audioPackInput = z.object({
   locale: z.enum(["ar", "en"]),
   name: z.string().trim().min(1).max(80),
   /** Clip key → local file path or inline audio. Keys look like `ar.digit.7`, `ar.letter.A`, `ar.phrase.number`. */
-  manifest: z.record(z.string().regex(/^[a-z]{2}\.(digit|letter|phrase)\.[A-Za-z0-9_]+$/), localMedia("audio")),
+  manifest: z.record(z.string().regex(/^[a-z]{2}\.(digit|letter|phrase)\.[\p{L}\p{N}_]+$/u), localMedia("audio")),
   isActive: z.boolean().default(true),
 });
 

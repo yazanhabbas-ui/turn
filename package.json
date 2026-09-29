@@ -18,6 +18,7 @@
     "db:seed": "tsx src/db/seed/index.ts",
     "db:reset": "tsx src/db/seed/index.ts --reset",
     "db:history": "tsx src/db/seed/history.ts",
+    "voice:install-arabic": "tsx scripts/install-arabic-voice.ts",
     "local": "tsx scripts/local.ts"
   },
   "dependencies": {

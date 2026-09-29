@@ -107,7 +107,7 @@ Nothing calls a service outside your network at runtime: fonts are bundled, QR c
 1. Sign in as an administrator, open **Admin → Screens → Add screen**, choose the branch and layout (classic, single number, multi-zone), and note the 6-character pairing code (valid 15 minutes).
 2. On the TV or mini-PC open `http://<server>:3000/display` in Chrome and type the code (or open `/display?code=ABC123`). The screen stays paired across restarts; revoke it from the same page.
 3. Kiosk tips: start Chrome with `--kiosk --autoplay-policy=no-user-gesture-required http://<server>:3000/display` so sound needs no tap. Without that flag, tap the screen once to enable sound. Press **F** (or double click) for fullscreen.
-4. **Voice:** Admin → Screens → Voice. The default uses the TV browser's own speech engine; many kiosk PCs have no Arabic voice. In that case install one (Windows: Settings → Time & language → Speech) or upload a pre-recorded pack (`ar.digit.0…9`, `ar.letter.A…`, `ar.phrase.number`, `ar.phrase.desk`) and switch the provider to "Pre-recorded clips".
+4. **Voice:** Admin → Screens → Voice. The default uses the TV browser's own speech engine; many kiosk PCs have no Arabic voice. In that case install one (Windows: Settings → Time & language → Speech) or upload a pre-recorded pack (`ar.digit.0…9`, `ar.letter.A…`, `ar.phrase.number`, `ar.phrase.desk`) and switch the provider to "Pre-recorded clips". A ready Arabic pack is included: run `npm run voice:install-arabic` (see decision D34 for its licence note).
 
 ## Reception speed
 
