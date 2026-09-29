@@ -45,3 +45,6 @@ next-env.d.ts
 /backups
 /playwright-report
 /test-results
+
+# bundled local database (npm run local)
+/.local

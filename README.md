@@ -35,9 +35,25 @@ openssl rand -hex 24      # PHONE_HASH_KEY
 
 Without a `.env`, Compose uses built-in development keys so a clean machine still starts. Never use those in production.
 
+## Quick start without Docker (any Windows/macOS/Linux PC, no admin rights)
+
+Use this when Docker isn't available, for example on a Windows PC without virtualization, WSL2 or admin rights. It needs Node.js 22+ only.
+
+```bash
+npm install
+npm run local            # bundled PostgreSQL + migrations + demo seed + app → http://localhost:3000
+```
+
+- **First run:** creates `.env` with fresh random keys and initialises a UTF-8 PostgreSQL in `./.local/pgdata` (git-ignored). The data is kept between runs.
+- **Production mode:** `npm run build`, then `npm run local -- --prod`.
+- **Database only** (for `npm test` or other tools): `npm run local -- --db`. The database listens on `localhost:5433`, user `dor`, password `dor`. Change the port with `LOCAL_PG_PORT`.
+- **Stopping:** press Ctrl+C. This stops the app and PostgreSQL cleanly.
+
+The PostgreSQL binaries come from the `embedded-postgres` npm package, so nothing is installed system-wide. For a real office server, prefer Docker Compose on Linux (below), or a native PostgreSQL installation.
+
 ## Local development
 
-Requirements: Node.js 22+ and PostgreSQL 15+ (easiest: `docker compose up -d db`).
+Requirements: Node.js 22+ and PostgreSQL 15+. The easiest options are `npm run local -- --db` or `docker compose up -d db`.
 
 ```bash
 npm install
