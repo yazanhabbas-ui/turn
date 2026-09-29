@@ -93,7 +93,35 @@ Every admin endpoint requires a signed-in user. The permission shown is checked 
 | PUT                | `/admin/settings/:key`                  | settings.manage (organization-wide)                | Keys: `branding`, `regional`, `ticketing`, `security`, `privacy`, `visitorStatus`                                                                  |
 | GET                | `/admin/audit`                          | audit.view                                         | `entityType`, `actorUserId`, `from`, `to`, `before` (cursor), `limit`. Returns `{items, nextBefore}`                                               |
 
-Ticket, display and report endpoints are added with their milestones.
+### Queue
+
+All queue mutations of a branch run in one transaction under a per-branch advisory lock, with a guarded update (the status and version must be unchanged). Two agents pressing Call next at the same moment can therefore never receive the same ticket. Realtime events are published only after commit.
+
+| Method | Path                         | Permission                  | Notes                                                                                                                                                                                                                                                                                                                                                                                |
+| ------ | ---------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| POST   | `/queue/tickets`             | tickets.issue               | `{branchId, reasonId, priorityKey?, language, fields{…intake}, consent, assignToAgentId?, appointmentId?, source}`. Send an `Idempotency-Key` header. Returns `{ticket, ahead, estimatedWaitMinutes, duplicate}`. Errors: `conflict/closed`, `conflict/cutoff`, `conflict/range_exhausted`, `validation/unexpected_field`, `validation/missing_field`, `validation/consent_required` |
+| POST   | `/queue/call-next`           | agent.serve                 | `{deskId?}`. Returns `{ticket}`, or `{ticket: null, reason: empty, paused, at_capacity or not_working}`. Also sets the agent to AVAILABLE                                                                                                                                                                                                                                            |
+| POST   | `/queue/tickets/:id/actions` | per action                  | `{action: recall, start, complete{outcome, notes, tags}, no_show, hold, resume, cancel{note}, transfer{toReasonId?, toAgentId?, note}, assign{agentId or null}, check_in, edit{priorityKey, notes, language}, undo}`. An illegal move returns `409 invalid_transition`                                                                                                               |
+| POST   | `/queue/agent/status`        | agent.serve                 | `{status: AVAILABLE, BUSY, ON_BREAK, AWAY or OFFLINE, breakTypeId?, deskId?}`                                                                                                                                                                                                                                                                                                        |
+| GET    | `/queue/state?branchId=&q=`  | tickets.view or agent.serve | Today's tickets (and older open ones), the waiting order, positions and estimates, agent statuses, and the active prayer pause                                                                                                                                                                                                                                                       |
+
+**Realtime (Socket.IO):** emit `subscribe {branchId}` (with an ack) to join the branch room. Events:
+
+- `queue.updated` (refetch the state)
+- `ticket.called {displayNumber, deskNumber, agentId, reasonId, language, recall}`
+- `agent.updated`
+- `alert.raised`
+
+### Distribution and simulation
+
+| Method | Path                            | Permission            | Notes                                                                                                                                                                                                                                                                                                    |
+| ------ | ------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/admin/distribution-rules`     | distribution.manage   | `{defaults, rules[{id, scope, branchId, queueId, config, version}], queues[]}`                                                                                                                                                                                                                           |
+| PUT    | `/admin/distribution-rules`     | distribution.manage   | `{scope: global, branch or queue, branchId?, queueId?, config}`. Validated when merged over the defaults. Applies to the next decision                                                                                                                                                                   |
+| DELETE | `/admin/distribution-rules/:id` | distribution.manage   | Removes a branch or queue override (the global rule cannot be removed)                                                                                                                                                                                                                                   |
+| POST   | `/admin/simulate`               | distribution.simulate | `{branchId, source: synthetic{total, opensAt, closesAt, vipShare, elderlyShare} or replay{date}, agentIds?, extraAgents, scenarios[{label, useCurrent, config}], seed}`. Returns per-scenario totals (avg, median, P90 and max wait, SLA %), per agent, per reason, fairness, and queue length over time |
+
+Display and report endpoints are added with their milestones.
 
 ## Realtime (Socket.IO)
 

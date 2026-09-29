@@ -2,6 +2,8 @@
 
 import {
   Building2,
+  FlaskConical,
+  Route,
   Clock,
   KeyRound,
   LayoutDashboard,
@@ -24,6 +26,8 @@ const ITEMS = [
   { href: "/admin/reasons", key: "reasons", icon: ListChecks, permission: "reasons.view" },
   { href: "/admin/groups", key: "groups", icon: UsersRound, permission: "reasons.view" },
   { href: "/admin/hours", key: "hours", icon: Clock, permission: "reasons.view" },
+  { href: "/admin/distribution", key: "distribution", icon: Route, permission: "distribution.manage" },
+  { href: "/admin/simulate", key: "simulate", icon: FlaskConical, permission: "distribution.simulate" },
   { href: "/admin/settings", key: "settings", icon: Settings, permission: "settings.manage" },
   { href: "/admin/audit", key: "audit", icon: ScrollText, permission: "audit.view" },
 ] as const;

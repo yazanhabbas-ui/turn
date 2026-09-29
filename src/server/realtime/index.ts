@@ -1,5 +1,6 @@
 import type { Server as HttpServer } from "node:http";
 import { Server } from "socket.io";
+import { can } from "@/domain/rbac/permissions";
 import { SESSION_COOKIE, validateSessionToken } from "../auth/session";
 import { logger } from "../logger";
 
@@ -50,6 +51,18 @@ export function initRealtime(server: HttpServer): Server {
     const auth = socket.data.auth;
     socket.join([`org:${auth.user.organizationId}`, `user:${auth.user.id}`]);
     logger.debug({ userId: auth.user.id }, "socket connected");
+
+    // Clients subscribe to a branch they may see; queue events for that branch are pushed to them.
+    socket.on("subscribe", (msg: { branchId?: string }, ack?: (r: { ok: boolean }) => void) => {
+      const branchId = typeof msg?.branchId === "string" ? msg.branchId : null;
+      const ok =
+        !!branchId && ["tickets.view", "agent.serve", "wallboard.view"].some((p) => can(auth.grants, p as never, branchId));
+      if (ok) socket.join(`branch:${branchId}`);
+      ack?.({ ok });
+    });
+    socket.on("unsubscribe", (msg: { branchId?: string }) => {
+      if (typeof msg?.branchId === "string") socket.leave(`branch:${msg.branchId}`);
+    });
   });
 
   g.__dorIo = hub;

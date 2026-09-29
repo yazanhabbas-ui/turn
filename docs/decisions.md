@@ -140,11 +140,46 @@ Each entry records a choice, its reasons, and how to revisit it. Newest entries 
 - **What:** `scripts/local.ts` starts a bundled PostgreSQL from the `embedded-postgres` dev dependency. The cluster is UTF-8, uses locale C, stores data in `./.local/pgdata`, and listens on port 5433. The script creates the `dor` and `dor_test` databases, writes `.env` with random keys on first run, applies migrations, runs the idempotent seed, and starts the app in dev or production mode.
 - **Scope:** Docker Compose remains the supported production deployment. The Definition of Done's `docker compose up` must still be verified on a machine with Docker.
 
+## D22: Queue engine architecture
+
+- `src/domain/distribution` is pure and I/O-free: config schema and layering, ordering and scoring, strategies, eligibility, dispatch and reservation expiry. The server builds an in-memory snapshot of the branch under its lock and asks the engine. The Simulate screen runs **the same functions** in a discrete-event simulation, so its results reflect real behaviour.
+- **Rule layering:** queue → branch → global → defaults, deep-merged. Arrays (such as strategy chains and aging steps) replace rather than merge. An invalid stored layer is ignored, so a mistake cannot break the queue. Rules are read on every decision, so changes need no restart.
+- **Strategy chain:** each strategy keeps only the best-ranked agents, and the next one breaks ties. Adding a strategy means adding one function to `STRATEGIES`.
+- **Ordering score:** wait × waitWeight + priority × priorityWeight + aging boosts + SLA pressure + appointment boost. Tiers order the queue: max-wait-breached first (FIFO among them), then priority lanes, then the regular line. Ties are broken by queue time, then id.
+- **Queue time:** `queued_at` is the ordering clock. A transfer keeps it, so the visitor keeps their place. "Send to end of queue" resets it. Waiting-time reports use `arrived_at`.
+- **Agent statuses:** only AVAILABLE agents receive new work. BUSY keeps existing reservations but gets nothing new. Break, away and offline release reservations. Pressing Call next sets the agent to AVAILABLE.
+- **Backups** serve a reason only during overflow (queue length or wait over the limit), or when no primary agent is free (configurable).
+- **Hybrid and sticky reservations** expire after `hybrid.acceptTimeoutMinutes`. An expired hybrid reservation raises a supervisor alert. Pure push reservations do not expire while the agent is present.
+- **Manual mode** never hands out unassigned tickets: reception or a supervisor assigns them.
+
+## D23: Consistency guarantees
+
+- Every branch mutation takes a transaction-scoped advisory lock on the branch, then updates tickets with `WHERE status = expected AND version = expected`.
+- Numbers come from `ticket_counters` under the same lock and are protected by a unique index on (branch, service day, prefix, number).
+- Issuing is idempotent through an `Idempotency-Key` (unique per organization).
+- Integration tests fire concurrent Call next and concurrent issuing, and assert no duplicates.
+- A 15-second maintenance loop evaluates automatic recalls, no-show timeouts, hybrid releases and push dispatch per branch. It is safe on several nodes, because every pass takes the branch lock.
+- Time comes from `src/server/clock.ts`, which tests can move forward to exercise timeouts deterministically.
+
+## D24: Issuing rules
+
+- Tickets can be issued only while the reason's timetable is open. The timetable accounts for Ramadan hours (when Ramadan mode is on and the date is in range), holidays, and the reason's cut-off minutes before closing. A reason with no timetable is always open.
+- During a prayer or custom pause, tickets can still be issued, but nobody is called or assigned. Automatic prayer times are calculated offline (Umm al-Qura) from the branch coordinates.
+- **Data minimisation:** only the reason's configured intake fields are accepted; anything else is rejected. Required fields are enforced. When personal data is provided and `privacy.requireConsent` is on, consent is required.
+- Phones are normalized (Western digits, `00` becomes `+`) and hashed with `PHONE_HASH_KEY` to recognise returning visitors.
+
+## D25: Charts
+
+- ECharts (tree-shaken, SVG renderer) with the validated reference categorical palette: slots 1–4 pass the CVD and normal-vision checks in light and dark mode.
+- Chart axes run left to right in both languages; labels are localized.
+- Text is measured with the page's computed font, because Arabic glyph widths differ from the default font.
+- Every chart has a table alternative on the same page.
+
 ## Milestones
 
 1. **Foundation** (done): repo, Docker, schema, auth + 2FA, RBAC, i18n/RTL, seed, health, CI.
 2. **Admin core** (done): users, roles matrix, invites, branches/desks, reasons with agent assignment, groups, schedules and prayer pauses, priority lanes, break types, settings, audit viewer.
-3. Queue engine: state machine, numbering, distribution strategies, ordering and aging, simulator.
+3. **Queue engine** (done): state machine, numbering, distribution strategies, ordering and aging, business hours and pauses, timers, distribution rules UI, simulator.
 4. Reception and agent workspaces (realtime).
 5. Display and voice (TTS providers, audio pack, chime, pairing).
 6. Reports, KPIs, wallboard, exports, scheduled emails.
