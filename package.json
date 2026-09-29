@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "tsx watch --clear-screen=false --ignore ./.next --ignore ./node_modules server.ts",
+    "dev": "tsx watch --clear-screen=false --exclude \"./src/**\" --exclude \"./messages/**\" --exclude \"./.next/**\" --exclude \"./.local/**\" server.ts",
     "build": "next build",
     "start": "cross-env NODE_ENV=production tsx server.ts",
     "lint": "eslint .",

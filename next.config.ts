@@ -29,6 +29,11 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Lets a production build live next to a running dev server (e.g. NEXT_DIST_DIR=.next-prod).
+  distDir: process.env.NEXT_DIST_DIR || ".next",
+  // The local launcher builds with DOR_FAST_BUILD=1: lint and typecheck already run in CI and `npm run typecheck`.
+  eslint: { ignoreDuringBuilds: process.env.DOR_FAST_BUILD === "1" },
+  typescript: { ignoreBuildErrors: process.env.DOR_FAST_BUILD === "1" },
   serverExternalPackages: ["@node-rs/argon2", "pg-boss", "pino", "pg"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

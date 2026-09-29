@@ -14,7 +14,10 @@ import { initRealtime } from "./src/server/realtime";
 async function main() {
   const config = env();
   const dev = config.NODE_ENV !== "production";
-  const app = next({ dev, hostname: config.HOSTNAME, port: config.PORT });
+  // Development bundler: webpack by default (~45 ms warm requests). DEV_BUNDLER=turbopack compiles first visits
+  // faster, but measured ~450 ms per warm request on Windows with this custom server.
+  const turbopack = dev && process.env.DEV_BUNDLER === "turbopack";
+  const app = next({ dev, turbopack, hostname: "localhost", port: config.PORT });
   const handle = app.getRequestHandler();
   await app.prepare();
 
@@ -29,9 +32,8 @@ async function main() {
   await startJobs();
   startQueueMaintenance();
 
-  server.listen(config.PORT, config.HOSTNAME, () => {
-    logger.info({ port: config.PORT, dev }, `Dor ready on ${config.APP_URL}`);
-  });
+  await listen(server, config.PORT, config.HOSTNAME);
+  logger.info({ port: config.PORT, host: config.HOSTNAME, dev, turbopack }, `Dor ready on ${config.APP_URL}`);
 
   const shutdown = (signal: string) => {
     logger.info({ signal }, "shutting down");
@@ -41,6 +43,26 @@ async function main() {
   };
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("SIGINT", () => shutdown("SIGINT"));
+}
+
+/**
+ * Listens dual-stack by default ("::" accepts IPv4 and IPv6). Binding IPv4 only makes every browser request
+ * to "localhost" on Windows wait ~200 ms for the IPv6 attempt to fail first. Hosts without IPv6 fall back to IPv4.
+ */
+function listen(server: ReturnType<typeof createServer>, port: number, host: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const onError = (err: NodeJS.ErrnoException) => {
+      if (host === "::" && (err.code === "EAFNOSUPPORT" || err.code === "EADDRNOTAVAIL")) {
+        logger.warn("IPv6 unavailable, listening on IPv4 only");
+        server.listen(port, "0.0.0.0", () => resolve());
+      } else reject(err);
+    };
+    server.once("error", onError);
+    server.listen(port, host, () => {
+      server.off("error", onError);
+      resolve();
+    });
+  });
 }
 
 main().catch((err) => {

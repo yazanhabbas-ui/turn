@@ -45,7 +45,8 @@ npm run local            # bundled PostgreSQL + migrations + demo seed + app →
 ```
 
 - **First run:** creates `.env` with fresh random keys and initialises a UTF-8 PostgreSQL in `./.local/pgdata` (git-ignored). The data is kept between runs.
-- **Production mode:** `npm run build`, then `npm run local -- --prod`.
+- **Default mode is production** (fast: pages in ~50–100 ms). The app is rebuilt automatically, into `./.next-prod`, only when the code has changed since the last build. A rebuild takes one to two minutes.
+- **Working on the code:** `npm run local -- --dev` runs with hot reload. After startup it pre-compiles the main pages in the background; wait for "pages pre-compiled" in the console before clicking around.
 - **Database only** (for `npm test` or other tools): `npm run local -- --db`. The database listens on `localhost:5433`, user `dor`, password `dor`. Change the port with `LOCAL_PG_PORT`.
 - **Stopping:** press Ctrl+C. This stops the app and PostgreSQL cleanly.
 

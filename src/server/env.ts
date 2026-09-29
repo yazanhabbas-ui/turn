@@ -3,7 +3,8 @@ import { z } from "zod";
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().default(3000),
-  HOSTNAME: z.string().default("0.0.0.0"),
+  /** Bind address. "::" = all interfaces, IPv4 and IPv6 (falls back to IPv4-only automatically). */
+  HOSTNAME: z.string().default("::"),
   /** Public base URL used in invite links, QR codes and emails, e.g. http://queue.local:3000 */
   APP_URL: z.string().url().default("http://localhost:3000"),
   DATABASE_URL: z.string().min(1).default("postgres://dor:dor@localhost:5432/dor"),

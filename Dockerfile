@@ -17,7 +17,7 @@ RUN npx next build
 
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
-ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=::
 RUN apt-get update && apt-get install -y --no-install-recommends postgresql-client tini && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app ./
 RUN chmod +x docker/entrypoint.sh && chown -R node:node /app

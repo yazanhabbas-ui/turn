@@ -19,16 +19,40 @@ const handlers: { [K in JobName]: (data: JobMap[K]) => Promise<unknown> } = {
 
 const g = globalThis as unknown as { __dorBoss?: PgBoss };
 
-export async function startJobs(): Promise<void> {
+/**
+ * Starts the worker, retrying transient database errors. If it still cannot start, the app keeps running
+ * without it: `enqueue` then runs handlers inline, so nothing is lost, only done synchronously.
+ */
+export async function startJobs(attempts = 5): Promise<void> {
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      await startJobsOnce();
+      return;
+    } catch (err) {
+      await g.__dorBoss?.stop({ graceful: false }).catch(() => undefined);
+      g.__dorBoss = undefined;
+      logger.warn({ err, attempt: i }, "background jobs failed to start");
+      if (i < attempts) await new Promise((r) => setTimeout(r, i * 2000));
+    }
+  }
+  logger.error("background jobs unavailable; running job handlers inline");
+}
+
+async function startJobsOnce(): Promise<void> {
   if (g.__dorBoss) return;
   const boss = new PgBoss({ connectionString: env().DATABASE_URL, schema: "pgboss" });
   boss.on("error", (err) => logger.error({ err }, "pg-boss error"));
-  await boss.start();
-  for (const name of Object.keys(handlers) as JobName[]) {
-    await boss.createQueue(name, { retryLimit: 5, retryDelay: 30, retryBackoff: true });
-    await boss.work<JobMap[typeof name]>(name, async (jobs) => {
-      for (const job of jobs) await handlers[name](job.data as never);
-    });
+  try {
+    await boss.start();
+    for (const name of Object.keys(handlers) as JobName[]) {
+      await boss.createQueue(name, { retryLimit: 5, retryDelay: 30, retryBackoff: true });
+      await boss.work<JobMap[typeof name]>(name, async (jobs) => {
+        for (const job of jobs) await handlers[name](job.data as never);
+      });
+    }
+  } catch (err) {
+    await boss.stop({ graceful: false }).catch(() => undefined);
+    throw err;
   }
   g.__dorBoss = boss;
   logger.info("background jobs started");

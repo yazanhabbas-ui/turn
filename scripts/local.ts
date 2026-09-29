@@ -1,8 +1,9 @@
 /**
  * Runs the whole system on one machine without Docker or a system-wide PostgreSQL install:
  *
- *   npm run local            # bundled PostgreSQL + migrations + seed + app (dev mode, hot reload)
- *   npm run local -- --prod  # same, serving the production build (run `npm run build` first)
+ *   npm run local            # bundled PostgreSQL + migrations + seed + app, production mode (fast).
+ *                            # Rebuilds automatically when the code changed since the last build.
+ *   npm run local -- --dev   # same, but development mode with hot reload (for working on the code)
  *   npm run local -- --db    # only the database (e.g. for `npm test`); Ctrl+C to stop
  *
  * PostgreSQL binaries come from the `embedded-postgres` npm package; data lives in ./.local/pgdata
@@ -11,7 +12,7 @@
  */
 import { spawn, type ChildProcess } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import EmbeddedPostgres from "embedded-postgres";
 import { Client } from "pg";
@@ -22,6 +23,8 @@ const PORT = Number(process.env.LOCAL_PG_PORT ?? 5433);
 const USER = "dor";
 const PASSWORD = "dor";
 const dataDir = path.join(root, ".local", "pgdata");
+/** Production build directory, separate from the dev server's .next so both can exist side by side. */
+const PROD_DIST = ".next-prod";
 
 function log(msg: string) {
   console.log(`\x1b[36m[local]\x1b[0m ${msg}`);
@@ -66,6 +69,79 @@ function runToEnd(cmd: string, argv: string[], env: NodeJS.ProcessEnv): Promise<
   });
 }
 
+const pgLog: string[] = [];
+function remember(line: string) {
+  pgLog.push(line.trim());
+  if (pgLog.length > 40) pgLog.shift();
+}
+
+/** Newest modification time of the files that affect the production build. */
+function newestSourceMtime(): number {
+  let newest = 0;
+  const visit = (p: string) => {
+    if (!existsSync(p)) return;
+    const st = statSync(p);
+    if (st.isDirectory()) for (const e of readdirSync(p)) visit(path.join(p, e));
+    else newest = Math.max(newest, st.mtimeMs);
+  };
+  for (const p of ["src", "messages", "public", "next.config.ts", "package-lock.json", "tsconfig.json", "postcss.config.mjs"]) {
+    visit(path.join(root, p));
+  }
+  return newest;
+}
+
+function buildIsStale(): boolean {
+  const id = path.join(root, PROD_DIST, "BUILD_ID");
+  return !existsSync(id) || statSync(id).mtimeMs < newestSourceMtime();
+}
+
+/**
+ * Development only: webpack compiles each page on its first visit (several seconds). Visit the main pages once
+ * in the background right after startup so the first real click is fast.
+ */
+async function warmUp() {
+  const base = `http://127.0.0.1:${process.env.PORT ?? 3000}`;
+  for (let i = 0; i < 120; i++) {
+    const ok = await fetch(`${base}/api/health`).then(
+      (r) => r.ok,
+      () => false,
+    );
+    if (ok) break;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  const login = await fetch(`${base}/api/v1/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: base },
+    body: JSON.stringify({ email: "admin@dor.local", password: process.env.SEED_PASSWORD ?? "Dor@Demo2026" }),
+  }).catch(() => null);
+  const cookie = login?.headers.get("set-cookie")?.split(";")[0] ?? "";
+  const pages = [
+    "/login",
+    "/",
+    "/admin",
+    "/admin/users",
+    "/admin/roles",
+    "/admin/branches",
+    "/admin/reasons",
+    "/admin/groups",
+    "/admin/hours",
+    "/admin/distribution",
+    "/admin/simulate",
+    "/admin/settings",
+    "/admin/audit",
+    "/reception",
+    "/agent",
+    "/account",
+    "/api/v1/admin/lookups",
+    "/api/v1/admin/users",
+    "/api/v1/admin/reasons",
+    "/api/v1/admin/settings",
+  ];
+  const t0 = Date.now();
+  for (const p of pages) await fetch(base + p, { headers: { cookie } }).catch(() => undefined);
+  log(`pages pre-compiled in ${Math.round((Date.now() - t0) / 1000)} s; the app is ready`);
+}
+
 async function main() {
   ensureEnvFile();
   const pg = new EmbeddedPostgres({
@@ -75,14 +151,23 @@ async function main() {
     port: PORT,
     persistent: true,
     initdbFlags: ["--encoding=UTF8", "--locale=C"],
-    onLog: () => undefined,
+    // Keep the last lines of PostgreSQL output so a failed start explains itself.
+    onLog: (m) => remember(String(m)),
+    onError: (m) => remember(String(m instanceof Error ? m.message : m)),
   });
 
   if (!existsSync(path.join(dataDir, "PG_VERSION"))) {
     log(`initialising PostgreSQL in ${path.relative(root, dataDir)} (first run only)`);
     await pg.initialise();
   }
-  await pg.start();
+  try {
+    await pg.start();
+  } catch (err) {
+    console.error(pgLog.join("\n"));
+    throw new Error(
+      `PostgreSQL did not start (${err ?? "unknown error"}). If a previous run was killed, make sure no postgres process is left running and that port ${PORT} is free.`,
+    );
+  }
   log(`PostgreSQL running on localhost:${PORT}`);
   await ensureDatabases();
 
@@ -109,28 +194,38 @@ async function main() {
   await runToEnd("npx", ["tsx", "src/db/migrate.ts"], env);
   await runToEnd("npx", ["tsx", "src/db/seed/index.ts"], env);
 
-  const prod = args.has("--prod");
-  if (prod && !existsSync(path.join(root, ".next", "BUILD_ID")))
-    throw new Error("No production build found. Run `npm run build` first.");
-  log(prod ? "starting production server" : "starting development server (hot reload)");
-  state.app = prod
-    ? run("npx", ["tsx", "server.ts"], { ...env, NODE_ENV: "production" })
-    : run(
-        "npx",
-        [
-          "tsx",
-          "watch",
-          "--clear-screen=false",
-          "--ignore",
-          "./.next",
-          "--ignore",
-          "./node_modules",
-          "--ignore",
-          "./.local",
-          "server.ts",
-        ],
-        env,
-      );
+  if (args.has("--dev")) {
+    log("starting development server (hot reload)");
+    // Next.js hot-reloads src/ itself; restarting the whole process for those files would throw away its
+    // compile cache and make every page slow again. Only server.ts-level changes restart the process.
+    state.app = run(
+      "npx",
+      [
+        "tsx",
+        "watch",
+        "--clear-screen=false",
+        "--exclude",
+        "./src/**",
+        "--exclude",
+        "./messages/**",
+        "--exclude",
+        "./.next/**",
+        "--exclude",
+        "./.local/**",
+        "server.ts",
+      ],
+      env,
+    );
+    void warmUp();
+  } else {
+    const prodEnv = { ...env, NODE_ENV: "production" as const, NEXT_DIST_DIR: PROD_DIST };
+    if (buildIsStale()) {
+      log("building the production version (only when the code changed; about a minute)…");
+      await runToEnd("npx", ["next", "build"], { ...prodEnv, DOR_FAST_BUILD: "1" });
+    }
+    log("starting production server");
+    state.app = run("npx", ["tsx", "server.ts"], prodEnv);
+  }
   state.app.on("exit", () => void stop());
 }
 

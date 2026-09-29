@@ -8,3 +8,4 @@ coverage
 .local
 playwright-report
 test-results
+.next-prod

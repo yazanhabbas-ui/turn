@@ -175,6 +175,13 @@ Each entry records a choice, its reasons, and how to revisit it. Newest entries 
 - Text is measured with the page's computed font, because Arabic glyph widths differ from the default font.
 - Every chart has a table alternative on the same page.
 
+## D26: Local performance (measured on the Windows development PC)
+
+- **Dual-stack listening:** the server listens on `::`, which accepts IPv4 and IPv6, and falls back to IPv4 automatically. Listening on `0.0.0.0` only made every new connection to `localhost` on Windows wait ~210 ms for the IPv6 attempt to fail. `HOSTNAME` still overrides the address.
+- **`npm run local` defaults to production:** it rebuilds into `.next-prod` only when sources changed, skipping lint and typecheck (`DOR_FAST_BUILD=1`) because CI runs them. Warm pages take ~50–100 ms and API calls ~10–40 ms. Before, in dev mode over `localhost`, pages took 0.5–11 s and API calls ~250 ms.
+- **`--dev` uses webpack:** measured warm requests are ~45 ms with webpack versus ~450 ms with Turbopack under this custom server. `DEV_BUNDLER=turbopack` opts in. The file watcher excludes `src/` and `messages/`, because Next hot-reloads those itself; restarting the process would discard its compile cache. A warm-up pass pre-compiles the main pages after startup.
+- **Background jobs:** a failure to start pg-boss (for example a transient database reset) is retried and never takes the app down. If the worker is unavailable, job handlers run inline.
+
 ## Milestones
 
 1. **Foundation** (done): repo, Docker, schema, auth + 2FA, RBAC, i18n/RTL, seed, health, CI.
