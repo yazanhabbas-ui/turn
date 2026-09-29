@@ -1,0 +1,226 @@
+import { boolean, date, index, integer, jsonb, pgTable, primaryKey, text, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { archivedAt, createdAt, id, updatedAt, type LocalizedText } from "./_common";
+import { agentGroups } from "./agents";
+import { users } from "./identity";
+import { branches, organizations } from "./tenancy";
+
+/** Named weekly timetable, reusable by branches and reasons. */
+export const schedules = pgTable("schedules", {
+  id: id(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id),
+  name: jsonb("name").$type<LocalizedText>().notNull(),
+  archivedAt: archivedAt(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/**
+ * One open interval on one weekday. `kind` groups rules: `regular` always applies; `ramadan` / `special` apply
+ * only between `valid_from` and `valid_to` and then replace the regular rules for that day.
+ */
+export const scheduleRules = pgTable(
+  "schedule_rules",
+  {
+    id: id(),
+    scheduleId: uuid("schedule_id")
+      .notNull()
+      .references(() => schedules.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull().default("regular"),
+    weekday: integer("weekday").notNull(),
+    opensAt: text("opens_at").notNull(),
+    closesAt: text("closes_at").notNull(),
+    validFrom: date("valid_from"),
+    validTo: date("valid_to"),
+  },
+  (t) => [index("schedule_rules_schedule_idx").on(t.scheduleId)],
+);
+
+export const holidays = pgTable("holidays", {
+  id: id(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id),
+  branchId: uuid("branch_id").references(() => branches.id),
+  name: jsonb("name").$type<LocalizedText>().notNull(),
+  dateFrom: date("date_from").notNull(),
+  dateTo: date("date_to").notNull(),
+  createdAt: createdAt(),
+});
+
+/**
+ * Service pause (prayer time or custom). `mode = manual` uses start/end times;
+ * `mode = auto` computes the time offline from the branch coordinates for `prayer`.
+ */
+export const pauseWindows = pgTable("pause_windows", {
+  id: id(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id),
+  branchId: uuid("branch_id")
+    .notNull()
+    .references(() => branches.id),
+  kind: text("kind").notNull().default("prayer"),
+  name: jsonb("name").$type<LocalizedText>().notNull(),
+  mode: text("mode").notNull().default("manual"),
+  prayer: text("prayer"),
+  startsAt: text("starts_at"),
+  endsAt: text("ends_at"),
+  offsetMinutes: integer("offset_minutes").notNull().default(0),
+  durationMinutes: integer("duration_minutes").notNull().default(20),
+  weekdays: jsonb("weekdays").$type<number[]>().notNull().default([0, 1, 2, 3, 4, 5, 6]),
+  /** Only in Ramadan mode, only outside it, or always. */
+  season: text("season").notNull().default("always"),
+  message: jsonb("message").$type<LocalizedText>(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/** Priority lanes / flags (VIP, Sheikh/guest, elderly, disabled, pregnant, urgent, ladies/family). Data, not an enum. */
+export const priorityLevels = pgTable(
+  "priority_levels",
+  {
+    id: id(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    key: text("key").notNull(),
+    name: jsonb("name").$type<LocalizedText>().notNull(),
+    /** Score added by the ordering policy. 0 = normal. */
+    weight: integer("weight").notNull().default(0),
+    /** Separate lane: tickets are served from this lane before normal tickets of the same queue. */
+    isLane: boolean("is_lane").notNull().default(false),
+    color: text("color").notNull().default("#64748b"),
+    icon: text("icon"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    archivedAt: archivedAt(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("priority_levels_org_key_uq").on(t.organizationId, t.key)],
+);
+
+export type IntakeField = {
+  key: string;
+  /** Built-in keys: name, phone, company, national_id_last4, email, notes. Custom keys use `label`. */
+  label?: LocalizedText;
+  type?: "text" | "phone" | "number" | "email";
+  required: boolean;
+};
+
+/** Visit reason (service). Defines the ticket prefix and service expectations. */
+export const visitReasons = pgTable(
+  "visit_reasons",
+  {
+    id: id(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    code: text("code").notNull(),
+    name: jsonb("name").$type<LocalizedText>().notNull(),
+    description: jsonb("description").$type<LocalizedText>(),
+    icon: text("icon").notNull().default("circle-help"),
+    color: text("color").notNull().default("#0f766e"),
+    /** Ticket prefix, Latin or Arabic letters (e.g. "A", "أ"). */
+    prefix: text("prefix").notNull(),
+    defaultPriorityKey: text("default_priority_key"),
+    expectedServiceMinutes: integer("expected_service_minutes").notNull().default(10),
+    slaTargetWaitMinutes: integer("sla_target_wait_minutes").notNull().default(15),
+    intakeFields: jsonb("intake_fields").$type<IntakeField[]>().notNull().default([]),
+    allowAppointments: boolean("allow_appointments").notNull().default(false),
+    scheduleId: uuid("schedule_id").references(() => schedules.id),
+    /** Stop issuing tickets this many minutes before closing. */
+    cutoffMinutes: integer("cutoff_minutes").notNull().default(0),
+    /** Shown first on the reception screen for two-tap issuing. */
+    isFeatured: boolean("is_featured").notNull().default(false),
+    shortcutKey: text("shortcut_key"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    archivedAt: archivedAt(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("visit_reasons_org_code_uq").on(t.organizationId, t.code)],
+);
+
+/** Who can serve a reason: an individual agent or a whole group, with proficiency and primary/backup flag. */
+export const reasonAssignments = pgTable(
+  "reason_assignments",
+  {
+    id: id(),
+    reasonId: uuid("reason_id")
+      .notNull()
+      .references(() => visitReasons.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    groupId: uuid("group_id").references(() => agentGroups.id, { onDelete: "cascade" }),
+    /** Null = applies in every branch. */
+    branchId: uuid("branch_id").references(() => branches.id),
+    proficiency: integer("proficiency").notNull().default(3),
+    isPrimary: boolean("is_primary").notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [index("reason_assignments_reason_idx").on(t.reasonId), index("reason_assignments_user_idx").on(t.userId)],
+);
+
+/** A reason's queue in one branch. Holds the number range; tickets belong to a queue. */
+export const queues = pgTable(
+  "queues",
+  {
+    id: id(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => branches.id),
+    reasonId: uuid("reason_id")
+      .notNull()
+      .references(() => visitReasons.id),
+    /** Overrides the reason prefix in this branch when set. */
+    prefix: text("prefix"),
+    numberStart: integer("number_start").notNull().default(1),
+    numberEnd: integer("number_end").notNull().default(999),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("queues_branch_reason_uq").on(t.branchId, t.reasonId)],
+);
+
+/**
+ * Distribution configuration. Resolution order: queue → branch → global.
+ * `config` is validated by the domain schema (src/domain/distribution/config.ts).
+ */
+export const distributionRules = pgTable(
+  "distribution_rules",
+  {
+    id: id(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    scope: text("scope").notNull(),
+    branchId: uuid("branch_id").references(() => branches.id),
+    queueId: uuid("queue_id").references(() => queues.id),
+    config: jsonb("config").$type<Record<string, unknown>>().notNull(),
+    version: integer("version").notNull().default(1),
+    updatedByUserId: uuid("updated_by_user_id").references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [unique("distribution_rules_scope_uq").on(t.organizationId, t.scope, t.branchId, t.queueId).nullsNotDistinct()],
+);
+
+/** Daily ticket number counter per branch and prefix. Incremented under row lock. */
+export const ticketCounters = pgTable(
+  "ticket_counters",
+  {
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => branches.id),
+    prefix: text("prefix").notNull(),
+    serviceDay: date("service_day").notNull(),
+    lastNumber: integer("last_number").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.branchId, t.prefix, t.serviceDay] })],
+);

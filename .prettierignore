@@ -1,0 +1,7 @@
+node_modules
+.next
+drizzle
+package-lock.json
+src/components/ui
+backups
+coverage

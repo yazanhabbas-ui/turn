@@ -1,0 +1,98 @@
+import { ShieldAlert, UserRound } from "lucide-react";
+import { getLocale, getTranslations } from "next-intl/server";
+import { can } from "@/domain/rbac/permissions";
+import { pickText } from "@/i18n/locales";
+import { Link } from "@/i18n/navigation";
+import { AREAS, type AreaKey } from "@/lib/areas";
+import { cn } from "@/lib/utils";
+import type { AuthContext } from "@/server/auth/session";
+import { getBranding } from "@/server/branding";
+import { LanguageSwitcher } from "./language-switcher";
+import { SignOutButton } from "./sign-out-button";
+
+/** Header shared by every signed-in workspace: brand, area switcher, language, account, sign out. */
+export async function AppShell({
+  auth,
+  area,
+  children,
+  sidebar,
+}: {
+  auth: AuthContext;
+  area?: AreaKey | "account";
+  children: React.ReactNode;
+  sidebar?: React.ReactNode;
+}) {
+  const locale = await getLocale();
+  const t = await getTranslations("areas");
+  const branding = await getBranding(auth.user.organizationId);
+  const areas = AREAS.filter((a) => can(auth.grants, a.permission));
+
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <header className="bg-background/95 sticky top-0 z-30 border-b backdrop-blur">
+        <div className="flex h-14 items-center gap-3 px-4">
+          <Link href="/" className="text-brand flex items-center gap-2 font-bold">
+            {branding.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={branding.logoUrl} alt="" className="h-8 w-auto" />
+            ) : (
+              <span className="bg-brand grid size-8 place-items-center rounded-lg text-sm text-white">
+                {pickText(branding.companyName, locale).slice(0, 1)}
+              </span>
+            )}
+            <span className="hidden sm:inline">{pickText(branding.companyName, locale)}</span>
+          </Link>
+          <nav className="flex items-center gap-1 overflow-x-auto" aria-label={t("chooseArea")}>
+            {areas.map((a) => (
+              <Link
+                key={a.key}
+                href={a.href}
+                className={cn(
+                  "text-muted-foreground hover:bg-muted hover:text-foreground rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap",
+                  area === a.key && "bg-brand/10 text-brand",
+                )}
+                aria-current={area === a.key ? "page" : undefined}
+              >
+                {t(a.key)}
+              </Link>
+            ))}
+          </nav>
+          <div className="ms-auto flex items-center gap-1">
+            <LanguageSwitcher signedIn />
+            <Link
+              href="/account"
+              className={cn(
+                "hover:bg-muted inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm",
+                area === "account" && "bg-muted",
+              )}
+            >
+              <UserRound className="size-4" aria-hidden />
+              <span className="hidden max-w-40 truncate md:inline">
+                {pickText(auth.user.displayName, locale, auth.user.email)}
+              </span>
+            </Link>
+            <SignOutButton />
+          </div>
+        </div>
+      </header>
+      <div className="flex flex-1">
+        {sidebar}
+        <main className="min-w-0 flex-1 p-4 md:p-6">{children}</main>
+      </div>
+    </div>
+  );
+}
+
+export async function Forbidden() {
+  const t = await getTranslations("common");
+  return (
+    <div className="mx-auto mt-16 max-w-md text-center">
+      <ShieldAlert className="text-muted-foreground mx-auto size-12" aria-hidden />
+      <h1 className="mt-4 text-xl font-bold">{t("forbidden")}</h1>
+      <p className="text-muted-foreground mt-2">{t("forbiddenBody")}</p>
+      <Link href="/" className="text-brand mt-6 inline-block underline underline-offset-4">
+        {t("goHome")}
+      </Link>
+    </div>
+  );
+}

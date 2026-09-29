@@ -1,0 +1,236 @@
+{
+  "app": {
+    "name": "Dor",
+    "tagline": "Visitor queue and turn distribution"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "loading": "Loading…",
+    "retry": "Try again",
+    "search": "Search",
+    "language": "Language",
+    "signOut": "Sign out",
+    "yes": "Yes",
+    "no": "No",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "comingNext": "This section is being built in an upcoming milestone.",
+    "somethingWrong": "Something went wrong",
+    "notFound": "Page not found",
+    "notFoundBody": "The page you are looking for does not exist or was moved.",
+    "goHome": "Go to home",
+    "forbidden": "Access denied",
+    "forbiddenBody": "Your role does not include access to this page. Ask an administrator if you need it."
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signInTitle": "Welcome",
+    "signInSubtitle": "Sign in to continue to your workspace",
+    "email": "Email",
+    "password": "Password",
+    "organization": "Organization code",
+    "invalidCredentials": "Email or password is incorrect.",
+    "locked": "Too many failed attempts. Try again in {minutes} minutes.",
+    "rateLimited": "Too many requests. Please wait a moment and try again.",
+    "organizationRequired": "This email belongs to more than one organization. Enter the organization code.",
+    "twoFactorTitle": "Two-step verification",
+    "twoFactorSubtitle": "Enter the 6-digit code from your authenticator app.",
+    "code": "Verification code",
+    "verify": "Verify",
+    "invalidCode": "The code is incorrect or expired.",
+    "signedOut": "You have been signed out."
+  },
+  "account": {
+    "title": "My account",
+    "security": "Security",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "passwordsDontMatch": "The passwords do not match.",
+    "passwordChanged": "Password changed. Other sessions were signed out.",
+    "wrongPassword": "The current password is incorrect.",
+    "twoFactor": "Two-step verification (TOTP)",
+    "twoFactorOn": "Two-step verification is on.",
+    "twoFactorOff": "Add a second step to your sign-in using an authenticator app such as Microsoft Authenticator or Google Authenticator.",
+    "enable2fa": "Enable two-step verification",
+    "disable2fa": "Turn off",
+    "scanQr": "Scan this code with your authenticator app, then enter the 6-digit code it shows.",
+    "manualKey": "Or enter this key manually",
+    "twoFactorEnabled": "Two-step verification is now on.",
+    "twoFactorDisabled": "Two-step verification is off.",
+    "preferences": "Preferences",
+    "interfaceLanguage": "Interface language"
+  },
+  "passwordIssues": {
+    "tooShort": "At least {min} characters",
+    "tooLong": "At most 256 characters",
+    "upper": "An uppercase letter",
+    "lower": "A lowercase letter",
+    "digit": "A number",
+    "symbol": "A symbol",
+    "common": "Not a common password",
+    "containsEmail": "Must not contain your email name"
+  },
+  "areas": {
+    "admin": "Administration",
+    "reception": "Reception",
+    "agent": "Agent workspace",
+    "display": "Display screen",
+    "wallboard": "Live wallboard",
+    "account": "My account",
+    "chooseArea": "Choose where to work",
+    "noAreas": "Your account has no workspace assigned yet. Ask an administrator to give you a role."
+  },
+  "admin": {
+    "dashboard": "Overview",
+    "users": "Users",
+    "roles": "Roles & permissions",
+    "invites": "Invitations",
+    "branches": "Branches & desks",
+    "reasons": "Visit reasons",
+    "distribution": "Distribution rules",
+    "simulate": "Simulate",
+    "displays": "Screens",
+    "announcements": "Announcements",
+    "templates": "Templates",
+    "reports": "Reports",
+    "settings": "Settings",
+    "audit": "Audit log",
+    "stats": {
+      "branches": "Branches",
+      "desks": "Desks",
+      "users": "Users",
+      "reasons": "Visit reasons",
+      "roles": "Roles"
+    },
+    "welcome": "Welcome, {name}",
+    "overviewHint": "Configure your offices, services, and how turns are distributed. Every rule here takes effect immediately."
+  },
+  "workspace": {
+    "receptionEmpty": "The reception console opens here: choose a visit reason and issue a ticket in two taps.",
+    "agentEmpty": "Your queue and the call-next button appear here."
+  },
+  "display": {
+    "notPaired": "This screen is not paired yet",
+    "pairHint": "An administrator can pair it from Admin → Screens."
+  },
+  "permissionGroups": {
+    "admin": "Administration",
+    "users": "Users & roles",
+    "organization": "Organization",
+    "services": "Services & distribution",
+    "tickets": "Tickets & appointments",
+    "agent": "Agent",
+    "reports": "Reports & monitoring",
+    "privacy": "Data protection",
+    "integrations": "Integrations"
+  },
+  "permissions": {
+    "admin": {
+      "access": "Open the admin dashboard"
+    },
+    "settings": {
+      "manage": "Change system settings"
+    },
+    "audit": {
+      "view": "View the audit log"
+    },
+    "users": {
+      "view": "View users",
+      "manage": "Create, edit and deactivate users",
+      "invite": "Invite users"
+    },
+    "roles": {
+      "view": "View roles",
+      "manage": "Create and edit roles"
+    },
+    "branches": {
+      "manage": "Manage branches, floors and desks"
+    },
+    "displays": {
+      "manage": "Pair and manage screens"
+    },
+    "announcements": {
+      "manage": "Manage screen announcements"
+    },
+    "templates": {
+      "manage": "Edit message and print templates"
+    },
+    "reasons": {
+      "view": "View visit reasons",
+      "manage": "Manage visit reasons and agent assignment"
+    },
+    "distribution": {
+      "manage": "Change distribution rules",
+      "simulate": "Run distribution simulations"
+    },
+    "tickets": {
+      "view": "View tickets and live queue",
+      "issue": "Issue tickets",
+      "edit": "Edit tickets",
+      "cancel": "Cancel tickets",
+      "reprint": "Reprint tickets",
+      "reassign": "Reassign tickets to other agents"
+    },
+    "appointments": {
+      "manage": "Manage appointments",
+      "checkin": "Check in appointments"
+    },
+    "agent": {
+      "serve": "Serve visitors (agent workspace)"
+    },
+    "reports": {
+      "view": "View reports and KPIs",
+      "export": "Export reports",
+      "schedule": "Schedule report emails"
+    },
+    "wallboard": {
+      "view": "View the live wallboard"
+    },
+    "alerts": {
+      "view": "View alerts",
+      "manage": "Acknowledge alerts and set thresholds"
+    },
+    "visitors": {
+      "privacy": "Export or erase a visitor's data"
+    },
+    "apikeys": {
+      "manage": "Manage API keys"
+    },
+    "webhooks": {
+      "manage": "Manage webhooks"
+    }
+  },
+  "ticketStatus": {
+    "APPOINTMENT_PENDING": "Appointment",
+    "WAITING": "Waiting",
+    "CALLED": "Called",
+    "SERVING": "Serving",
+    "ON_HOLD": "On hold",
+    "COMPLETED": "Completed",
+    "NO_SHOW": "No-show",
+    "CANCELLED": "Cancelled"
+  },
+  "agentStatus": {
+    "AVAILABLE": "Available",
+    "BUSY": "Busy",
+    "ON_BREAK": "On break",
+    "AWAY": "Away",
+    "OFFLINE": "Offline"
+  },
+  "errors": {
+    "validation": "Please check the highlighted fields.",
+    "unauthorized": "Please sign in again.",
+    "forbidden": "You do not have permission to do this.",
+    "notFound": "Not found.",
+    "conflict": "This was changed by someone else. Refresh and try again.",
+    "network": "Cannot reach the server. Retrying…",
+    "server": "Unexpected error. Please try again."
+  }
+}
