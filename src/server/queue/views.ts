@@ -148,37 +148,50 @@ export async function receptionContext(actor: Actor, requestedBranchId?: string 
   const branch = allowed.find((b) => b.id === requestedBranchId) ?? allowed[0];
   const org = actor.auth.user.organizationId;
 
-  const [reasonRows, priorityRows, ctx, privacy, ticketing, visitorStatus, reception, branding, regional, printTpl, queueRows] =
-    await Promise.all([
-      db()
-        .select()
-        .from(visitReasons)
-        .where(and(eq(visitReasons.organizationId, org), isNull(visitReasons.archivedAt)))
-        .orderBy(asc(visitReasons.sortOrder)),
-      db()
-        .select()
-        .from(priorityLevels)
-        .where(and(eq(priorityLevels.organizationId, org), isNull(priorityLevels.archivedAt)))
-        .orderBy(asc(priorityLevels.sortOrder)),
-      db().transaction((tx) => loadBranchContext(tx, branch.id)),
-      getSetting(org, "privacy", branch.id),
-      getSetting(org, "ticketing", branch.id),
-      getSetting(org, "visitorStatus", branch.id),
-      getSetting(org, "reception", branch.id),
-      getSetting(org, "branding", branch.id),
-      getSetting(org, "regional", branch.id),
-      db()
-        .select()
-        .from(messageTemplates)
-        .where(
-          and(
-            eq(messageTemplates.organizationId, org),
-            eq(messageTemplates.channel, "ticket_print"),
-            eq(messageTemplates.event, "ticket_issued"),
-          ),
+  const [
+    reasonRows,
+    priorityRows,
+    ctx,
+    privacy,
+    ticketing,
+    visitorStatus,
+    reception,
+    wifi,
+    branding,
+    regional,
+    printTpl,
+    queueRows,
+  ] = await Promise.all([
+    db()
+      .select()
+      .from(visitReasons)
+      .where(and(eq(visitReasons.organizationId, org), isNull(visitReasons.archivedAt)))
+      .orderBy(asc(visitReasons.sortOrder)),
+    db()
+      .select()
+      .from(priorityLevels)
+      .where(and(eq(priorityLevels.organizationId, org), isNull(priorityLevels.archivedAt)))
+      .orderBy(asc(priorityLevels.sortOrder)),
+    db().transaction((tx) => loadBranchContext(tx, branch.id)),
+    getSetting(org, "privacy", branch.id),
+    getSetting(org, "ticketing", branch.id),
+    getSetting(org, "visitorStatus", branch.id),
+    getSetting(org, "reception", branch.id),
+    getSetting(org, "wifi", branch.id),
+    getSetting(org, "branding", branch.id),
+    getSetting(org, "regional", branch.id),
+    db()
+      .select()
+      .from(messageTemplates)
+      .where(
+        and(
+          eq(messageTemplates.organizationId, org),
+          eq(messageTemplates.channel, "ticket_print"),
+          eq(messageTemplates.event, "ticket_issued"),
         ),
-      db().select({ id: queues.id, reasonId: queues.reasonId }).from(queues).where(eq(queues.branchId, branch.id)),
-    ]);
+      ),
+    db().select({ id: queues.id, reasonId: queues.reasonId }).from(queues).where(eq(queues.branchId, branch.id)),
+  ]);
 
   const reasons = await Promise.all(
     reasonRows.map(async (r) => {
@@ -236,6 +249,7 @@ export async function receptionContext(actor: Actor, requestedBranchId?: string 
     privacy: { consentText: privacy.consentText, requireConsent: privacy.requireConsent },
     ticketing,
     reception,
+    wifi,
     visitorStatus,
     regional: { digitsTicket: regional.digitsTicket, digitsScreen: regional.digitsScreen },
     print: {

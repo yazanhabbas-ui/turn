@@ -69,6 +69,16 @@ export type ReceptionContext = {
   privacy: { consentText: L; requireConsent: boolean };
   ticketing: { numberPad: number; separator: string; showQrOnTicket: boolean };
   visitorStatus: { enabled: boolean };
+  /** Free Wi-Fi printed on the ticket when enabled. */
+  wifi: {
+    enabled: boolean;
+    ssid: string;
+    password: string;
+    showQr: boolean;
+    title: L;
+    ssidLabel: L;
+    passwordLabel: L;
+  };
   reception: {
     oneTapIssue: boolean;
     afterIssue: "print" | "dialog";

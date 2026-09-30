@@ -53,6 +53,8 @@ export type EngineSnapshot = {
   agents: EngineAgent[];
   reasons: Map<string, EngineReason>;
   priorities: Map<string, PriorityInfo>;
+  /** The agent who received the previous ticket of each queue (drives the strict rotation). Updated as tickets are assigned. */
+  lastAssignedAgentByQueue?: Map<string, string>;
   /** Configuration effective for a queue. */
   configFor: (queueId: string) => DistributionConfig;
   /** Deterministic randomness (seeded in simulation and tests). */

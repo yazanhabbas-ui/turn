@@ -7,10 +7,19 @@ import type { EngineAgent } from "./types";
  */
 export type AgentCandidate = { agent: EngineAgent; load: number; proficiency: number };
 
-export type StrategyFn = (c: AgentCandidate, ctx: { random: () => number; now: number }) => number;
+export type StrategyFn = (
+  c: AgentCandidate,
+  ctx: { random: () => number; now: number; /** Agent that got this queue's previous ticket. */ lastAssigned: string | null },
+) => number;
 
 export const STRATEGIES: Record<PushStrategy, StrategyFn> = {
-  /** Whoever was assigned least recently (never-assigned first). Stateless round robin. */
+  /**
+   * Strict rotation: the next agent, in a fixed order, after the one who received the previous ticket of this queue.
+   * Agents that are away, at capacity or not skilled are simply not candidates, so the turn passes to the next one.
+   * Ranking: agents after the last one come first; the deterministic id tie-break below then picks the nearest.
+   */
+  rotation: (c, { lastAssigned }) => (lastAssigned !== null && c.agent.id <= lastAssigned ? 1 : 0),
+  /** Whoever was assigned least recently (never-assigned first). */
   round_robin: (c) => c.agent.lastAssignedAt ?? -Infinity,
   /** Fewest active + reserved tickets. */
   least_waiting: (c) => c.load,
@@ -27,13 +36,14 @@ export const STRATEGIES: Record<PushStrategy, StrategyFn> = {
 export function pickAgent(
   candidates: AgentCandidate[],
   chain: readonly PushStrategy[],
-  ctx: { random: () => number; now: number },
+  ctx: { random: () => number; now: number; lastAssigned?: string | null },
 ): EngineAgent | null {
   let pool = candidates;
   for (const name of chain) {
     if (pool.length <= 1) break;
     const fn = STRATEGIES[name];
-    const ranked = pool.map((c) => ({ c, r: fn(c, ctx) }));
+    const full = { ...ctx, lastAssigned: ctx.lastAssigned ?? null };
+    const ranked = pool.map((c) => ({ c, r: fn(c, full) }));
     const best = Math.min(...ranked.map((x) => x.r));
     pool = ranked.filter((x) => x.r === best).map((x) => x.c);
   }

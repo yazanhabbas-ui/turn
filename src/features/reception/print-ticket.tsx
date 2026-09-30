@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { applyDigits } from "@/domain/i18n/digits";
 import { renderTemplate } from "@/domain/templates/render";
+import { wifiQrPayload } from "@/domain/wifi/qr";
 import { dirOf, pickText } from "@/i18n/locales";
 import type { ReceptionContext, Ticket } from "../queue/types";
 
@@ -21,6 +22,7 @@ export function statusUrl(ticket: Ticket) {
  */
 export function PrintTicket({ job, ctx, onDone }: { job: PrintJob | null; ctx: ReceptionContext; onDone: () => void }) {
   const [qr, setQr] = useState<string | null>(null);
+  const [wifiQr, setWifiQr] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -30,6 +32,12 @@ export function PrintTicket({ job, ctx, onDone }: { job: PrintJob | null; ctx: R
     const go = async () => {
       const showQr = ctx.ticketing.showQrOnTicket && ctx.visitorStatus.enabled;
       setQr(showQr ? await QRCode.toDataURL(statusUrl(job.ticket), { margin: 0, width: 220, errorCorrectionLevel: "M" }) : null);
+      const wifi = ctx.wifi;
+      setWifiQr(
+        wifi.enabled && wifi.ssid && wifi.showQr
+          ? await QRCode.toDataURL(wifiQrPayload(wifi.ssid, wifi.password), { margin: 0, width: 200, errorCorrectionLevel: "M" })
+          : null,
+      );
       if (cancelled) return;
       // Let the QR image render before opening the print dialog.
       requestAnimationFrame(() =>
@@ -86,6 +94,23 @@ export function PrintTicket({ job, ctx, onDone }: { job: PrintJob | null; ctx: R
         {qr && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={qr} alt="" className="ticket-qr" />
+        )}
+        {ctx.wifi.enabled && ctx.wifi.ssid && (
+          <div className="ticket-wifi">
+            <div className="ticket-wifi-title">{pickText(ctx.wifi.title, lang)}</div>
+            <div>
+              {pickText(ctx.wifi.ssidLabel, lang)}: <bdi className="ticket-wifi-value">{ctx.wifi.ssid}</bdi>
+            </div>
+            {ctx.wifi.password && (
+              <div>
+                {pickText(ctx.wifi.passwordLabel, lang)}: <bdi className="ticket-wifi-value">{ctx.wifi.password}</bdi>
+              </div>
+            )}
+            {wifiQr && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={wifiQr} alt="" className="ticket-wifi-qr" />
+            )}
+          </div>
         )}
         <div className="ticket-footer">{pickText(ctx.print.footer, lang)}</div>
         <div className="ticket-meta">{when}</div>

@@ -94,6 +94,20 @@ export const SETTINGS = {
       textScale: z.number().int().min(80).max(160).default(100),
     })
     .prefault({}),
+  /** Free public Wi-Fi details printed on the ticket. Can differ per branch. */
+  wifi: z
+    .object({
+      enabled: z.boolean().default(false),
+      ssid: z.string().trim().max(32).default(""),
+      /** Leave empty for an open network. WPA passwords are 8-63 characters. */
+      password: z.string().max(63).default(""),
+      /** Also print a QR code that joins the network when scanned. */
+      showQr: z.boolean().default(false),
+      title: localized.default({ ar: "شبكة الواي فاي المجانية", en: "Free Wi-Fi" }),
+      ssidLabel: localized.default({ ar: "اسم الشبكة", en: "Network" }),
+      passwordLabel: localized.default({ ar: "كلمة المرور", en: "Password" }),
+    })
+    .prefault({}),
   /** Whether an agent can have several visitors at the same time. */
   agentWork: z
     .object({
@@ -184,3 +198,6 @@ export function parseSetting<K extends SettingKey>(key: K, raw: unknown): Settin
 export function defaultSetting<K extends SettingKey>(key: K): SettingValue<K> {
   return SETTINGS[key].parse({}) as SettingValue<K>;
 }
+
+/** Settings a branch (and so a city admin) may override for their own branches. Everything else is organization-wide. */
+export const BRANCH_OVERRIDABLE: readonly SettingKey[] = ["wifi", "reception", "alerts", "wallboard"];

@@ -1,10 +1,22 @@
 import { z } from "zod";
 
 /** Auto-assign (push) sub-strategies. They can be chained: each one narrows ties left by the previous one. */
-export const PUSH_STRATEGIES = ["round_robin", "least_waiting", "longest_idle", "proficiency", "weighted", "random"] as const;
+export const PUSH_STRATEGIES = [
+  "rotation",
+  "round_robin",
+  "least_waiting",
+  "longest_idle",
+  "proficiency",
+  "weighted",
+  "random",
+] as const;
 export type PushStrategy = (typeof PUSH_STRATEGIES)[number];
 
-export const MODES = ["pull", "push", "hybrid", "manual"] as const;
+/**
+ * `round_robin` is a ready-made mode: every new ticket goes to the next agent in a fixed rotation. The engine sees it
+ * as auto-assign with the `rotation` strategy (see `toEngineConfig`).
+ */
+export const MODES = ["pull", "push", "round_robin", "hybrid", "manual"] as const;
 export type DistributionMode = (typeof MODES)[number];
 
 const aging = z.object({ afterMinutes: z.number().int().min(1).max(600), boost: z.number().min(0).max(10_000) });
@@ -107,6 +119,11 @@ export function deepMerge(base: unknown, override: unknown): unknown {
 }
 
 /** Most specific wins: queue override → branch override → global → defaults. Invalid stored layers are ignored. */
+/** What the engine runs: the round robin mode is auto-assign with the strict rotation strategy. */
+export function toEngineConfig(cfg: DistributionConfig): DistributionConfig {
+  return cfg.mode === "round_robin" ? { ...cfg, mode: "push", push: { ...cfg.push, strategies: ["rotation"] } } : cfg;
+}
+
 export function resolveConfig(...layersGeneralToSpecific: (unknown | undefined | null)[]): DistributionConfig {
   let merged: unknown = {};
   for (const layer of layersGeneralToSpecific) {

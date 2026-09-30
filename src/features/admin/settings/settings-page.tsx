@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { ConfirmButton } from "@/components/admin/confirm-button";
 import { ErrorState, Field, LocalizedInput, LoadingRows, PageHeader } from "@/components/admin/form";
+import { pickText } from "@/i18n/locales";
 import { api, useApiMutation, useApiQuery } from "@/components/admin/use-api";
 import { ENTITY_ICON_KEYS, EntityIcon } from "@/components/app/entity-icon";
 import { Badge } from "@/components/ui/badge";
@@ -52,10 +53,13 @@ function Check({
 function SettingForm<K extends SettingKey>({
   k,
   initial,
+  branchId = null,
   children,
 }: {
   k: K;
   initial: SettingValue<K>;
+  /** Save as this branch's own value instead of the organization default. */
+  branchId?: string | null;
   children: (v: SettingValue<K>, set: (patch: Partial<SettingValue<K>>) => void) => React.ReactNode;
 }) {
   const t = useTranslations("settings");
@@ -63,12 +67,15 @@ function SettingForm<K extends SettingKey>({
   const router = useRouter();
   const [draft, setDraft] = useState(initial);
   useEffect(() => setDraft(initial), [initial]);
-  const save = useApiMutation(() => api(`${SETTINGS}/${k}`, { method: "PUT", body: draft }), {
-    invalidate: [[SETTINGS]],
-    success: t("saved"),
-    // Branding and language affect the server-rendered shell; refresh it.
-    onSuccess: () => router.refresh(),
-  });
+  const save = useApiMutation(
+    () => api(`${SETTINGS}/${k}${branchId ? `?branchId=${branchId}` : ""}`, { method: "PUT", body: draft }),
+    {
+      invalidate: [[SETTINGS], [`${SETTINGS}?branchId=${branchId}`]],
+      success: t("saved"),
+      // Branding and language affect the server-rendered shell; refresh it.
+      onSuccess: () => router.refresh(),
+    },
+  );
   return (
     <form
       className="bg-card max-w-3xl space-y-4 rounded-xl border p-4 shadow-sm md:p-6"
@@ -99,6 +106,7 @@ export function SettingsPage() {
     "regional",
     "ticketing",
     "reception",
+    "wifi",
     "agents",
     "wallboard",
     "reports",
@@ -132,6 +140,9 @@ export function SettingsPage() {
         </TabsContent>
         <TabsContent value="reception" className="mt-4">
           <ReceptionForm initial={s.reception} />
+        </TabsContent>
+        <TabsContent value="wifi" className="mt-4">
+          <WifiTab defaults={s.wifi} branches={lookups.data.branches} />
         </TabsContent>
         <TabsContent value="agents" className="mt-4">
           <AgentWorkForm initial={s.agentWork} />
@@ -578,6 +589,107 @@ function AlertsForm({ initial }: { initial: SettingValue<"alerts"> }) {
         </>
       )}
     </SettingForm>
+  );
+}
+
+/** Free Wi-Fi on the ticket: an organization default, plus an own value per branch (e.g. per city office). */
+function WifiTab({ defaults, branches }: { defaults: SettingValue<"wifi">; branches: { id: string; name: L }[] }) {
+  const t = useTranslations("settings");
+  const text = useText();
+  const [branchId, setBranchId] = useState("");
+  const scoped = useApiQuery<AllSettings>(branchId ? `${SETTINGS}?branchId=${branchId}` : null);
+  const clear = useApiMutation(() => api(`${SETTINGS}/wifi?branchId=${branchId}`, { method: "DELETE" }), {
+    invalidate: [[SETTINGS], [`${SETTINGS}?branchId=${branchId}`]],
+    success: t("wifiInherited"),
+  });
+  const value = branchId ? scoped.data?.wifi : defaults;
+
+  return (
+    <div className="max-w-3xl space-y-4">
+      <p className="text-muted-foreground text-sm">{t("wifiIntro")}</p>
+      {branches.length > 0 && (
+        <Field label={t("wifiScope")} htmlFor="wf-scope" className="max-w-sm">
+          <NativeSelect id="wf-scope" value={branchId} onChange={(e) => setBranchId(e.target.value)}>
+            <option value="">{t("wifiAllBranches")}</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {text(b.name)}
+              </option>
+            ))}
+          </NativeSelect>
+        </Field>
+      )}
+      {value ? (
+        <SettingForm key={branchId} k="wifi" initial={value} branchId={branchId || null}>
+          {(v, set) => (
+            <>
+              <Check
+                label={t("wifiEnabled")}
+                hint={t("wifiEnabledHint")}
+                checked={v.enabled}
+                onChange={(enabled) => set({ enabled })}
+              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label={t("wifiSsid")} htmlFor="wf-ssid">
+                  <Input id="wf-ssid" dir="ltr" maxLength={32} value={v.ssid} onChange={(e) => set({ ssid: e.target.value })} />
+                </Field>
+                <Field label={t("wifiPassword")} htmlFor="wf-pass" hint={t("wifiPasswordHint")}>
+                  <Input
+                    id="wf-pass"
+                    dir="ltr"
+                    maxLength={63}
+                    autoComplete="off"
+                    value={v.password}
+                    onChange={(e) => set({ password: e.target.value })}
+                  />
+                </Field>
+              </div>
+              <Check
+                label={t("wifiShowQr")}
+                hint={t("wifiShowQrHint")}
+                checked={v.showQr}
+                onChange={(showQr) => set({ showQr })}
+              />
+              <LocalizedInput id="wf-title" label={t("wifiTitle")} value={v.title} onChange={(title) => set({ title })} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <LocalizedInput
+                  id="wf-ssid-label"
+                  label={t("wifiSsidLabel")}
+                  value={v.ssidLabel}
+                  onChange={(ssidLabel) => set({ ssidLabel })}
+                />
+                <LocalizedInput
+                  id="wf-pass-label"
+                  label={t("wifiPasswordLabel")}
+                  value={v.passwordLabel}
+                  onChange={(passwordLabel) => set({ passwordLabel })}
+                />
+              </div>
+              {v.enabled && v.ssid && (
+                <div className="bg-muted/40 rounded-lg border border-dashed p-3 text-center text-sm">
+                  <div className="font-semibold">{pickText(v.title, "ar") || pickText(v.title, "en")}</div>
+                  <div>
+                    {pickText(v.ssidLabel, "ar")}: <bdi className="font-mono font-bold">{v.ssid}</bdi>
+                  </div>
+                  {v.password && (
+                    <div>
+                      {pickText(v.passwordLabel, "ar")}: <bdi className="font-mono font-bold">{v.password}</bdi>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </SettingForm>
+      ) : (
+        <LoadingRows rows={3} />
+      )}
+      {branchId && (
+        <Button variant="outline" size="sm" disabled={clear.isPending} onClick={() => clear.mutate(undefined)}>
+          {t("wifiUseDefault")}
+        </Button>
+      )}
+    </div>
   );
 }
 

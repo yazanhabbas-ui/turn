@@ -224,6 +224,28 @@
     margin: 3mm auto 1mm;
     image-rendering: pixelated;
   }
+  #print-root .ticket-wifi {
+    margin: 3mm 0 1mm;
+    padding-top: 2mm;
+    border-top: 0.3mm dashed #000;
+    font-size: 10pt;
+  }
+  #print-root .ticket-wifi-title {
+    font-weight: 700;
+    margin-bottom: 1mm;
+  }
+  #print-root .ticket-wifi-value {
+    font-weight: 700;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+  #print-root .ticket-wifi-qr {
+    width: 26mm;
+    height: 26mm;
+    margin: 2mm auto 0;
+    image-rendering: pixelated;
+  }
   #print-root .ticket-footer {
     margin-top: 2mm;
     font-size: 10pt;

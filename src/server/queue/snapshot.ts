@@ -10,7 +10,7 @@ import {
   tickets,
   visitReasons,
 } from "@/db/schema";
-import { resolveConfig, type DistributionConfig } from "@/domain/distribution/config";
+import { resolveConfig, toEngineConfig, type DistributionConfig } from "@/domain/distribution/config";
 import type { AgentSkill, EngineAgent, EngineSnapshot, EngineTicket } from "@/domain/distribution/types";
 import { serviceDay } from "@/domain/schedule/time";
 import { now as clockNow } from "../clock";
@@ -126,11 +126,19 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
   const configFor = (queueId: string) => {
     let c = cache.get(queueId);
     if (!c) {
-      c = resolveConfig(global, branchRule, ruleRows.find((r) => r.scope === "queue" && r.queueId === queueId)?.config);
+      c = toEngineConfig(
+        resolveConfig(global, branchRule, ruleRows.find((r) => r.scope === "queue" && r.queueId === queueId)?.config),
+      );
       cache.set(queueId, c);
     }
     return c;
   };
+
+  // Who got the previous ticket of each queue: the strict rotation continues from there.
+  const lastAssigned = await tx.execute<{ queue_id: string; agent_id: string }>(sql`
+    select distinct on (queue_id) queue_id, assigned_agent_id as agent_id
+    from tickets where branch_id = ${branchId} and assigned_agent_id is not null
+    order by queue_id, assigned_at desc nulls last`);
 
   const engineTickets: EngineTicket[] = ticketRows.map((t) => ({
     id: t.id,
@@ -163,6 +171,7 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
       ),
       priorities: new Map(priorityRows.map((p) => [p.key, { weight: p.weight, isLane: p.isLane }])),
       configFor,
+      lastAssignedAgentByQueue: new Map(lastAssigned.rows.map((r) => [r.queue_id, r.agent_id])),
     },
   };
 }

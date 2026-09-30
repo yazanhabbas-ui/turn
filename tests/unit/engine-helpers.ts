@@ -1,4 +1,4 @@
-import { resolveConfig, type PartialDistributionConfig } from "@/domain/distribution/config";
+import { resolveConfig, toEngineConfig, type PartialDistributionConfig } from "@/domain/distribution/config";
 import type { EngineAgent, EngineSnapshot, EngineTicket } from "@/domain/distribution/types";
 
 export const T0 = Date.UTC(2026, 8, 29, 7, 0); // 10:00 in Riyadh
@@ -57,7 +57,7 @@ export function snapshot(
       ["vip", { weight: 100, isLane: true }],
     ]),
     configFor: (q) => {
-      if (!cache.has(q)) cache.set(q, resolveConfig(config, perQueue[q]));
+      if (!cache.has(q)) cache.set(q, toEngineConfig(resolveConfig(config, perQueue[q])));
       return cache.get(q)!;
     },
     random: mulberry(42),

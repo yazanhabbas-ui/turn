@@ -1,4 +1,4 @@
-import { resolveConfig, type DistributionConfig, type PartialDistributionConfig } from "../distribution/config";
+import { resolveConfig, toEngineConfig, type DistributionConfig, type PartialDistributionConfig } from "../distribution/config";
 import { dispatch, expiredReservations, selectTicketForAgent } from "../distribution/engine";
 import type { EngineAgent, EngineSnapshot, EngineTicket, PriorityInfo } from "../distribution/types";
 
@@ -116,7 +116,7 @@ export function simulate(input: SimInput): SimResult {
   const reasons = new Map(input.reasons.map((r) => [r.id, r]));
   const cfgCache = new Map<string, DistributionConfig>();
   const configFor = (queueId: string) => {
-    if (!cfgCache.has(queueId)) cfgCache.set(queueId, resolveConfig(input.config, input.perReason?.[queueId]));
+    if (!cfgCache.has(queueId)) cfgCache.set(queueId, toEngineConfig(resolveConfig(input.config, input.perReason?.[queueId])));
     return cfgCache.get(queueId)!;
   };
   const walk = input.walkMinutes ?? 0.5;
@@ -152,6 +152,7 @@ export function simulate(input: SimInput): SimResult {
     reasons: new Map(input.reasons.map((r) => [r.id, r])),
     priorities: new Map(Object.entries(input.priorities)),
     configFor,
+    lastAssignedAgentByQueue: new Map(),
     random: rng,
   };
 

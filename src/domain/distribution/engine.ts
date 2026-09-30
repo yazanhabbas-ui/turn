@@ -166,6 +166,7 @@ function decide(s: EngineSnapshot, v: View, ticket: EngineTicket, cfg: Distribut
   const chosen = pickAgent(primaries.length ? primaries : candidates, cfg.push.strategies, {
     now: s.now,
     random: s.random ?? Math.random,
+    lastAssigned: s.lastAssignedAgentByQueue?.get(ticket.queueId) ?? null,
   });
   return chosen ? { agentId: chosen.id, via: "push" } : null;
 }
@@ -197,6 +198,7 @@ export function dispatch(s: EngineSnapshot): Assignment[] {
     t.assignedAt = s.now;
     v.reserve(t, d.agentId);
     s.agents.find((a) => a.id === d.agentId)!.lastAssignedAt = s.now;
+    (s.lastAssignedAgentByQueue ??= new Map()).set(t.queueId, d.agentId);
     out.push({ ticketId: t.id, ...d });
   }
   return out;

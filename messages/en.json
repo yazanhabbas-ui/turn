@@ -564,7 +564,8 @@
       "reports": "Reports",
       "alerts": "Alerts",
       "agents": "Agents",
-      "wallboard": "Wallboard"
+      "wallboard": "Wallboard",
+      "wifi": "Wi-Fi"
     },
     "companyName": "Company name",
     "logoUrl": "Logo URL",
@@ -671,7 +672,22 @@
     "wallboardShowCompanyName": "Show the company name",
     "wallboardShowBranch": "Show the branch name",
     "wallboardShowClock": "Show the clock and date",
-    "wallboardBrandHint": "To change the logo, main colour or font, use the Branding tab."
+    "wallboardBrandHint": "To change the logo, main colour or font, use the Branding tab.",
+    "wifiIntro": "Print your free public Wi-Fi details on the ticket so visitors can connect while they wait. Each branch can have its own network.",
+    "wifiScope": "Applies to",
+    "wifiAllBranches": "All branches (default)",
+    "wifiEnabled": "Print the Wi-Fi details on the ticket",
+    "wifiEnabledHint": "When off, nothing about Wi-Fi appears on the ticket.",
+    "wifiSsid": "Network name (SSID)",
+    "wifiPassword": "Password",
+    "wifiPasswordHint": "Leave empty for an open network. It is printed on every ticket, so use a guest network only.",
+    "wifiShowQr": "Print a QR code to join",
+    "wifiShowQrHint": "The visitor scans it with their phone and connects straight away.",
+    "wifiTitle": "Heading on the ticket",
+    "wifiSsidLabel": "Network name label",
+    "wifiPasswordLabel": "Password label",
+    "wifiUseDefault": "Use the default for this branch",
+    "wifiInherited": "The branch now uses the default"
   },
   "audit": {
     "title": "Audit log",
@@ -749,18 +765,23 @@
       "manual": {
         "title": "Manual",
         "body": "The receptionist or a supervisor chooses the agent for every ticket."
+      },
+      "round_robin": {
+        "title": "Round robin",
+        "body": "Each new ticket goes to the next agent in a fixed rotation. An agent who is away or full is skipped and the turn carries on."
       }
     },
     "strategies": "Auto-assign strategy",
     "strategiesHint": "Applied in order: each step breaks ties left by the previous one.",
     "addStep": "Add step",
     "strategyNames": {
-      "round_robin": "Round robin",
+      "round_robin": "Least recently assigned",
       "least_waiting": "Fewest waiting tickets",
       "longest_idle": "Longest idle agent",
       "proficiency": "Highest proficiency first",
       "weighted": "Weighted (agent weight)",
-      "random": "Random"
+      "random": "Random",
+      "rotation": "Strict rotation (next agent in turn)"
     },
     "moveUp": "Move up",
     "moveDown": "Move down",
