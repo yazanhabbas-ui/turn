@@ -9,6 +9,8 @@ import { useErrorMessage } from "@/components/admin/use-api";
 import { EntityIcon } from "@/components/app/entity-icon";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AgentPicker } from "@/components/admin/agent-picker";
+import { queueAgentOptions } from "../queue/agent-options";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Input } from "@/components/ui/input";
@@ -984,6 +986,7 @@ function TransferDialog({
     setNote("");
   }
   const agents = data.agents.filter((a) => a.reasons.includes(reasonId));
+  const agentOptions = queueAgentOptions(agents, locale, (s) => ts(s as "AVAILABLE"));
   const changed = ticket && (reasonId !== ticket.reasonId || agentId);
   return (
     <Dialog open={!!ticket} onOpenChange={(o) => !o && onClose()}>
@@ -1005,14 +1008,7 @@ function TransferDialog({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="t-agent">{t("toAgent")}</Label>
-            <NativeSelect id="t-agent" value={agentId} onChange={(e) => setAgentId(e.target.value)}>
-              <option value="">—</option>
-              {agents.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {pickText(a.displayName, locale)} · {ts(a.status as "AVAILABLE")}
-                </option>
-              ))}
-            </NativeSelect>
+            <AgentPicker id="t-agent" options={agentOptions} value={agentId} onChange={setAgentId} placeholder="—" />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="t-note">{t("transferNote")}</Label>

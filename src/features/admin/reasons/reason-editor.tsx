@@ -10,12 +10,17 @@ import { ENTITY_ICON_KEYS, EntityIcon } from "@/components/app/entity-icon";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AgentPicker } from "@/components/admin/agent-picker";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Link, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import type { Assignment, IntakeField, L, Reason } from "../types";
+import type { Assignment, IntakeField, L, Lookups, Reason } from "../types";
+import { useAgentOptions } from "../agent-options";
 import { LOOKUPS, useLookups, useText } from "../use-lookups";
 import { REASONS } from "./reasons-list";
+
+const NO_AGENTS: Lookups["agents"] = [];
+const NO_BRANCHES: Lookups["branches"] = [];
 
 const BUILTIN_FIELDS = ["name", "phone", "company", "national_id_last4", "email", "notes"] as const;
 
@@ -56,6 +61,10 @@ export function ReasonEditor({ id, canManage }: { id: string | null; canManage: 
   const router = useRouter();
   const reasons = useApiQuery<{ items: Reason[] }>(`${REASONS}?archived=true`);
   const lookups = useLookups();
+  const agentOptions = useAgentOptions({
+    agents: lookups.data?.agents ?? NO_AGENTS,
+    branches: lookups.data?.branches ?? NO_BRANCHES,
+  });
   const reason = id ? reasons.data?.items.find((r) => r.id === id) : null;
   const [form, setForm] = useState<Form>(EMPTY);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -419,13 +428,13 @@ export function ReasonEditor({ id, canManage }: { id: string | null; canManage: 
                       ))}
                     </NativeSelect>
                   ) : (
-                    <NativeSelect value={a.userId ?? ""} onChange={(e) => update({ userId: e.target.value })}>
-                      {agents.map((ag) => (
-                        <option key={ag.id} value={ag.id}>
-                          {text(ag.displayName, ag.email)}
-                        </option>
-                      ))}
-                    </NativeSelect>
+                    <AgentPicker
+                      options={agentOptions}
+                      value={a.userId ?? ""}
+                      onChange={(userId) => update({ userId })}
+                      clearable={false}
+                      aria-label={t("agent")}
+                    />
                   )}
                 </Field>
                 <Field label={tu("branch")}>

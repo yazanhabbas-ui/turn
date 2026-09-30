@@ -99,6 +99,40 @@ export const SETTINGS = {
       textScale: z.number().int().min(80).max(160).default(100),
     })
     .prefault({}),
+  /**
+   * The waiting time shown to a visitor: how long one visitor takes (a fixed time, each reason's own expected time,
+   * or learned from completed services), and how the result is rounded and worded on the ticket and status page.
+   */
+  waitEstimate: z
+    .object({
+      /** fixed = the same minutes per visitor; reason = each reason's expected time; analytics = learned from real data. */
+      mode: z.enum(["fixed", "reason", "analytics"]).default("reason"),
+      fixedMinutesPerVisitor: z.number().min(0.5).max(120).default(5),
+      /** Divide by the number of agents serving the queue. */
+      divideByAgents: z.boolean().default(true),
+      /** Analytics: days of completed services to learn from. */
+      lookbackDays: z.number().int().min(1).max(90).default(14),
+      /** Analytics: below this many samples the reason's own expected time is used. */
+      minSamples: z.number().int().min(1).max(1000).default(20),
+      statistic: z.enum(["average", "median", "p75"]).default("median"),
+      /** Use only services from the same hour of the day (±1). */
+      weightByHour: z.boolean().default(false),
+      /** Drop the fastest and slowest 5% and services under 20 seconds or over 4 hours. */
+      trimOutliers: z.boolean().default(true),
+      /** Round the estimate up to a multiple of this many minutes. */
+      rounding: z.union([z.literal(1), z.literal(5), z.literal(10)]).default(1),
+      /** Safety margin added to the estimate. */
+      bufferPercent: z.number().int().min(0).max(100).default(0),
+      showOnTicket: z.boolean().default(true),
+      showAsRange: z.boolean().default(false),
+      /** Below this many minutes the visitor sees the "next" text instead of a number (0 = always a number). */
+      minShown: z.number().int().min(0).max(60).default(0),
+      label: localized.default({ ar: "الانتظار المتوقع", en: "Estimated wait" }),
+      unitLabel: localized.default({ ar: "دقيقة", en: "min" }),
+      nextText: localized.default({ ar: "خلال دقائق", en: "Within minutes" }),
+      disclaimer: localized.default({}),
+    })
+    .prefault({}),
   /** Free public Wi-Fi details printed on the ticket. Can differ per branch. */
   wifi: z
     .object({
@@ -228,4 +262,4 @@ export function defaultSetting<K extends SettingKey>(key: K): SettingValue<K> {
 }
 
 /** Settings a branch (and so a city admin) may override for their own branches. Everything else is organization-wide. */
-export const BRANCH_OVERRIDABLE: readonly SettingKey[] = ["wifi", "reception", "alerts", "wallboard"];
+export const BRANCH_OVERRIDABLE: readonly SettingKey[] = ["wifi", "reception", "alerts", "wallboard", "waitEstimate"];

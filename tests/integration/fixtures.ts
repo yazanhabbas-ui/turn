@@ -32,6 +32,7 @@ export async function actorFor(email: string): Promise<Actor> {
         displayName: u.displayName,
         locale: u.locale,
         totpEnabled: !!u.totpEnabledAt,
+        avatarVersion: u.avatarVersion,
       },
     },
   };

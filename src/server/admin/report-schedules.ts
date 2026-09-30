@@ -2,6 +2,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { branches, reportSchedules, visitReasons } from "@/db/schema";
+import { EXPORT_SECTIONS, normalizeSections } from "@/domain/reports/sections";
 import { uuid } from "@/domain/validation";
 import { audit } from "../audit";
 import { now as clockNow } from "../clock";
@@ -32,6 +33,8 @@ export const reportScheduleInput = z
       )
       .min(1)
       .max(MAX_RECIPIENTS),
+    /** Sections to include; empty/absent = the full report. */
+    sections: z.array(z.enum(EXPORT_SECTIONS)).max(EXPORT_SECTIONS.length).nullish(),
     isActive: z.boolean().default(true),
   })
   .refine((v) => v.frequency !== "weekly" || (v.weekday !== null && v.weekday !== undefined), {
@@ -54,6 +57,7 @@ function present(r: Row) {
     branchId: r.branchId,
     reasonId: (r.filters as { reasonId?: string }).reasonId ?? null,
     recipients: r.recipients,
+    sections: r.sections,
     isActive: r.isActive,
     lastRunAt: r.lastRunAt?.toISOString() ?? null,
     lastError: r.lastError,
@@ -105,6 +109,7 @@ const values = (input: ReportScheduleInput) => ({
   branchId: input.branchId ?? null,
   filters: input.reasonId ? { reasonId: input.reasonId } : {},
   recipients: [...new Set(input.recipients)],
+  sections: input.sections?.length ? normalizeSections(input.sections) : null,
   isActive: input.isActive,
 });
 

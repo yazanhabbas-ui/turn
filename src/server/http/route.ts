@@ -140,7 +140,8 @@ export function route<B = undefined, A extends AuthMode = "session">(
         query: req.nextUrl.searchParams,
       });
       const res = result instanceof NextResponse ? result : NextResponse.json(result ?? { ok: true });
-      res.headers.set("Cache-Control", "no-store");
+      // Responses are never cached unless the handler asks for it (only the avatar image does).
+      if (!res.headers.has("Cache-Control")) res.headers.set("Cache-Control", "no-store");
       return res;
     } catch (err) {
       return errorResponse(err);

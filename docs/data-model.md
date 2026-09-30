@@ -46,6 +46,7 @@ erDiagram
 | Table                   | Purpose                                                                                                                                                            |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `users`                 | Email (unique per org), bilingual display name, argon2id hash, encrypted TOTP secret, lockout counters, `is_active`                                                |
+| `user_avatars`          | Processed profile picture (256x256 webp, bytea) per user; `users.avatar_version` is its cache key                                                                  |
 | `sessions`              | `id` = SHA-256(cookie token), expiry, `two_factor_verified`, IP, user agent                                                                                        |
 | `oidc_accounts`         | (provider, subject) → user, for SSO                                                                                                                                |
 | `permissions`           | Catalogue synced from code                                                                                                                                         |

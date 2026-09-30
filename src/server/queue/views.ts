@@ -14,7 +14,6 @@ import {
   visitReasons,
   visitors,
 } from "@/db/schema";
-import { estimateWaitMinutes } from "@/domain/distribution/estimate";
 import { orderTickets } from "@/domain/distribution/ordering";
 import { looseNameMatch } from "@/domain/i18n/arabic-normalize";
 import { branchesFor, can } from "@/domain/rbac/permissions";
@@ -24,10 +23,11 @@ import { AppError } from "../http/errors";
 import { getSetting } from "../settings/service";
 import { breakStatus } from "./breaks";
 import { loadBranchContext, type BranchContext } from "./snapshot";
+import { waitDisplayOf } from "./wait-analytics";
 import { viewOf, type TicketView, type VisitorRow } from "./tickets";
 
 type TicketRow = typeof tickets.$inferSelect;
-export type Position = { ahead: number; estimatedWaitMinutes: number };
+export type Position = { ahead: number; estimatedWaitMinutes: number; waitLow: number; waitHigh: number };
 
 /** Position and estimated wait of every waiting ticket, computing each reason's order once. */
 export function positionsFor(bctx: BranchContext): Map<string, Position> {
@@ -43,8 +43,10 @@ export function positionsFor(bctx: BranchContext): Map<string, Position> {
   for (const [reasonId, list] of byReason) {
     const ordered = orderTickets(list, s.now, s.configFor, s.reasons, s.priorities);
     const agents = s.agents.filter((a) => a.skills.has(reasonId) && (a.status === "AVAILABLE" || a.status === "BUSY")).length;
-    const avg = s.reasons.get(reasonId)?.expectedMinutes ?? 10;
-    ordered.forEach((t, i) => out.set(t.id, { ahead: i, estimatedWaitMinutes: estimateWaitMinutes(i, agents, avg) }));
+    ordered.forEach((t, i) => {
+      const e = bctx.wait.estimate(reasonId, i, agents);
+      out.set(t.id, { ahead: i, estimatedWaitMinutes: e.minutes, waitLow: e.low, waitHigh: e.high });
+    });
   }
   return out;
 }
@@ -254,6 +256,8 @@ export async function receptionContext(actor: Actor, requestedBranchId?: string 
     wifi,
     visitorStatus,
     regional: { digitsTicket: regional.digitsTicket, digitsScreen: regional.digitsScreen },
+    /** How the estimated wait is worded on the ticket and confirmation. */
+    waitDisplay: waitDisplayOf(ctx.wait.settings),
     print: {
       template: printTpl[0]?.body ?? null,
       footer: branding.ticketFooter,
@@ -458,7 +462,10 @@ export async function lookupAppointment(actor: Actor, branchId: string, code: st
 export async function publicTicketStatus(token: string) {
   const [t] = await db().select().from(tickets).where(eq(tickets.publicToken, token));
   if (!t) return null;
-  const [settings] = await Promise.all([getSetting(t.organizationId, "visitorStatus", t.branchId)]);
+  const [settings, waitSettings] = await Promise.all([
+    getSetting(t.organizationId, "visitorStatus", t.branchId),
+    getSetting(t.organizationId, "waitEstimate", t.branchId),
+  ]);
   if (!settings.enabled) return null;
   const [reason] = await db()
     .select({ name: visitReasons.name, color: visitReasons.color, icon: visitReasons.icon })
@@ -481,6 +488,7 @@ export async function publicTicketStatus(token: string) {
     branch: branch?.name ?? {},
     desk: desk ?? null,
     position,
+    waitDisplay: waitDisplayOf(waitSettings),
     arrivedAt: t.arrivedAt.toISOString(),
     calledAt: t.calledAt?.toISOString() ?? null,
   };

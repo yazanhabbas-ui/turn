@@ -29,6 +29,7 @@ export type UserRow = {
   locale: string | null;
   isActive: boolean;
   totpEnabled: boolean;
+  avatarVersion?: number | null;
   lastLoginAt: string | null;
   lockedUntil: string | null;
   grants: Grant[];

@@ -16,7 +16,6 @@ import {
 } from "@/db/schema";
 import { can } from "@/domain/rbac/permissions";
 import { dispatch, expiredReservations, selectTicketForAgent } from "@/domain/distribution/engine";
-import { estimateWaitMinutes } from "@/domain/distribution/estimate";
 import { orderTickets } from "@/domain/distribution/ordering";
 import { nameSkeleton, normalizeArabic } from "@/domain/i18n/arabic-normalize";
 import { formatTicketNumber } from "@/domain/i18n/digits";
@@ -192,7 +191,14 @@ export const issueInput = z.object({
 });
 export type IssueInput = z.infer<typeof issueInput>;
 
-export type IssuedTicket = { ticket: TicketView; ahead: number; estimatedWaitMinutes: number; duplicate: boolean };
+export type IssuedTicket = {
+  ticket: TicketView;
+  ahead: number;
+  estimatedWaitMinutes: number;
+  waitLow: number;
+  waitHigh: number;
+  duplicate: boolean;
+};
 
 async function upsertVisitor(ctx: Ctx, orgId: string, fields: Record<string, string>, language: string) {
   const name = fields.name?.trim() || null;
@@ -382,8 +388,11 @@ async function assertAgentCanServe(ctx: Ctx, agentId: string, reasonId: string) 
 }
 
 /** Position of a waiting ticket among waiting tickets of the same reason, and the estimated wait. */
-function positionIn(bctx: BranchContext, t: TicketRow): { ahead: number; estimatedWaitMinutes: number } {
-  if (t.status !== "WAITING") return { ahead: 0, estimatedWaitMinutes: 0 };
+function positionIn(
+  bctx: BranchContext,
+  t: TicketRow,
+): { ahead: number; estimatedWaitMinutes: number; waitLow: number; waitHigh: number } {
+  if (t.status !== "WAITING") return { ahead: 0, estimatedWaitMinutes: 0, waitLow: 0, waitHigh: 0 };
   const s = bctx.snapshot;
   const same = s.tickets.filter((x) => x.reasonId === t.reasonId && x.status === "WAITING");
   const ordered = orderTickets(same, s.now, s.configFor, s.reasons, s.priorities);
@@ -392,7 +401,8 @@ function positionIn(bctx: BranchContext, t: TicketRow): { ahead: number; estimat
     ordered.findIndex((x) => x.id === t.id),
   );
   const agents = s.agents.filter((a) => a.skills.has(t.reasonId) && (a.status === "AVAILABLE" || a.status === "BUSY")).length;
-  return { ahead, estimatedWaitMinutes: estimateWaitMinutes(ahead, agents, s.reasons.get(t.reasonId)?.expectedMinutes ?? 10) };
+  const e = bctx.wait.estimate(t.reasonId, ahead, agents);
+  return { ahead, estimatedWaitMinutes: e.minutes, waitLow: e.low, waitHigh: e.high };
 }
 
 async function describePosition(t: TicketRow): Promise<Omit<IssuedTicket, "duplicate">> {

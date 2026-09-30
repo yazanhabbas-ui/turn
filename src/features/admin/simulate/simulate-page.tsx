@@ -3,6 +3,7 @@
 import { Play, Plus, Trash2, Trophy } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
+import { AgentMultiPicker } from "@/components/admin/agent-picker";
 import { ErrorState, Field, LoadingRows, PageHeader } from "@/components/admin/form";
 import { api, useApiMutation, useApiQuery } from "@/components/admin/use-api";
 import { axisStyle, baseOption, CHART_THEME, EChart } from "@/components/charts/echart";
@@ -11,8 +12,12 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MODES, PUSH_STRATEGIES, type DistributionMode, type PushStrategy } from "@/domain/distribution/config";
-import type { Reason } from "../types";
+import { useAgentOptions } from "../agent-options";
+import type { Lookups, Reason } from "../types";
+
 import { useLookups, useText } from "../use-lookups";
+
+const NO_BRANCHES: Lookups["branches"] = [];
 
 type Candidate = {
   mode: DistributionMode;
@@ -97,7 +102,9 @@ export function SimulatePage() {
   const [result, setResult] = useState<SimResponse | null>(null);
 
   const branch = branchId ?? lookups.data?.branches.find((b) => b.isDefault)?.id ?? lookups.data?.branches[0]?.id ?? null;
-  const branchAgents = (lookups.data?.agents ?? []).filter((a) => a.branchId === branch);
+  const allAgents = lookups.data?.agents;
+  const branchAgents = useMemo(() => (allAgents ?? []).filter((a) => a.branchId === branch), [allAgents, branch]);
+  const agentOptions = useAgentOptions({ agents: branchAgents, branches: lookups.data?.branches ?? NO_BRANCHES });
 
   const run = useApiMutation(
     () =>
@@ -219,19 +226,12 @@ export function SimulatePage() {
           )}
           <fieldset>
             <legend className="mb-1.5 text-sm font-medium">{t("agents")}</legend>
-            <div className="grid gap-1.5 sm:grid-cols-2">
-              {branchAgents.map((a) => (
-                <label key={a.id} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="accent-brand size-4"
-                    checked={!excluded.includes(a.id)}
-                    onChange={(e) => setExcluded(e.target.checked ? excluded.filter((x) => x !== a.id) : [...excluded, a.id])}
-                  />
-                  {text(a.displayName, a.email)}
-                </label>
-              ))}
-            </div>
+            <AgentMultiPicker
+              options={agentOptions}
+              value={branchAgents.filter((a) => !excluded.includes(a.id)).map((a) => a.id)}
+              onChange={(ids) => setExcluded(branchAgents.filter((a) => !ids.includes(a.id)).map((a) => a.id))}
+              aria-label={t("agents")}
+            />
           </fieldset>
           <Field label={t("extraAgents")} htmlFor="s-extra" className="max-w-40">
             <Input

@@ -1,4 +1,5 @@
 import { renderTemplate } from "@/domain/templates/render";
+import type { ExportSectionId } from "@/domain/reports/sections";
 import { pickText } from "@/i18n/locales";
 import arMessages from "../../../messages/ar.json";
 import enMessages from "../../../messages/en.json";
@@ -11,18 +12,7 @@ export type Report = Awaited<ReturnType<typeof buildReport>>;
 export type Cell = string | number | null;
 
 export type ExportTable = {
-  id:
-    | "summary"
-    | "byDay"
-    | "byHour"
-    | "byReason"
-    | "byAgent"
-    | "byBranch"
-    | "byShift"
-    | "repeatSummary"
-    | "repeatDistribution"
-    | "repeatTop"
-    | "heatmap";
+  id: ExportSectionId;
   title: string;
   columns: string[];
   /** Column i is text (aligned to the start side) or a number. */
@@ -68,8 +58,16 @@ function stampInZone(iso: string, timezone: string): string {
   return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
 }
 
-/** Builds the document for a report in the requested language. Labels come from the `reportExport` messages. */
-export function buildExportDoc(report: Report, locale: ExportLocale): ExportDoc {
+/**
+ * Builds the document for a report in the requested language. Labels come from the `reportExport` messages.
+ * `sections` limits the tables (null = the default full report); a chosen section is always emitted, even when empty.
+ */
+export function buildExportDoc(
+  report: Report,
+  locale: ExportLocale,
+  sections: readonly ExportSectionId[] | null = null,
+): ExportDoc {
+  const want = sections ? new Set<ExportSectionId>(sections) : null;
   const t = DICTS[locale];
   const { data, filters: f } = report;
   const s = data.summary;
@@ -205,7 +203,7 @@ export function buildExportDoc(report: Report, locale: ExportLocale): ExportDoc 
       ]),
     },
   ];
-  if (data.byBranch.length > 1) {
+  if (want ? want.has("byBranch") : data.byBranch.length > 1) {
     tables.push({
       id: "byBranch",
       title: t.sections.byBranch,
@@ -214,7 +212,7 @@ export function buildExportDoc(report: Report, locale: ExportLocale): ExportDoc 
       rows: data.byBranch.map((b) => [name(b.name), b.visitors, b.served, round1(b.avgWaitMin)]),
     });
   }
-  if (data.byShift.length) {
+  if (want ? want.has("byShift") : data.byShift.length) {
     tables.push({
       id: "byShift",
       title: t.sections.byShift,
@@ -248,7 +246,7 @@ export function buildExportDoc(report: Report, locale: ExportLocale): ExportDoc 
     kinds: ["text", "num"],
     rows: rp.distribution.map((x) => [x.visits >= 5 ? t.fiveOrMore : String(x.visits), x.visitors]),
   });
-  if (rp.top.length) {
+  if (want ? want.has("repeatTop") : rp.top.length) {
     const reasonName = (id: string) => name(data.byReason.find((r) => r.reasonId === id)?.name ?? {});
     tables.push({
       id: "repeatTop",
@@ -285,7 +283,7 @@ export function buildExportDoc(report: Report, locale: ExportLocale): ExportDoc 
     meta,
     filtersTitle: t.filtersTitle,
     filters,
-    tables,
+    tables: want ? tables.filter((x) => want.has(x.id)) : tables,
     footer: (page, pages) => renderTemplate(t.footer, { page, pages }),
   };
 }

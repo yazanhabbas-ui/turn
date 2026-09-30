@@ -1,6 +1,7 @@
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { branches, reportSchedules } from "@/db/schema";
+import { EXPORT_SECTIONS, normalizeSections, type ExportSectionId } from "@/domain/reports/sections";
 import { zonedParts, zonedToUtc } from "@/domain/schedule/time";
 import { pickText } from "@/i18n/locales";
 import { now as clockNow } from "../clock";
@@ -75,6 +76,13 @@ export type DeliveryResult = {
   period: { from: string; to: string };
 };
 
+/** The stored section list, ignoring ids that no longer exist; null = the full report. */
+export function storedSections(raw: string[] | null): ExportSectionId[] | null {
+  if (!raw) return null;
+  const known = raw.filter((x): x is ExportSectionId => (EXPORT_SECTIONS as readonly string[]).includes(x));
+  return known.length ? normalizeSections(known) : null;
+}
+
 /** Builds the export for the schedule's period and emails it to every recipient. Never touches `lastRunAt`. */
 export async function deliverSchedule(s: ScheduleRow, now = clockNow()): Promise<DeliveryResult> {
   const tz = await timezoneOf(s);
@@ -86,7 +94,7 @@ export async function deliverSchedule(s: ScheduleRow, now = clockNow()): Promise
     reasonId: filters.reasonId,
   });
   const locale: ExportLocale = s.locale === "en" ? "en" : "ar";
-  const file = await buildExport(report, s.format as ExportFormat, locale);
+  const file = await buildExport(report, s.format as ExportFormat, locale, storedSections(s.sections));
   const words = exportWords(locale);
   const [branchRow] = s.branchId
     ? await db().select({ name: branches.name }).from(branches).where(eq(branches.id, s.branchId))

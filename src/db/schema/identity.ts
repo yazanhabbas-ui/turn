@@ -1,6 +1,20 @@
-import { boolean, index, integer, jsonb, pgTable, primaryKey, text, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  customType,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  primaryKey,
+  text,
+  unique,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { archivedAt, createdAt, id, ts, updatedAt, type LocalizedText } from "./_common";
 import { branches, cities, organizations } from "./tenancy";
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
 
 export const users = pgTable(
   "users",
@@ -17,6 +31,8 @@ export const users = pgTable(
     passwordHash: text("password_hash"),
     passwordChangedAt: ts("password_changed_at"),
     locale: text("locale"),
+    /** Bumped on every change of the profile picture (cache key for `?v=`); null = no picture. The image is in `user_avatars`. */
+    avatarVersion: integer("avatar_version"),
     /** AES-256-GCM encrypted TOTP secret; null when 2FA is not enabled. */
     totpSecretEnc: text("totp_secret_enc"),
     totpEnabledAt: ts("totp_enabled_at"),
@@ -30,6 +46,16 @@ export const users = pgTable(
   },
   (t) => [uniqueIndex("users_org_email_uq").on(t.organizationId, t.email)],
 );
+
+/** The processed profile picture (256x256 webp, no metadata) of a user; kept apart so user queries never load it. */
+export const userAvatars = pgTable("user_avatars", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  contentType: text("content_type").notNull().default("image/webp"),
+  data: bytea("data").notNull(),
+  updatedAt: updatedAt(),
+});
 
 /** Server-side sessions. `id` is the SHA-256 of the cookie token, so a DB leak cannot be replayed. */
 export const sessions = pgTable(

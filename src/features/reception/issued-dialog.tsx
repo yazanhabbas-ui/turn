@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { applyDigits } from "@/domain/i18n/digits";
 import { pickText } from "@/i18n/locales";
 import type { ReceptionContext } from "../queue/types";
+import { waitLine } from "../queue/wait-text";
 import type { IssueResult } from "./issue-panel";
 
 /** Big confirmation of the issued number with people ahead and estimated wait. Enter = new ticket. */
@@ -36,6 +37,7 @@ export function IssuedDialog({
   if (!result) return null;
   const reason = ctx.reasons.find((r) => r.id === result.ticket.reasonId);
   const digits = ctx.regional.digitsScreen;
+  const wait = waitLine(result, ctx.waitDisplay, locale, digits);
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -49,10 +51,20 @@ export function IssuedDialog({
         </p>
         <p className="text-lg">
           {tq("ahead", { count: result.ahead })}
-          {result.ahead > 0 && (
-            <span className="text-muted-foreground"> · {tq("estimated", { min: result.estimatedWaitMinutes })}</span>
+          {wait && (
+            <span className="text-muted-foreground">
+              {" · "}
+              {wait.next ? (
+                wait.value
+              ) : (
+                <>
+                  {wait.label}: <bdi>{wait.value}</bdi>
+                </>
+              )}
+            </span>
           )}
         </p>
+        {wait?.disclaimer && <p className="text-muted-foreground -mt-2 text-xs">{wait.disclaimer}</p>}
         <label className="text-muted-foreground mx-auto flex items-center gap-2 text-sm">
           <input
             type="checkbox"

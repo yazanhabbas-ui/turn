@@ -5,6 +5,7 @@ import * as exportRoute from "@/app/api/v1/reports/export/route";
 import * as loginRoute from "@/app/api/v1/auth/login/route";
 import { db, pool } from "@/db/client";
 import { auditLogs, branches, notificationsLog, reportSchedules, visitReasons } from "@/db/schema";
+import { EXPORT_SECTIONS } from "@/domain/reports/sections";
 import { zonedToUtc } from "@/domain/schedule/time";
 import type { Actor } from "@/server/admin/actor";
 import {
@@ -110,6 +111,55 @@ describe.runIf(available)("report schedules and exports (database)", () => {
     expect(actions).toEqual(
       expect.arrayContaining(["report_schedule.created", "report_schedule.updated", "report_schedule.deleted"]),
     );
+  });
+
+  it("stores the chosen sections and uses them when sending", async () => {
+    expect(reportScheduleInput.safeParse({ ...input(), sections: ["nope"] }).success).toBe(false);
+    const all = await createReportSchedule(admin, input({ sections: [...EXPORT_SECTIONS] }));
+    expect(all.sections).toBeNull();
+    const s = await createReportSchedule(admin, input({ name: "Agents", sections: ["heatmap", "byAgent"] }));
+    expect(s.sections).toEqual(["byAgent", "heatmap"]);
+    expect((await listReportSchedules(admin)).find((x) => x.id === s.id)?.sections).toEqual(["byAgent", "heatmap"]);
+    await sendReportScheduleNow(admin, s.id);
+    const mail = mockOutbox()[0];
+    expect(mail.attachments![0].filename).toBe("dor-report-custom-2026-09-28_2026-09-28.csv");
+    const csv = mail.attachments![0].content.toString("utf8");
+    expect(csv).not.toContain("Visitors,1");
+    const back = await updateReportSchedule(admin, s.id, input({ name: "Agents", sections: null }));
+    expect(back.sections).toBeNull();
+  });
+
+  it("downloads only the requested sections through the API", async () => {
+    const origin = "http://localhost:3000";
+    const headers = { host: "localhost:3000", "x-dor-client-ip": "10.0.0.8", origin, "content-type": "application/json" };
+    const login = await loginRoute.POST(
+      new NextRequest(new URL("/api/v1/auth/login", origin), {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ email: "admin@dor.local", password: "Dor@Demo2026" }),
+      }),
+      { params: Promise.resolve({}) },
+    );
+    const cookie = login.headers.get("set-cookie")!.split(";")[0];
+    const get = (qs: string) =>
+      exportRoute.GET(
+        new NextRequest(new URL(`/api/v1/reports/export?${qs}`, origin), {
+          headers: { host: "localhost:3000", "x-dor-client-ip": "10.0.0.8", cookie },
+        }),
+        { params: Promise.resolve({}) },
+      );
+    const range = "from=2026-09-28&to=2026-09-28";
+    const one = await get(`format=csv&locale=en&sections=byAgent&${range}`);
+    expect(one.status).toBe(200);
+    expect(one.headers.get("content-disposition")).toBe('attachment; filename="dor-report-agents-2026-09-28_2026-09-28.csv"');
+    const text = await one.text();
+    expect(text).toContain("Agent");
+    expect(text).not.toContain("Visitors,1");
+    const two = await get(`format=xlsx&locale=en&sections=summary,heatmap&${range}`);
+    expect(two.headers.get("content-disposition")).toContain("dor-report-custom-");
+    expect((await get(`format=csv&sections=byAgent,nope&${range}`)).status).toBe(400);
+    expect((await get(`format=csv&sections=&${range}`)).status).toBe(400);
+    expect((await get(`format=csv&${range}`)).headers.get("content-disposition")).toContain('"dor-report-2026');
   });
 
   it("validates input", async () => {

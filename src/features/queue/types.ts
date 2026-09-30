@@ -1,3 +1,5 @@
+import type { WaitDisplay } from "./wait-text";
+
 /** Client shapes of the queue API (see src/server/queue/views.ts). */
 export type L = Record<string, string>;
 
@@ -38,7 +40,7 @@ export type Ticket = {
   appointmentId: string | null;
 };
 
-export type Position = { ahead: number; estimatedWaitMinutes: number };
+export type Position = { ahead: number; estimatedWaitMinutes: number; waitLow?: number; waitHigh?: number };
 
 export type QueueState = {
   now: string;
@@ -97,6 +99,8 @@ export type ReceptionContext = {
     defaultLanguage: "interface" | "ar" | "en";
   };
   regional: { digitsTicket: "latn" | "arab"; digitsScreen: "latn" | "arab" };
+  /** Wording of the estimated wait (label, range, disclaimer, "next" text). */
+  waitDisplay: WaitDisplay;
   print: { template: L | null; footer: L; companyName: L; logoUrl: string | null };
   canReassign: boolean;
   canCancel: boolean;

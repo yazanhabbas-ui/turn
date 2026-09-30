@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { normalizeSections, SECTION_SLUGS, type ExportSectionId } from "@/domain/reports/sections";
 import { buildExportDoc, type Cell, type ExportDoc, type ExportLocale, type Report } from "./export-doc";
 import { renderPdf } from "./export-pdf";
 
@@ -14,10 +15,15 @@ const CONTENT_TYPES: Record<ExportFormat, string> = {
   pdf: "application/pdf",
 };
 
-/** ASCII file name such as dor-report-2026-09-01_2026-09-07.xlsx. */
-export function exportFilename(report: Report, format: ExportFormat): string {
+/**
+ * ASCII file name such as dor-report-2026-09-01_2026-09-07.xlsx; a partial export adds the section
+ * (dor-report-agents-...) or "custom" for several.
+ */
+export function exportFilename(report: Report, format: ExportFormat, sections: readonly ExportSectionId[] | null = null): string {
   const { from, to } = report.filters;
-  return `dor-report-${from}_${to}.${format}`;
+  const chosen = normalizeSections(sections);
+  const part = !chosen ? "" : chosen.length === 1 ? `-${SECTION_SLUGS[chosen[0]]}` : "-custom";
+  return `dor-report${part}-${from}_${to}.${format}`;
 }
 
 /* ---------- CSV ---------- */
@@ -126,8 +132,14 @@ export async function renderXlsx(doc: ExportDoc): Promise<Buffer> {
 /* ---------- entry point ---------- */
 
 /** Renders a report (from `buildReport`) as CSV, Excel or PDF in Arabic or English. */
-export async function buildExport(report: Report, format: ExportFormat, locale: ExportLocale): Promise<ExportFile> {
-  const doc = buildExportDoc(report, locale);
+export async function buildExport(
+  report: Report,
+  format: ExportFormat,
+  locale: ExportLocale,
+  sections: readonly ExportSectionId[] | null = null,
+): Promise<ExportFile> {
+  const chosen = normalizeSections(sections);
+  const doc = buildExportDoc(report, locale, chosen);
   const body = format === "csv" ? renderCsv(doc) : format === "xlsx" ? await renderXlsx(doc) : await renderPdf(doc);
-  return { filename: exportFilename(report, format), contentType: CONTENT_TYPES[format], body };
+  return { filename: exportFilename(report, format, chosen), contentType: CONTENT_TYPES[format], body };
 }

@@ -6,6 +6,7 @@ import { useDeferredValue, useState } from "react";
 import { ConfirmButton } from "@/components/admin/confirm-button";
 import { EmptyState, ErrorState, LoadingRows, PageHeader } from "@/components/admin/form";
 import { api, useApiMutation, useApiQuery } from "@/components/admin/use-api";
+import { UserAvatar } from "@/components/app/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -172,9 +173,14 @@ function UsersTable({ lookups, onEdit }: { lookups: Lookups; onEdit: (u: UserRow
               {users.data.items.map((u) => (
                 <TableRow key={u.id} className="cursor-pointer" onClick={() => onEdit(u)}>
                   <TableCell>
-                    <div className="font-medium">{text(u.displayName, u.email)}</div>
-                    <div className="text-muted-foreground text-xs" dir="ltr">
-                      {u.email}
+                    <div className="flex items-center gap-3">
+                      <UserAvatar user={u} size="sm" />
+                      <div>
+                        <div className="font-medium">{text(u.displayName, u.email)}</div>
+                        <div className="text-muted-foreground text-xs" dir="ltr">
+                          {u.email}
+                        </div>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>

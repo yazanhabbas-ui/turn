@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { Check } from "@/features/admin/screens/check";
+import { EXPORT_SECTIONS, type ExportSectionId } from "@/domain/reports/sections";
 import { pickText } from "@/i18n/locales";
 
 const SCHEDULES = "/api/v1/reports/schedules";
@@ -32,6 +33,8 @@ type Schedule = {
   branchId: string | null;
   reasonId: string | null;
   recipients: string[];
+  /** null = every section. */
+  sections: ExportSectionId[] | null;
   isActive: boolean;
   lastRunAt: string | null;
   lastError: string | null;
@@ -54,6 +57,7 @@ type Form = {
   branchId: string;
   reasonId: string;
   recipients: string;
+  sections: ExportSectionId[];
   isActive: boolean;
 };
 
@@ -69,6 +73,7 @@ function toForm(s: Schedule | null, options: Options): Form {
     branchId: s ? (s.branchId ?? "") : options.orgWide ? "" : (options.branches[0]?.id ?? ""),
     reasonId: s?.reasonId ?? "",
     recipients: (s?.recipients ?? []).join("\n"),
+    sections: s?.sections ?? [...EXPORT_SECTIONS],
     isActive: s?.isActive ?? true,
   };
 }
@@ -134,6 +139,7 @@ export function SchedulesPanel() {
               <div className="flex flex-wrap items-center gap-2 font-medium">
                 <span className="truncate">{s.name}</span>
                 <Badge variant="secondary">{t(`formats.${s.format}`)}</Badge>
+                {s.sections && <Badge variant="outline">{t("sectionsCount", { count: s.sections.length })}</Badge>}
                 <Badge variant={s.isActive ? "default" : "outline"}>{s.isActive ? tu("active") : tu("inactive")}</Badge>
               </div>
               <div className="text-muted-foreground mt-1 text-xs">
@@ -190,6 +196,7 @@ function ScheduleDialog({
   const tu = useTranslations("ui");
   const tc = useTranslations("common");
   const tw = useTranslations("reportExport.weekdays");
+  const tsec = useTranslations("reportExport.sections");
   const locale = useLocale();
   const [f, setF] = useState<Form>(() => toForm(null, options));
   const [showErrors, setShowErrors] = useState(false);
@@ -223,6 +230,7 @@ function ScheduleDialog({
         branchId: f.branchId || null,
         reasonId: f.reasonId || null,
         recipients,
+        sections: f.sections.length === EXPORT_SECTIONS.length ? null : f.sections,
         isActive: f.isActive,
       };
       return item ? api(`${SCHEDULES}/${item.id}`, { method: "PUT", body }) : api(SCHEDULES, { body });
@@ -241,7 +249,7 @@ function ScheduleDialog({
           onSubmit={(e) => {
             e.preventDefault();
             setShowErrors(true);
-            if (recipientsError || !f.name.trim()) return;
+            if (recipientsError || !f.name.trim() || f.sections.length === 0) return;
             save.mutate(undefined);
           }}
         >
@@ -337,6 +345,34 @@ function ScheduleDialog({
               value={f.recipients}
               onChange={(e) => setF({ ...f, recipients: e.target.value })}
             />
+          </Field>
+          <Field
+            label={t("sections")}
+            hint={t("sectionsHint")}
+            error={showErrors && f.sections.length === 0 ? t("sectionsRequired") : null}
+          >
+            <div className="space-y-2">
+              <div className="flex gap-1">
+                <Button type="button" size="xs" variant="ghost" onClick={() => setF({ ...f, sections: [...EXPORT_SECTIONS] })}>
+                  {t("exportMenu.selectAll")}
+                </Button>
+                <Button type="button" size="xs" variant="ghost" onClick={() => setF({ ...f, sections: [] })}>
+                  {t("exportMenu.selectNone")}
+                </Button>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {EXPORT_SECTIONS.map((id) => (
+                  <Check
+                    key={id}
+                    label={tsec(id)}
+                    checked={f.sections.includes(id)}
+                    onChange={(on) =>
+                      setF({ ...f, sections: EXPORT_SECTIONS.filter((x) => (x === id ? on : f.sections.includes(x))) })
+                    }
+                  />
+                ))}
+              </div>
+            </div>
           </Field>
           <Check label={tu("active")} checked={f.isActive} onChange={(isActive) => setF({ ...f, isActive })} />
           <DialogFooter>

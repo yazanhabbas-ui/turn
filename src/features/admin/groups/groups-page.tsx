@@ -6,11 +6,13 @@ import { useEffect, useState } from "react";
 import { ConfirmButton } from "@/components/admin/confirm-button";
 import { EmptyState, ErrorState, Field, LocalizedInput, LoadingRows, PageHeader } from "@/components/admin/form";
 import { api, useApiMutation } from "@/components/admin/use-api";
+import { AgentMultiPicker, AgentPicker } from "@/components/admin/agent-picker";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { NativeSelect } from "@/components/ui/native-select";
 import type { Group, L, Lookups } from "../types";
 import { LOOKUPS, useLookups, useText } from "../use-lookups";
+import { useAgentOptions } from "../agent-options";
 import { useListJoin } from "../use-list";
 
 const GROUPS = "/api/v1/admin/groups";
@@ -99,6 +101,7 @@ function GroupDialog({
   const tu = useTranslations("ui");
   const tc = useTranslations("common");
   const text = useText();
+  const agentOptions = useAgentOptions(lookups);
   const [f, setF] = useState({ name: {} as L, branchId: "", supervisorUserId: "", memberIds: [] as string[] });
 
   useEffect(() => {
@@ -150,37 +153,24 @@ function GroupDialog({
               </NativeSelect>
             </Field>
             <Field label={t("supervisor")} htmlFor="g-sup">
-              <NativeSelect
+              <AgentPicker
                 id="g-sup"
+                options={agentOptions}
                 value={f.supervisorUserId}
-                onChange={(e) => setF({ ...f, supervisorUserId: e.target.value })}
-              >
-                <option value="">{tu("none")}</option>
-                {lookups.agents.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {text(a.displayName, a.email)}
-                  </option>
-                ))}
-              </NativeSelect>
+                onChange={(supervisorUserId) => setF({ ...f, supervisorUserId })}
+                placeholder={tu("none")}
+              />
             </Field>
           </div>
           <fieldset>
             <legend className="mb-1.5 text-sm font-medium">{t("members")}</legend>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {lookups.agents.map((a) => (
-                <label key={a.id} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="accent-brand size-4"
-                    checked={f.memberIds.includes(a.id)}
-                    onChange={(e) =>
-                      setF({ ...f, memberIds: e.target.checked ? [...f.memberIds, a.id] : f.memberIds.filter((x) => x !== a.id) })
-                    }
-                  />
-                  {text(a.displayName, a.email)}
-                </label>
-              ))}
-            </div>
+            <AgentMultiPicker
+              options={agentOptions}
+              value={f.memberIds}
+              onChange={(memberIds) => setF({ ...f, memberIds })}
+              placeholder={t("addMembers")}
+              aria-label={t("members")}
+            />
           </fieldset>
           <DialogFooter className="gap-2">
             {group && (

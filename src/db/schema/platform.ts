@@ -84,6 +84,8 @@ export const reportSchedules = pgTable("report_schedules", {
   filters: jsonb("filters").$type<Record<string, unknown>>().notNull().default({}),
   recipients: jsonb("recipients").$type<string[]>().notNull().default([]),
   locale: text("locale").notNull().default("ar"),
+  /** Export section ids the report includes (see domain/reports/sections); null = every section. */
+  sections: jsonb("sections").$type<string[]>(),
   isActive: boolean("is_active").notNull().default(true),
   lastRunAt: ts("last_run_at"),
   /** Why the last run failed; null after a successful run. */

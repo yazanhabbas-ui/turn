@@ -7,8 +7,9 @@ import { useErrorMessage } from "@/components/admin/use-api";
 import { EntityIcon } from "@/components/app/entity-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AgentPicker } from "@/components/admin/agent-picker";
+import { queueAgentOptions } from "../queue/agent-options";
 import { Label } from "@/components/ui/label";
-import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { looseNameMatch } from "@/domain/i18n/arabic-normalize";
 import { pickText } from "@/i18n/locales";
@@ -104,7 +105,7 @@ export function ReasonPicker({
   );
 }
 
-export type IssueResult = { ticket: Ticket; ahead: number; estimatedWaitMinutes: number };
+export type IssueResult = { ticket: Ticket; ahead: number; estimatedWaitMinutes: number; waitLow?: number; waitHigh?: number };
 
 /** The single place that turns a reception choice into a ticket (used by one-tap issuing and by the form). */
 export function issueRequest(
@@ -158,6 +159,7 @@ export function IssuePanel({
 }) {
   const t = useTranslations("reception");
   const tr = useTranslations("reasons");
+  const tst = useTranslations("agent.statuses");
   const locale = useLocale();
   const message = useErrorMessage();
   const [fields, setFields] = useState<Record<string, string>>({});
@@ -293,14 +295,14 @@ export function IssuePanel({
         {(manual || ctx.canReassign) && agents.length > 0 && (
           <div className="space-y-1.5">
             <Label htmlFor="assign-to">{t("assignTo")}</Label>
-            <NativeSelect id="assign-to" value={assignTo} onChange={(e) => setAssignTo(e.target.value)} className="h-10">
-              <option value="">{t("anyAgent")}</option>
-              {agents.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {pickText(a.displayName, locale)}
-                </option>
-              ))}
-            </NativeSelect>
+            <AgentPicker
+              id="assign-to"
+              options={queueAgentOptions(agents, locale, (s) => tst(s as "AVAILABLE"))}
+              value={assignTo}
+              onChange={setAssignTo}
+              placeholder={t("anyAgent")}
+              className="[&_button[role=combobox]]:min-h-10"
+            />
           </div>
         )}
       </div>

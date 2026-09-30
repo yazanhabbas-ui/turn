@@ -88,7 +88,8 @@
     "wallboard": "Live wallboard",
     "account": "My account",
     "chooseArea": "Choose where to work",
-    "noAreas": "Your account has no workspace assigned yet. Ask an administrator to give you a role."
+    "noAreas": "Your account has no workspace assigned yet. Ask an administrator to give you a role.",
+    "profile": "My profile"
   },
   "admin": {
     "dashboard": "Overview",
@@ -329,7 +330,12 @@
   "apiErrors": {
     "validation": {
       "_": "Please check the highlighted fields.",
-      "scope_required": "Give this user at least one role scope or agent branch within your city."
+      "scope_required": "Give this user at least one role scope or agent branch within your city.",
+      "too_large": "The picture is too large. Choose one up to 2 MB.",
+      "unsupported_type": "This file is not a supported picture. Use PNG, JPEG or WebP.",
+      "empty": "The file is empty.",
+      "missing": "Choose a picture first.",
+      "invalid_form": "The upload could not be read. Try again."
     },
     "unauthorized": "Your session ended. Please sign in again.",
     "forbidden": {
@@ -464,7 +470,8 @@
     "supervisor": "Supervisor",
     "members": "Members",
     "membersCount": "{count, plural, one {# member} other {# members}}",
-    "empty": "No groups yet."
+    "empty": "No groups yet.",
+    "addMembers": "Add members…"
   },
   "roles": {
     "title": "Roles & permissions",
@@ -589,7 +596,8 @@
       "agents": "Agents",
       "wallboard": "Wallboard",
       "wifi": "Wi-Fi",
-      "breakLimit": "Break limit"
+      "breakLimit": "Break limit",
+      "waitEstimate": "Waiting time"
     },
     "companyName": "Company name",
     "logoUrl": "Logo URL",
@@ -746,7 +754,68 @@
     "holdMinutesHint": "The next agent in line is notified and has this long to take a free place.",
     "breakLimitExplainer": "An agent who must wait is told how many colleagues are on a break, and is notified as soon as a place is free.",
     "phoneCountryCode": "Phone country code",
-    "phoneCountryCodeHint": "Used to complete local numbers such as 0944 123 456."
+    "phoneCountryCodeHint": "Used to complete local numbers such as 0944 123 456.",
+    "weIntro": "The waiting time a visitor sees on the ticket, the confirmation and the status page. It is only an estimate and never stops a ticket from being issued. Each branch can have its own rules.",
+    "weInherited": "The branch now uses the default",
+    "weMode": "How the waiting time is worked out",
+    "weMode_fixed": "Fixed time per visitor",
+    "weMode_fixed_hint": "The same number of minutes for every visitor ahead, whatever the reason.",
+    "weMode_reason": "Per reason",
+    "weMode_reason_hint": "Each reason's own expected service time (set under Reasons).",
+    "weMode_analytics": "Learn from real data",
+    "weMode_analytics_hint": "Uses how long completed visits really took over the last days; falls back to the reason's time until there is enough data.",
+    "weFixedMinutes": "Minutes per visitor",
+    "weFixedMinutesHint": "For example 5 means 3 people ahead ≈ 15 minutes for one agent.",
+    "weDivideByAgents": "Divide by the agents serving the queue",
+    "weDivideByAgentsHint": "With 3 agents, the same queue is estimated to move three times as fast.",
+    "weAnalytics": "Learning from real visits",
+    "weLookbackDays": "Days to learn from",
+    "weLookbackDaysHint": "Only visits finished in this period count.",
+    "weMinSamples": "Minimum visits",
+    "weMinSamplesHint": "Below this many finished visits of a reason, its expected time is used.",
+    "weStatistic": "Typical service time",
+    "weStatistic_median": "Median (recommended)",
+    "weStatistic_median_hint": "The middle value; a few very long visits do not distort it.",
+    "weStatistic_average": "Average",
+    "weStatistic_average_hint": "The mean; long visits pull it up.",
+    "weStatistic_p75": "Cautious (75th percentile)",
+    "weStatistic_p75_hint": "Three out of four visits are shorter; visitors are rarely surprised by a longer wait.",
+    "weWeightByHour": "Prefer visits from the same hour of the day",
+    "weWeightByHourHint": "Uses visits within one hour of now (same weekday first) when there are enough of them.",
+    "weTrimOutliers": "Ignore extreme visits",
+    "weTrimOutliersHint": "Drops the shortest and longest 5%, visits under 20 seconds and visits over 4 hours.",
+    "weDisplay": "What the visitor sees",
+    "weRounding": "Round up to",
+    "weRoundingHint": "Rounded-up figures look less exact and promise less.",
+    "weRoundingN": "{n, plural, one {# minute} other {# minutes}}",
+    "weBuffer": "Safety margin (%)",
+    "weBufferHint": "Added on top of the estimate.",
+    "weMinShown": "Show \"next\" below (minutes)",
+    "weMinShownHint": "Under this estimate the visitor sees the text below instead of a number. 0 = always a number.",
+    "weShowOnTicket": "Show the waiting time on the ticket and status page",
+    "weShowOnTicketHint": "When off, no waiting time is printed or shown to the visitor.",
+    "weShowAsRange": "Show as a range",
+    "weShowAsRangeHint": "For example 10–15 min, from typical short and long visits.",
+    "weLabel": "Label",
+    "weUnit": "Unit",
+    "weNextText": "Text for a very short wait",
+    "weDisclaimer": "Small note (optional)",
+    "wePreview": "Preview",
+    "wePreviewReason": "Reason",
+    "wePreviewAgents": "Agents serving",
+    "wePreviewAhead": "{n, plural, one {# person ahead} other {# people ahead}}",
+    "weHiddenOnTicket": "The waiting time is hidden from visitors.",
+    "weTable": "Real service times",
+    "weTableHint": "Completed visits of the last {days} days, in minutes.",
+    "weColReason": "Reason",
+    "weColSamples": "Visits",
+    "weColMedian": "Median",
+    "weColAverage": "Average",
+    "weColP75": "75th %",
+    "weColExpected": "Expected",
+    "weColUsed": "In use",
+    "weLearning": "Learning: {n} of {min}",
+    "weLearned": "Learned"
   },
   "audit": {
     "title": "Audit log",
@@ -1625,11 +1694,28 @@
   },
   "reportSchedules": {
     "exportMenu": {
-      "button": "Export",
+      "button": "Download",
       "xlsx": "Excel (.xlsx)",
       "csv": "CSV",
       "pdf": "PDF",
-      "failed": "The file could not be created. Please try again in a moment."
+      "failed": "The file could not be created. Please try again in a moment.",
+      "title": "Download report",
+      "description": "Choose the file type and which sections to include. Your current filters apply.",
+      "format": "File type",
+      "sections": "Sections",
+      "selectAll": "Select all",
+      "selectNone": "Clear",
+      "presetsLabel": "Quick picks",
+      "presets": {
+        "overview": "Overview",
+        "staff": "Staff and shifts",
+        "repeat": "Repeat visits"
+      },
+      "selected": "{count} of {total} selected",
+      "download": "Download",
+      "downloadSection": "Download this section: {section}",
+      "empty": "No data",
+      "emptyHint": "No data in this period; the file will only contain the headings."
     },
     "intro": "Email a report automatically to your team. Daily reports cover the previous day; weekly reports cover the seven days ending yesterday.",
     "add": "Add scheduled report",
@@ -1667,7 +1753,12 @@
     "lastError": "The last run had delivery problems. Check that email is set up.",
     "sendNow": "Send now",
     "sentNow": "Sent to {sent} of {total} recipients.",
-    "sentNone": "Nothing was sent. Check that email is set up and the addresses are correct."
+    "sentNone": "Nothing was sent. Check that email is set up and the addresses are correct.",
+    "sections": "Sections in the file",
+    "sectionsHint": "Leave all selected to send the full report.",
+    "sectionsAll": "All sections",
+    "sectionsCount": "{count} sections",
+    "sectionsRequired": "Choose at least one section."
   },
   "cities": {
     "title": "Cities",
@@ -1680,5 +1771,146 @@
     "branchesCount": "{count, plural, one {# branch} other {# branches}}",
     "archiveTitle": "Archive this city?",
     "archiveBody": "A city can only be archived when it has no active branches."
+  },
+  "picker": {
+    "placeholder": "Select…",
+    "search": "Search by name, e-mail, phone or branch",
+    "noResults": "No one matches your search",
+    "more": "{count} more, keep typing to narrow the list",
+    "clear": "Clear selection",
+    "clearAll": "Clear all",
+    "remove": "Remove {name}",
+    "selected": "{count} selected"
+  },
+  "profile": {
+    "title": "My profile",
+    "roles": "Roles",
+    "worksAt": "Works at",
+    "memberSince": "Member since",
+    "lastSignIn": "Last sign-in",
+    "none": "None",
+    "securityLink": "Password, two-step verification and language",
+    "progressTitle": "My progress",
+    "activityTitle": "My activity",
+    "scope": {
+      "organization": "Whole organization",
+      "city": "City",
+      "branch": "Branch"
+    },
+    "avatar": {
+      "add": "Add a picture",
+      "change": "Change picture",
+      "remove": "Remove",
+      "save": "Use this picture",
+      "cancel": "Cancel",
+      "preview": "Preview of the new picture",
+      "choose": "Choose a picture file",
+      "hint": "PNG, JPEG or WebP up to 2 MB. It is cropped to a square and shown round.",
+      "saved": "Your picture was updated.",
+      "removed": "Your picture was removed.",
+      "errors": {
+        "type": "Use a PNG, JPEG or WebP picture.",
+        "size": "The picture must be 2 MB or smaller."
+      }
+    },
+    "activity": {
+      "filterType": "Type of activity",
+      "filterDays": "Period",
+      "lastDays": "Last {n} days",
+      "types": {
+        "all": "Everything",
+        "audit": "Changes I made",
+        "tickets": "Visitors and tickets"
+      },
+      "loading": "Loading…",
+      "error": "Could not load your activity.",
+      "empty": "No activity in this period.",
+      "loadMore": "Load more",
+      "issued": "issued",
+      "served": "served",
+      "minutes": "{n} min",
+      "service": "service {time}",
+      "wait": "waited {time}",
+      "status": {
+        "COMPLETED": "Completed",
+        "NO_SHOW": "No-show"
+      },
+      "verbs": {
+        "created": "Created {entity}",
+        "updated": "Updated {entity}",
+        "archived": "Archived {entity}",
+        "deleted": "Deleted {entity}"
+      },
+      "entities": {
+        "user": "a user",
+        "branch": "a branch",
+        "desk": "a desk",
+        "city": "a city",
+        "setting": "a setting",
+        "role": "a role",
+        "visit_reason": "a visit reason",
+        "shift": "a shift",
+        "display": "a screen",
+        "floor": "a floor",
+        "agent_group": "a group",
+        "priority_level": "a priority",
+        "break_type": "a break type",
+        "announcement": "an announcement",
+        "invite": "an invitation",
+        "report_schedule": "a report schedule",
+        "alert": "an alert"
+      },
+      "actions": {
+        "auth_login": "Signed in",
+        "auth_totp_failed": "Wrong two-step code entered",
+        "user_password_changed": "Changed password",
+        "user_password_reset_completed": "Reset password",
+        "user_totp_enabled": "Turned on two-step verification",
+        "user_totp_disabled": "Turned off two-step verification",
+        "user_avatar_set": "Changed profile picture",
+        "user_avatar_removed": "Removed profile picture",
+        "invite_accepted": "Accepted an invitation"
+      }
+    },
+    "progress": {
+      "period": "Period",
+      "periods": {
+        "day": "Today",
+        "week": "This week",
+        "month": "This month"
+      },
+      "vs": {
+        "day": "vs yesterday",
+        "week": "vs last week",
+        "month": "vs last month"
+      },
+      "noEarlier": "No data {when}",
+      "none": "—",
+      "minutes": "{n} min",
+      "hoursMinutes": "{h} h {m} min",
+      "days": "{n, plural, one {# day} other {# days}}",
+      "loading": "Loading…",
+      "error": "Could not load your progress.",
+      "served": "Visitors served",
+      "avgService": "Average service time",
+      "avgWait": "Average wait of my visitors",
+      "resolved": "Share completed",
+      "noShows": "No-shows",
+      "available": "Available time",
+      "onBreak": "Time on break",
+      "issued": "Tickets issued",
+      "actions": "Actions I made",
+      "branchServed": "Branch average: {n} per agent",
+      "branchAverage": "Branch average: {value}",
+      "trendServed": "Visitors served per day, last {n} days",
+      "trendIssued": "Tickets issued per day, last {n} days",
+      "trendActions": "Actions per day, last {n} days",
+      "trendAria": "Bar chart of the last days",
+      "totalServed": "Total served",
+      "activeDays": "on {n} days",
+      "bestDay": "Best day",
+      "streak": "Current streak",
+      "streakHint": "Working days in a row with at least one visitor served"
+    }
   }
 }

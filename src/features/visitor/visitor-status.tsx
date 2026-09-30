@@ -5,6 +5,7 @@ import { BellRing } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { EntityIcon } from "@/components/app/entity-icon";
 import { pickText } from "@/i18n/locales";
+import { waitLine, type WaitDisplay } from "../queue/wait-text";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +16,8 @@ export type PublicStatus = {
   reason: { name: Record<string, string>; color: string; icon: string } | null;
   branch: Record<string, string>;
   desk: { number: string; name: Record<string, string> } | null;
-  position: { ahead: number; estimatedWaitMinutes: number } | null;
+  position: { ahead: number; estimatedWaitMinutes: number; waitLow?: number; waitHigh?: number } | null;
+  waitDisplay: WaitDisplay;
 };
 
 /** Mobile page behind the ticket QR code. Polls every 10 s (no login, no personal data). */
@@ -30,6 +32,7 @@ export function VisitorStatus({ token, initial }: { token: string; initial: Publ
   });
   const s = data ?? initial;
   const called = s.status === "CALLED";
+  const wait = s.position ? waitLine(s.position, s.waitDisplay, locale) : null;
 
   return (
     <main
@@ -53,15 +56,22 @@ export function VisitorStatus({ token, initial }: { token: string; initial: Publ
       </p>
 
       {s.status === "WAITING" && s.position && (
-        <div className="mt-8 grid w-full max-w-sm grid-cols-2 gap-3">
-          <div className="bg-card rounded-2xl border p-4 shadow-sm">
-            <div className="text-muted-foreground text-xs">{t("ahead")}</div>
-            <div className="tabular text-4xl font-bold">{s.position.ahead}</div>
+        <div className="mt-8 w-full max-w-sm">
+          <div className={cn("grid gap-3", wait ? "grid-cols-2" : "grid-cols-1")}>
+            <div className="bg-card rounded-2xl border p-4 shadow-sm">
+              <div className="text-muted-foreground text-xs">{t("ahead")}</div>
+              <div className="tabular text-4xl font-bold">{s.position.ahead}</div>
+            </div>
+            {wait && (
+              <div className="bg-card rounded-2xl border p-4 shadow-sm">
+                <div className="text-muted-foreground text-xs">{wait.label}</div>
+                <div className={cn("tabular font-bold", wait.next ? "text-2xl leading-[2.5rem]" : "text-4xl")}>
+                  <bdi>{wait.value}</bdi>
+                </div>
+              </div>
+            )}
           </div>
-          <div className="bg-card rounded-2xl border p-4 shadow-sm">
-            <div className="text-muted-foreground text-xs">{t("estimated")}</div>
-            <div className="tabular text-4xl font-bold">{t("minutes", { n: s.position.estimatedWaitMinutes })}</div>
-          </div>
+          {wait?.disclaimer && <p className="text-muted-foreground mt-2 text-xs">{wait.disclaimer}</p>}
         </div>
       )}
 

@@ -17,6 +17,7 @@ import { serviceDay } from "@/domain/schedule/time";
 import { shiftState } from "@/domain/shifts/window";
 import { now as clockNow } from "../clock";
 import { getSetting } from "../settings/service";
+import { buildWaitModel, type WaitModel } from "./wait-analytics";
 
 /** Serializes all queue mutations of a branch (issue, call, transfer, dispatch) for the rest of the transaction. */
 export async function lockBranch(tx: Tx, branchId: string) {
@@ -38,6 +39,8 @@ export type BranchContext = {
   snapshot: EngineSnapshot;
   /** Resolved distribution configuration per queue id. */
   configFor: (queueId: string) => DistributionConfig;
+  /** The one place where waiting times are estimated, so every screen agrees. */
+  wait: WaitModel;
 };
 
 export const OPEN_STATUSES = ["WAITING", "CALLED", "SERVING"] as const;
@@ -173,9 +176,14 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
     servingAgentId: t.servingAgentId,
   }));
 
+  const reasonById = new Map(reasonRows.map((r) => [r.id, r]));
+  // Reading the learned durations never fails issuing: on any error every reason uses its own expected time.
+  const wait = await buildWaitModel(tx, branch, (id) => reasonById.get(id)?.expectedServiceMinutes ?? 10, now);
+
   return {
     branch,
     now,
+    wait,
     agentShifts,
     shiftMode: work.shiftMode,
     shiftEndGraceMinutes: work.shiftEndGraceMinutes,

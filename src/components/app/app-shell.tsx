@@ -1,4 +1,4 @@
-import { ShieldAlert, UserRound } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { can } from "@/domain/rbac/permissions";
 import { pickText } from "@/i18n/locales";
@@ -9,6 +9,7 @@ import type { AuthContext } from "@/server/auth/session";
 import { getBranding } from "@/server/branding";
 import { LanguageSwitcher } from "./language-switcher";
 import { SignOutButton } from "./sign-out-button";
+import { UserAvatar } from "./user-avatar";
 
 /** Header shared by every signed-in workspace: brand, area switcher, language, account, sign out. */
 export async function AppShell({
@@ -18,7 +19,7 @@ export async function AppShell({
   sidebar,
 }: {
   auth: AuthContext;
-  area?: AreaKey | "account";
+  area?: AreaKey | "account" | "profile";
   children: React.ReactNode;
   sidebar?: React.ReactNode;
 }) {
@@ -61,13 +62,14 @@ export async function AppShell({
           <div className="ms-auto flex items-center gap-1">
             <LanguageSwitcher signedIn />
             <Link
-              href="/account"
+              href="/profile"
+              title={t("profile")}
               className={cn(
-                "hover:bg-muted inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm",
-                area === "account" && "bg-muted",
+                "hover:bg-muted inline-flex items-center gap-2 rounded-md px-2 py-1 text-sm",
+                (area === "profile" || area === "account") && "bg-muted",
               )}
             >
-              <UserRound className="size-4" aria-hidden />
+              <UserAvatar user={{ ...auth.user, avatarVersion: auth.user.avatarVersion ?? null }} size="sm" />
               <span className="hidden max-w-40 truncate md:inline">
                 {pickText(auth.user.displayName, locale, auth.user.email)}
               </span>

@@ -64,6 +64,7 @@ export type UserView = {
   locale: string | null;
   isActive: boolean;
   totpEnabled: boolean;
+  avatarVersion: number | null;
   lastLoginAt: Date | null;
   lockedUntil: Date | null;
   createdAt: Date;
@@ -107,6 +108,7 @@ export async function listUsers(
       locale: u.locale,
       isActive: u.isActive,
       totpEnabled: !!u.totpEnabledAt,
+      avatarVersion: u.avatarVersion,
       lastLoginAt: u.lastLoginAt,
       lockedUntil: u.lockedUntil,
       createdAt: u.createdAt,
@@ -160,7 +162,7 @@ export async function listUsers(
  * A user is managed by someone whose scope covers ALL of the user's access. A city admin can manage the people of
  * their city, but never an organization-wide administrator, nor someone who also works in another city.
  */
-async function assertManages(actor: Actor, userId: string, tx: DbOrTx) {
+export async function assertManages(actor: Actor, userId: string, tx: DbOrTx) {
   const scope = allowedBranches(actor, "users.manage");
   if (scope === "all") return;
   const cityScope = allowedCities(actor, "users.manage");

@@ -17,6 +17,8 @@ export type SessionUser = {
   displayName: Record<string, string>;
   locale: string | null;
   totpEnabled: boolean;
+  /** Version of the profile picture (cache key); null/absent = no picture. */
+  avatarVersion?: number | null;
 };
 
 export type AuthContext = {
@@ -128,6 +130,7 @@ export async function validateSessionToken(token: string): Promise<AuthContext |
       displayName: row.user.displayName,
       locale: row.user.locale,
       totpEnabled: !!row.user.totpEnabledAt,
+      avatarVersion: row.user.avatarVersion,
     },
   };
 }

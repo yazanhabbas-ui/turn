@@ -2,7 +2,8 @@ import fs from "node:fs";
 import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
 import type { ReportData } from "@/domain/reports/types";
-import { buildExport, guardFormula, renderCsv } from "@/server/reports/export";
+import { EXPORT_SECTIONS, normalizeSections, parseSections } from "@/domain/reports/sections";
+import { buildExport, exportFilename, guardFormula, renderCsv } from "@/server/reports/export";
 import { buildExportDoc, type Report } from "@/server/reports/export-doc";
 
 const spread = { avg: 4.2, median: 3, p90: 9, max: 14 };
@@ -169,6 +170,53 @@ describe("report export", () => {
       const f = await buildExport(report, format, "en");
       expect(f.filename).toBe(`dor-report-2026-09-01_2026-09-09.${format}`);
     }
+  });
+
+  describe("sections", () => {
+    it("parses the section list and rejects unknown ids", () => {
+      expect(parseSections(null)).toBeNull();
+      expect(parseSections("byAgent,summary,byAgent")).toEqual(["summary", "byAgent"]);
+      expect(() => parseSections("byAgent,nope")).toThrow();
+      expect(() => parseSections("")).toThrow();
+      expect(normalizeSections([...EXPORT_SECTIONS])).toBeNull();
+      expect(normalizeSections(["heatmap"])).toEqual(["heatmap"]);
+    });
+
+    it("emits every section by default, one table per id", () => {
+      const ids = buildExportDoc(report, "en").tables.map((t) => t.id);
+      expect(ids).toEqual(EXPORT_SECTIONS.filter((id) => ids.includes(id)));
+      expect(ids).toContain("byAgent");
+    });
+
+    it("keeps only the chosen tables, in canonical order, even when empty", () => {
+      const doc = buildExportDoc(report, "en", ["heatmap", "byAgent"]);
+      expect(doc.tables.map((t) => t.id)).toEqual(["byAgent", "heatmap"]);
+      const empty = { ...report, data: { ...report.data, byShift: [] } } as Report;
+      expect(buildExportDoc(empty, "en", ["byShift"]).tables.map((t) => [t.id, t.rows.length])).toEqual([["byShift", 0]]);
+    });
+
+    it("names single-section files, and renders csv, xlsx and pdf with only those tables", async () => {
+      expect(exportFilename(report, "xlsx", ["byAgent"])).toBe("dor-report-agents-2026-09-01_2026-09-09.xlsx");
+      expect(exportFilename(report, "csv", ["byAgent", "heatmap"])).toBe("dor-report-custom-2026-09-01_2026-09-09.csv");
+      expect(exportFilename(report, "csv", [...EXPORT_SECTIONS])).toBe("dor-report-2026-09-01_2026-09-09.csv");
+
+      const csv = await buildExport(report, "csv", "en", ["byAgent"]);
+      expect(csv.filename).toMatch(/^dor-report-agents-[ -~]+.csv$/);
+      const text = csv.body.toString("utf8");
+      const doc = buildExportDoc(report, "en");
+      expect(text).toContain(doc.tables.find((t) => t.id === "byAgent")!.title);
+      expect(text).not.toContain(doc.tables.find((t) => t.id === "byDay")!.title);
+      expect(text).not.toContain(doc.tables.find((t) => t.id === "heatmap")!.title);
+
+      const xlsx = await buildExport(report, "xlsx", "en", ["byDay", "byHour"]);
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(xlsx.body as never);
+      expect(wb.worksheets).toHaveLength(2);
+
+      const pdf = await buildExport(report, "pdf", "ar", ["byShift", "repeatTop"]);
+      expect(pdf.body.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+      expect(pdf.filename).toContain("custom");
+    });
   });
 
   it("guards against spreadsheet formula injection", () => {

@@ -8,8 +8,9 @@ import { renderTemplate } from "@/domain/templates/render";
 import { wifiQrPayload } from "@/domain/wifi/qr";
 import { dirOf, pickText } from "@/i18n/locales";
 import type { ReceptionContext, Ticket } from "../queue/types";
+import { waitLine } from "../queue/wait-text";
 
-export type PrintJob = { ticket: Ticket; ahead: number; estimatedWaitMinutes: number };
+export type PrintJob = { ticket: Ticket; ahead: number; estimatedWaitMinutes: number; waitLow?: number; waitHigh?: number };
 
 /** Link printed as a QR code: the visitor's live status page on this server. */
 export function statusUrl(ticket: Ticket) {
@@ -64,7 +65,10 @@ export function PrintTicket({ job, ctx, onDone }: { job: PrintJob | null; ctx: R
     ahead: applyDigits(String(job.ahead), digits),
     wait: applyDigits(String(job.estimatedWaitMinutes), digits),
   };
-  const lines = (pickText(ctx.print.template, lang) || "{ticket}\n{reason}").split("\n");
+  // The estimated wait comes from the Waiting time settings (label, range, disclaimer); template lines that carry
+  // {wait} are replaced by it so an older template cannot print a second, different figure.
+  const wait = waitLine(job, ctx.waitDisplay, lang, digits);
+  const lines = (pickText(ctx.print.template, lang) || "{ticket}\n{reason}").split("\n").filter((l) => !l.includes("{wait}"));
   const when = new Intl.DateTimeFormat(lang === "ar" ? `ar-u-nu-${digits}` : "en-GB", {
     timeZone: ctx.branch.timezone,
     dateStyle: "medium",
@@ -90,6 +94,20 @@ export function PrintTicket({ job, ctx, onDone }: { job: PrintJob | null; ctx: R
               {renderTemplate(line, vars)}
             </div>
           ),
+        )}
+        {wait && (
+          <div className="ticket-line">
+            <div className="ticket-wait">
+              {wait.next ? (
+                wait.value
+              ) : (
+                <>
+                  {wait.label}: <bdi>{wait.value}</bdi>
+                </>
+              )}
+            </div>
+            {wait.disclaimer && <div className="ticket-disclaimer">{wait.disclaimer}</div>}
+          </div>
         )}
         {qr && (
           // eslint-disable-next-line @next/next/no-img-element

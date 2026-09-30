@@ -381,10 +381,7 @@ async function createDemo(tx: Tx, organizationId: string) {
       organizationId,
       channel: "ticket_print",
       event: "ticket_issued",
-      body: voice(
-        "نرحب بكم\nرقمكم {ticket}\n{reason}\nأمامكم {ahead} · الانتظار المتوقع {wait} دقيقة",
-        "Welcome\nYour number {ticket}\n{reason}\n{ahead} ahead · about {wait} min",
-      ),
+      body: voice("نرحب بكم\nرقمكم {ticket}\n{reason}\nأمامكم {ahead}", "Welcome\nYour number {ticket}\n{reason}\n{ahead} ahead"),
     },
     {
       organizationId,

@@ -311,11 +311,7 @@ export function Wallboard({ canAck }: { canAck: boolean }) {
       <header className="mb-4 flex flex-wrap items-center gap-3">
         {wb?.showLogo !== false && brand?.logoUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- the organization's own logo, size unknown
-          <img
-            src={brand.logoUrl}
-            alt=""
-            className="h-10 max-w-[14rem] rounded-lg bg-white/95 object-contain px-2 py-1 md:h-14 2xl:h-20"
-          />
+          <img src={brand.logoUrl} alt="" className="h-10 max-w-[14rem] object-contain md:h-14 2xl:h-20" />
         )}
         <div className="min-w-0">
           {wb?.showCompanyName !== false && brand && (

@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useErrorMessage } from "@/components/admin/use-api";
+import { AgentPicker } from "@/components/admin/agent-picker";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -21,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { pickText } from "@/i18n/locales";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { queueAgentOptions } from "../queue/agent-options";
 import { Elapsed, StatusBadge } from "../queue/bits";
 import type { QueueState, ReceptionContext, Ticket } from "../queue/types";
 
@@ -316,14 +318,13 @@ function AssignDialog({
         </DialogHeader>
         <div className="space-y-1.5">
           <Label htmlFor="a-agent">{t("agent")}</Label>
-          <NativeSelect id="a-agent" value={agentId} onChange={(e) => setAgentId(e.target.value)}>
-            <option value="">{t("release")}</option>
-            {agents.map((a) => (
-              <option key={a.id} value={a.id}>
-                {pickText(a.displayName, locale)} · {ta(`statuses.${a.status}` as "statuses.AVAILABLE")}
-              </option>
-            ))}
-          </NativeSelect>
+          <AgentPicker
+            id="a-agent"
+            options={queueAgentOptions(agents, locale, (s) => ta(`statuses.${s}` as "statuses.AVAILABLE"))}
+            value={agentId}
+            onChange={setAgentId}
+            placeholder={t("release")}
+          />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>

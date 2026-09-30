@@ -19,6 +19,7 @@ import { BRAND_FONTS, type SettingKey, type SettingValue } from "@/server/settin
 import type { BreakType, L, Priority, RoleRow } from "../types";
 import { LOOKUPS, useLookups, useText } from "../use-lookups";
 import { ShiftsManager } from "./shifts-breaks";
+import { WaitEstimateTab } from "./wait-estimate-tab";
 
 type AllSettings = { [K in SettingKey]: SettingValue<K> };
 const SETTINGS = "/api/v1/admin/settings";
@@ -111,6 +112,7 @@ export function SettingsPage({ organization = true }: { organization?: boolean }
           "ticketing",
           "reception",
           "wifi",
+          "waitEstimate",
           "agents",
           "breakLimit",
           "wallboard",
@@ -122,7 +124,7 @@ export function SettingsPage({ organization = true }: { organization?: boolean }
           "priorities",
           "breaks",
         ]
-      : ["wifi"]
+      : ["wifi", "waitEstimate"]
   ) as readonly string[];
 
   return (
@@ -150,6 +152,9 @@ export function SettingsPage({ organization = true }: { organization?: boolean }
         </TabsContent>
         <TabsContent value="wifi" className="mt-4">
           <WifiTab defaults={s.wifi} branches={lookups.data.branches} organization={organization} />
+        </TabsContent>
+        <TabsContent value="waitEstimate" className="mt-4">
+          <WaitEstimateTab defaults={s.waitEstimate} branches={lookups.data.branches} organization={organization} />
         </TabsContent>
         <TabsContent value="agents" className="mt-4">
           <div className="space-y-6">

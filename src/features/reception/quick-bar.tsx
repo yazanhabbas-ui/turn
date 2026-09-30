@@ -9,6 +9,7 @@ import { applyDigits } from "@/domain/i18n/digits";
 import { LOCALE_CODES, LOCALES, pickText } from "@/i18n/locales";
 import { cn } from "@/lib/utils";
 import type { ReceptionContext } from "../queue/types";
+import { waitLine } from "../queue/wait-text";
 import type { IssueResult } from "./issue-panel";
 
 /**
@@ -109,6 +110,7 @@ export function IssuedBanner({
   }, [result, onDismiss]);
   if (!result) return null;
   const reason = ctx.reasons.find((r) => r.id === result.ticket.reasonId);
+  const bannerWait = waitLine(result, ctx.waitDisplay, locale, ctx.regional.digitsScreen);
 
   return (
     <div
@@ -122,7 +124,7 @@ export function IssuedBanner({
         <span className="block font-medium">{pickText(reason?.name, locale)}</span>
         <span className="text-muted-foreground text-sm">
           {tq("ahead", { count: result.ahead })}
-          {result.ahead > 0 && ` · ${tq("estimated", { min: result.estimatedWaitMinutes })}`}
+          {bannerWait && ` · ${bannerWait.next ? bannerWait.value : `${bannerWait.label}: ${bannerWait.value}`}`}
         </span>
       </span>
       <Button variant="outline" onClick={onPrint}>

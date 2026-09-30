@@ -1,7 +1,6 @@
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { announcements, branches, desks, messageTemplates, ttsAudioPacks, tickets, visitReasons } from "@/db/schema";
-import { estimateWaitMinutes } from "@/domain/distribution/estimate";
 import { parseDisplayConfig } from "@/domain/display/config";
 import { now as clockNow } from "../clock";
 import { getSetting } from "../settings/service";
@@ -109,7 +108,7 @@ export async function displayState(display: DisplayRow) {
         icon: r.icon,
         prefix: r.prefix,
         waiting,
-        estimatedWaitMinutes: estimateWaitMinutes(waiting, agents, r.expectedServiceMinutes),
+        estimatedWaitMinutes: bctx.wait.estimate(r.id, waiting, agents).minutes,
       };
     });
 

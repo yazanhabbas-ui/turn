@@ -3,16 +3,17 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Check, ChevronDown, X } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { EmptyState, ErrorState, PageHeader } from "@/components/admin/form";
 import { api } from "@/components/admin/use-api";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { ExportSectionId } from "@/domain/reports/sections";
 import type { Forecast, ReportData } from "@/domain/reports/types";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { ExportMenu } from "./export-menu";
+import { ExportMenu, SectionDownload } from "./export-menu";
 import {
   daysBetween,
   defaultRange,
@@ -43,6 +44,26 @@ import { ReportFilters } from "./report-filters";
 import { AgentsTable, ReasonsTable, RepeatVisitorsTable, ShiftsTable } from "./report-tables";
 import { SchedulesPanel } from "./schedules-panel";
 import { useReportFormat } from "./use-report-format";
+
+/** The current filter query when the viewer may export (enables the per-section download buttons), else null. */
+const ExportQuery = createContext<string | null>(null);
+
+/** Sections whose table would have no rows in this report. */
+function emptySections(d: ReportData | undefined): ExportSectionId[] {
+  if (!d) return [];
+  const out: ExportSectionId[] = [];
+  if (d.summary.visitors === 0) out.push("summary");
+  if (!d.byDay.length) out.push("byDay");
+  if (!d.byHour.some((h) => h.visitors > 0)) out.push("byHour");
+  if (!d.byReason.length) out.push("byReason");
+  if (!d.agents.length) out.push("byAgent");
+  if (d.byBranch.length <= 1) out.push("byBranch");
+  if (!d.byShift.length) out.push("byShift");
+  if (!d.repeat.uniqueVisitors) out.push("repeatSummary", "repeatDistribution");
+  if (!d.repeat.top.length) out.push("repeatTop");
+  if (!d.heatmap.cells.length) out.push("heatmap");
+  return out;
+}
 
 export function ReportsPage({ canExport, canSchedule }: { canExport: boolean; canSchedule: boolean }) {
   const t = useTranslations("reports");
@@ -99,57 +120,59 @@ export function ReportsPage({ canExport, canSchedule }: { canExport: boolean; ca
   const stale = report.isPlaceholderData;
 
   return (
-    <div className="report-root mx-auto max-w-7xl">
-      <PageHeader
-        title={t("title")}
-        description={t("description")}
-        actions={
-          canExport ? (
-            <div className="no-print">
-              <ExportMenu query={query} />
-            </div>
-          ) : null
-        }
-      />
-      <div className="print-only mb-4 text-sm">
-        {t("printRange", { from: filters.from, to: filters.to })}
-        {report.data &&
-          ` · ${t("generatedAt", { at: format.dateTime(new Date(report.data.generatedAt), { dateStyle: "medium", timeStyle: "short", timeZone: report.data.timezone }) })}`}
+    <ExportQuery.Provider value={canExport ? query : null}>
+      <div className="report-root mx-auto max-w-7xl">
+        <PageHeader
+          title={t("title")}
+          description={t("description")}
+          actions={
+            canExport ? (
+              <div className="no-print">
+                <ExportMenu query={query} emptySections={emptySections(report.data?.data)} />
+              </div>
+            ) : null
+          }
+        />
+        <div className="print-only mb-4 text-sm">
+          {t("printRange", { from: filters.from, to: filters.to })}
+          {report.data &&
+            ` · ${t("generatedAt", { at: format.dateTime(new Date(report.data.generatedAt), { dateStyle: "medium", timeStyle: "short", timeZone: report.data.timezone }) })}`}
+        </div>
+
+        <ReportFilters filters={filters} meta={meta} timeZone={tz ?? "UTC"} onChange={onChange} />
+
+        <div className={cn("space-y-6 transition-opacity", stale && "opacity-60")} aria-busy={report.isFetching}>
+          {report.isError && !data ? (
+            <ErrorState onRetry={() => report.refetch()} />
+          ) : !data ? (
+            <ReportSkeleton />
+          ) : data.summary.visitors === 0 ? (
+            <EmptyState title={t("empty")} />
+          ) : (
+            <ReportBody
+              data={data}
+              reasons={meta?.reasons ?? []}
+              timeZone={report.data?.timezone ?? tz ?? "UTC"}
+              multiBranch={(meta?.branches.length ?? 0) > 1 && !filters.branchId}
+            />
+          )}
+
+          <ForecastCard query={forecast} />
+
+          {canSchedule && (
+            <details className="no-print bg-card group ring-foreground/10 rounded-xl ring-1">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-sm font-semibold">
+                {t("schedules.title")}
+                <ChevronDown className="size-4 transition group-open:rotate-180" aria-hidden />
+              </summary>
+              <div className="border-t p-4">
+                <SchedulesPanel />
+              </div>
+            </details>
+          )}
+        </div>
       </div>
-
-      <ReportFilters filters={filters} meta={meta} timeZone={tz ?? "UTC"} onChange={onChange} />
-
-      <div className={cn("space-y-6 transition-opacity", stale && "opacity-60")} aria-busy={report.isFetching}>
-        {report.isError && !data ? (
-          <ErrorState onRetry={() => report.refetch()} />
-        ) : !data ? (
-          <ReportSkeleton />
-        ) : data.summary.visitors === 0 ? (
-          <EmptyState title={t("empty")} />
-        ) : (
-          <ReportBody
-            data={data}
-            reasons={meta?.reasons ?? []}
-            timeZone={report.data?.timezone ?? tz ?? "UTC"}
-            multiBranch={(meta?.branches.length ?? 0) > 1 && !filters.branchId}
-          />
-        )}
-
-        <ForecastCard query={forecast} />
-
-        {canSchedule && (
-          <details className="no-print bg-card group ring-foreground/10 rounded-xl ring-1">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-sm font-semibold">
-              {t("schedules.title")}
-              <ChevronDown className="size-4 transition group-open:rotate-180" aria-hidden />
-            </summary>
-            <div className="border-t p-4">
-              <SchedulesPanel />
-            </div>
-          </details>
-        )}
-      </div>
-    </div>
+    </ExportQuery.Provider>
   );
 }
 
@@ -177,17 +200,29 @@ function Section({
   description,
   children,
   className,
+  exports,
+  empty,
 }: {
   title: string;
   description?: string;
+  /** Export sections this card downloads; shows the download button for viewers who may export. */
+  exports?: ExportSectionId[];
+  /** The card has no data (still downloadable, marked). */
+  empty?: boolean;
   children: React.ReactNode;
   className?: string;
 }) {
+  const query = useContext(ExportQuery);
   return (
     <Card className={cn("report-card", className)}>
       <CardHeader>
         <CardTitle className="text-base">{title}</CardTitle>
         {description && <CardDescription>{description}</CardDescription>}
+        {query !== null && exports && (
+          <CardAction>
+            <SectionDownload query={query} sections={exports} label={title} empty={empty} />
+          </CardAction>
+        )}
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>
@@ -233,9 +268,15 @@ function ReportBody({
   const f = useReportFormat();
   const s = data.summary;
   const met = s.serviceLevel.pct >= s.serviceLevel.targetPct;
+  const query = useContext(ExportQuery);
 
   return (
     <>
+      {query !== null && (
+        <div className="no-print flex justify-end">
+          <SectionDownload query={query} sections={["summary"]} label={t("kpi.title")} />
+        </div>
+      )}
       <section aria-label={t("kpi.title")} className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
         <Tile label={t("kpi.visitors")} value={f.num(s.visitors)} />
         <Tile
@@ -282,7 +323,7 @@ function ReportBody({
         <Tile label={t("kpi.stillOpen")} value={f.num(s.stillOpen)} />
       </section>
 
-      <Section title={t("sections.volume")}>
+      <Section title={t("sections.volume")} exports={["byDay", "byHour", "byBranch"]}>
         <div className="grid gap-6 lg:grid-cols-2">
           <ChartBlock title={t("charts.perDay")} className="lg:col-span-2">
             <DailyChart data={data.byDay} />
@@ -308,12 +349,12 @@ function ReportBody({
       </Section>
 
       {data.byShift.length > 0 && (
-        <Section title={t("sections.shifts")} description={t("shifts.hint")}>
+        <Section title={t("sections.shifts")} description={t("shifts.hint")} exports={["byShift"]}>
           <ShiftsTable shifts={data.byShift} />
         </Section>
       )}
 
-      <Section title={t("sections.peak")} description={t("charts.peakHint")}>
+      <Section title={t("sections.peak")} description={t("charts.peakHint")} exports={["heatmap"]}>
         <PeakHeatmap data={data.heatmap} />
       </Section>
 
@@ -331,7 +372,7 @@ function ReportBody({
         </div>
       </Section>
 
-      <Section title={t("sections.agents")}>
+      <Section title={t("sections.agents")} exports={["byAgent"]} empty={data.agents.length === 0}>
         {data.agents.length === 0 ? (
           <p className="text-muted-foreground text-sm">{t("agents.empty")}</p>
         ) : (
@@ -344,7 +385,7 @@ function ReportBody({
         )}
       </Section>
 
-      <Section title={t("sections.reasons")}>
+      <Section title={t("sections.reasons")} exports={["byReason"]} empty={data.byReason.length === 0}>
         <ReasonsTable reasons={data.byReason} />
       </Section>
 
@@ -365,7 +406,12 @@ function RepeatSection({
   const t = useTranslations("reports.repeat");
   const f = useReportFormat();
   return (
-    <Section title={t("title")} description={t("hint")}>
+    <Section
+      title={t("title")}
+      description={t("hint")}
+      exports={["repeatSummary", "repeatDistribution", "repeatTop"]}
+      empty={data.uniqueVisitors === 0}
+    >
       <div className="space-y-6">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
           <Tile label={t("kpi.unique")} value={f.num(data.uniqueVisitors)} />

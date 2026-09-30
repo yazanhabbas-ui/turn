@@ -218,6 +218,13 @@
   #print-root .ticket-line {
     font-size: 11pt;
   }
+  #print-root .ticket-wait {
+    font-size: 11pt;
+    font-weight: 700;
+  }
+  #print-root .ticket-disclaimer {
+    font-size: 8pt;
+  }
   #print-root .ticket-qr {
     width: 32mm;
     height: 32mm;

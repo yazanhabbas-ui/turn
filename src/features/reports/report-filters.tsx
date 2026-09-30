@@ -1,6 +1,8 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { useMemo } from "react";
+import { AgentPicker, type PickerOption } from "@/components/admin/agent-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -36,6 +38,15 @@ export function ReportFilters({
   const locale = useLocale();
   const f = useReportFormat();
   const today = todayIn(timeZone);
+  const agentOptions = useMemo<PickerOption[]>(
+    () =>
+      (meta?.agents ?? []).map((a) => ({
+        id: a.id,
+        label: pickText(a.name, locale),
+        altLabels: Object.values(a.name ?? {}).filter(Boolean),
+      })),
+    [meta?.agents, locale],
+  );
 
   function setFrom(from: string) {
     if (!from) return;
@@ -122,17 +133,19 @@ export function ReportFilters({
             ))}
           </NativeSelect>
         </label>
-        <label className="space-y-1 text-xs font-medium">
-          <span className="text-muted-foreground block">{t("agent")}</span>
-          <NativeSelect className="w-44" value={filters.agentId} onChange={(e) => onChange({ agentId: e.target.value })}>
-            <option value="">{t("allAgents")}</option>
-            {meta?.agents.map((a) => (
-              <option key={a.id} value={a.id}>
-                {pickText(a.name, locale)}
-              </option>
-            ))}
-          </NativeSelect>
-        </label>
+        <div className="space-y-1 text-xs font-medium">
+          <label htmlFor="rf-agent" className="text-muted-foreground block">
+            {t("agent")}
+          </label>
+          <AgentPicker
+            id="rf-agent"
+            className="w-44"
+            options={agentOptions}
+            value={filters.agentId}
+            onChange={(agentId) => onChange({ agentId })}
+            placeholder={t("allAgents")}
+          />
+        </div>
         <div className="flex items-end gap-2">
           <label className="space-y-1 text-xs font-medium">
             <span className="text-muted-foreground block">{t("hourFrom")}</span>
