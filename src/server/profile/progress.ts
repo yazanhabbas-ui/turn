@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { agentProfiles, agentStatusLog, branches } from "@/db/schema";
+import { getSetting } from "../settings/service";
 import {
   computeProgress,
   periodRanges,
@@ -8,6 +9,7 @@ import {
   type Period,
   type Progress,
   type ProgressFact,
+  type ProgressFeedback,
 } from "@/domain/profile/progress";
 import { can } from "@/domain/rbac/permissions";
 import type { Actor } from "../admin/actor";
@@ -113,8 +115,24 @@ export async function myProgress(actor: Actor, period: Period): Promise<Progress
         .where(and(eq(agentStatusLog.userId, me), gte(agentStatusLog.at, windowStart)))
         .orderBy(asc(agentStatusLog.at)),
     ]);
+    // Visitor feedback on the agent's visits and (aggregated only) on the branch, over the last 70 days.
+    const feedbackOn = (await getSetting(org, "feedback", profile.branchId)).enabled;
+    let feedback: { own: ProgressFeedback[]; branch: ProgressFeedback[] | null } | undefined;
+    if (feedbackOn) {
+      const rows = await db().execute<{ agent_id: string | null; score: number; comment: string | null; at: Date }>(sql`
+        select agent_id, score, comment, "at" from csat_responses
+        where branch_id = ${profile.branchId} and "at" >= ${new Date(now - 70 * 86_400_000)}`);
+      const all: ProgressFeedback[] = rows.rows.map((r) => ({
+        agentId: r.agent_id,
+        score: r.score,
+        comment: r.comment,
+        at: new Date(r.at).getTime(),
+      }));
+      feedback = { own: all.filter((x) => x.agentId === me), branch: all };
+    }
     agent = {
       facts: mine.rows.map(toFact),
+      feedback,
       branchFacts: theirs.rows.map(toFact),
       statusLog: [...before, ...inWindow].map((e) => ({ status: e.status, at: e.at.getTime() })),
       servedDaily,

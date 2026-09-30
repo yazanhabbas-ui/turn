@@ -21,7 +21,7 @@ export function Providers({ children, dir }: { children: React.ReactNode; dir: "
       }),
   );
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <QueryClientProvider client={client}>
         {children}
         <Toaster position={dir === "rtl" ? "top-left" : "top-right"} dir={dir} richColors />

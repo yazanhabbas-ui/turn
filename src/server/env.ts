@@ -29,6 +29,27 @@ const schema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
   SMTP_FROM: z.string().default("Dor Queue <no-reply@localhost>"),
+  /** WhatsApp Cloud API (Meta). Both token and phone id must be set for the channel to be configured. */
+  WHATSAPP_TOKEN: z.string().optional(),
+  WHATSAPP_PHONE_ID: z.string().optional(),
+  WHATSAPP_API_VERSION: z.string().default("v21.0"),
+  WHATSAPP_API_URL: z.string().url().default("https://graph.facebook.com"),
+  /** SMS: `http` = a generic gateway described by the SMS_* variables below, `twilio` = the Twilio preset. */
+  SMS_PROVIDER: z.preprocess((v) => (v === "" ? undefined : v), z.enum(["http", "twilio"]).optional()),
+  SMS_URL: z.string().optional(),
+  SMS_METHOD: z.enum(["POST", "PUT", "GET"]).default("POST"),
+  /** Full header line, e.g. "Authorization: Bearer abc" or "X-Api-Key: abc". */
+  SMS_AUTH_HEADER: z.string().optional(),
+  SMS_BODY_FORMAT: z.enum(["json", "form"]).default("json"),
+  /** Body with {to} {text} {from} placeholders; values are escaped for the format automatically. */
+  SMS_BODY: z.string().optional(),
+  SMS_FROM: z.string().optional(),
+  /** Dotted path of the message id in the JSON response, e.g. "data.id" (optional). */
+  SMS_MESSAGE_ID_PATH: z.string().optional(),
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  /** Seconds before a provider request is abandoned. */
+  MESSAGING_TIMEOUT_SECONDS: z.coerce.number().int().min(2).max(60).default(15),
   SMTP_SECURE: z
     .enum(["true", "false"])
     .default("false")

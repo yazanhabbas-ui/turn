@@ -28,6 +28,8 @@ import {
   AgentServedChart,
   BacklogChart,
   BranchChart,
+  CsatDistributionChart,
+  CsatTrendChart,
   DailyChart,
   ForecastDaysChart,
   ForecastHoursChart,
@@ -41,7 +43,7 @@ import {
   WeekdayChart,
 } from "./report-charts";
 import { ReportFilters } from "./report-filters";
-import { AgentsTable, ReasonsTable, RepeatVisitorsTable, ShiftsTable } from "./report-tables";
+import { AgentsTable, CsatGroupTable, LowCommentsTable, ReasonsTable, RepeatVisitorsTable, ShiftsTable } from "./report-tables";
 import { SchedulesPanel } from "./schedules-panel";
 import { useReportFormat } from "./use-report-format";
 
@@ -61,6 +63,8 @@ function emptySections(d: ReportData | undefined): ExportSectionId[] {
   if (!d.byShift.length) out.push("byShift");
   if (!d.repeat.uniqueVisitors) out.push("repeatSummary", "repeatDistribution");
   if (!d.repeat.top.length) out.push("repeatTop");
+  if (!d.csat.summary.responses) out.push("csatSummary", "csatDistribution", "csatByDay", "csatBreakdown");
+  if (!d.csat.lowComments.length) out.push("csatComments");
   if (!d.heatmap.cells.length) out.push("heatmap");
   return out;
 }
@@ -299,7 +303,9 @@ function ReportBody({
             <span
               className={cn(
                 "mt-1 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-                met ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800",
+                met
+                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                  : "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
               )}
             >
               {met ? <Check className="size-3" aria-hidden /> : <X className="size-3" aria-hidden />}
@@ -321,6 +327,24 @@ function ReportBody({
         />
         <Tile label={t("kpi.fairness")} value={f.num(s.fairnessIndex, 2)} hint={t("kpi.fairnessHint")} />
         <Tile label={t("kpi.stillOpen")} value={f.num(s.stillOpen)} />
+        {data.csat.summary.responses > 0 && (
+          <>
+            <Tile
+              label={t("kpi.csat")}
+              value={data.csat.summary.avg === null ? "—" : t("csat.outOf", { n: f.num(data.csat.summary.avg, 1) })}
+              sub={t("kpi.csatSub", { n: f.num(data.csat.summary.responses) })}
+            />
+            <Tile
+              label={t("kpi.csatSatisfied")}
+              value={f.pct(data.csat.summary.satisfiedPct)}
+              hint={t("kpi.csatSatisfiedHint")}
+            />
+            <Tile label={t("kpi.csatRate")} value={f.pct(data.csat.summary.responseRatePct)} />
+            {data.csat.summary.nps && (
+              <Tile label={t("kpi.nps")} value={f.num(data.csat.summary.nps.score)} hint={t("kpi.npsHint")} />
+            )}
+          </>
+        )}
       </section>
 
       <Section title={t("sections.volume")} exports={["byDay", "byHour", "byBranch"]}>
@@ -389,8 +413,96 @@ function ReportBody({
         <ReasonsTable reasons={data.byReason} />
       </Section>
 
+      <CsatSection data={data.csat} agents={data.agents} reasons={reasons} timeZone={timeZone} />
+
       <RepeatSection data={data.repeat} reasons={reasons} timeZone={timeZone} />
     </>
+  );
+}
+
+function CsatSection({
+  data,
+  agents,
+  reasons,
+  timeZone,
+}: {
+  data: ReportData["csat"];
+  agents: ReportData["agents"];
+  reasons: ReportMeta["reasons"];
+  timeZone: string;
+}) {
+  const t = useTranslations("reports.csat");
+  const f = useReportFormat();
+  const sm = data.summary;
+  return (
+    <Section
+      title={t("title")}
+      description={t("hint")}
+      exports={["csatSummary", "csatDistribution", "csatByDay", "csatBreakdown", "csatComments"]}
+      empty={sm.responses === 0}
+    >
+      {sm.responses === 0 ? (
+        <p className="text-muted-foreground text-sm">{t("empty")}</p>
+      ) : (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+            <Tile label={t("kpi.avg")} value={sm.avg === null ? "—" : t("outOf", { n: f.num(sm.avg, 1) })} />
+            <Tile label={t("kpi.satisfied")} value={f.pct(sm.satisfiedPct)} hint={t("kpi.satisfiedHint")} />
+            <Tile label={t("kpi.responses")} value={f.num(sm.responses)} sub={t("kpi.ofVisits", { n: f.num(sm.eligible) })} />
+            <Tile label={t("kpi.rate")} value={f.pct(sm.responseRatePct)} />
+            {sm.nps && (
+              <Tile
+                label={t("kpi.nps")}
+                value={f.num(sm.nps.score)}
+                sub={t("kpi.npsSub", { n: f.num(sm.nps.responses) })}
+                hint={t("kpi.npsHint")}
+              />
+            )}
+          </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <ChartBlock title={t("distribution")}>
+              <CsatDistributionChart data={sm.distribution} />
+            </ChartBlock>
+            <ChartBlock title={t("trend")}>
+              <CsatTrendChart data={data.byDay} />
+            </ChartBlock>
+          </div>
+          <div className="grid gap-6 xl:grid-cols-2">
+            {data.byAgent.length > 0 && (
+              <ChartBlock title={t("byAgent")}>
+                <CsatGroupTable groups={data.byAgent} outsideLabel="—" />
+              </ChartBlock>
+            )}
+            {data.byReason.length > 0 && (
+              <ChartBlock title={t("byReason")}>
+                <CsatGroupTable groups={data.byReason} outsideLabel="—" />
+              </ChartBlock>
+            )}
+            {data.byBranch.length > 1 && (
+              <ChartBlock title={t("byBranch")}>
+                <CsatGroupTable groups={data.byBranch} outsideLabel="—" />
+              </ChartBlock>
+            )}
+            {data.byShift.length > 0 && (
+              <ChartBlock title={t("byShift")}>
+                <CsatGroupTable groups={data.byShift} outsideLabel={t("outsideShifts")} />
+              </ChartBlock>
+            )}
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold">{t("lowComments")}</h3>
+            <p className="text-muted-foreground mb-1 text-xs">{t("lowCommentsHint")}</p>
+            {data.lowComments.length === 0 ? (
+              <p className="text-muted-foreground mt-2 text-sm">{t("noLowComments")}</p>
+            ) : (
+              <div className="mt-2">
+                <LowCommentsTable comments={data.lowComments} agents={agents} reasons={reasons} timeZone={timeZone} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </Section>
   );
 }
 

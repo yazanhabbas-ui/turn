@@ -1,6 +1,7 @@
-import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { agentProfiles, alerts, branches, tickets } from "@/db/schema";
+import { agentProfiles, alerts, branches, csatResponses, tickets } from "@/db/schema";
+import { averageScore } from "@/domain/feedback/csat";
 import { audit } from "../audit";
 import { now as clockNow } from "../clock";
 import { AppError } from "../http/errors";
@@ -16,7 +17,7 @@ const MIN = 60_000;
 const REPEAT_MS = 60 * MIN;
 
 export type AlertCandidate = {
-  type: "long_wait" | "queue_over_limit" | "agent_idle" | "no_show_spike";
+  type: "long_wait" | "queue_over_limit" | "agent_idle" | "no_show_spike" | "low_score" | "low_satisfaction";
   severity: "warning" | "critical";
   dedupeKey: string;
   payload: Record<string, unknown>;
@@ -103,6 +104,72 @@ export async function findAnomalies(branchId: string, now = clockNow()): Promise
       dedupeKey: `no_show_spike:${branchId}`,
       payload: { count: ns.n, windowMinutes: cfg.noShowWindowMinutes, limit: cfg.noShowCount },
     });
+  }
+
+  // Visitor feedback: a single low score, and a low average over the recent window.
+  const feedback = await getSetting(branch.organizationId, "feedback", branchId);
+  if (feedback.enabled) {
+    if (cfg.lowScoreAlerts) {
+      const low = await db()
+        .select({
+          ticketId: csatResponses.ticketId,
+          score: csatResponses.score,
+          comment: csatResponses.comment,
+          displayNumber: tickets.displayNumber,
+          agentId: csatResponses.agentId,
+        })
+        .from(csatResponses)
+        .innerJoin(tickets, eq(tickets.id, csatResponses.ticketId))
+        .where(
+          and(
+            eq(csatResponses.branchId, branchId),
+            lte(csatResponses.score, feedback.lowScoreThreshold),
+            gte(csatResponses.at, new Date(now - REPEAT_MS)),
+          ),
+        );
+      for (const r of low) {
+        out.push({
+          type: "low_score",
+          severity: r.score === 1 ? "critical" : "warning",
+          dedupeKey: `low_score:${r.ticketId}`,
+          // No comment text here: alerts are shown on the wallboard and sent by email.
+          payload: {
+            ticketId: r.ticketId,
+            displayNumber: r.displayNumber,
+            score: r.score,
+            hasComment: !!r.comment,
+            agentId: r.agentId,
+            limit: feedback.lowScoreThreshold,
+          },
+        });
+      }
+    }
+    if (cfg.lowSatisfactionBelow > 0) {
+      const recent = await db()
+        .select({ score: csatResponses.score })
+        .from(csatResponses)
+        .where(
+          and(
+            eq(csatResponses.branchId, branchId),
+            gte(csatResponses.at, new Date(now - cfg.lowSatisfactionWindowHours * 60 * MIN)),
+            lte(csatResponses.at, new Date(now)),
+          ),
+        );
+      const avg = averageScore(recent.map((r) => r.score));
+      if (avg !== null && recent.length >= cfg.lowSatisfactionMinResponses && avg < cfg.lowSatisfactionBelow) {
+        out.push({
+          type: "low_satisfaction",
+          severity: "warning",
+          dedupeKey: `low_satisfaction:${branchId}`,
+          payload: {
+            avg,
+            responses: recent.length,
+            windowHours: cfg.lowSatisfactionWindowHours,
+            limit: cfg.lowSatisfactionBelow,
+          },
+        });
+      }
+    }
   }
   return out;
 }

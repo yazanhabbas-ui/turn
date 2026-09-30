@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { AuthContext } from "@/server/auth/session";
 import { getBranding } from "@/server/branding";
 import { LanguageSwitcher } from "./language-switcher";
+import { ThemeToggle } from "./theme-toggle";
 import { SignOutButton } from "./sign-out-button";
 import { UserAvatar } from "./user-avatar";
 
@@ -26,6 +27,7 @@ export async function AppShell({
   const locale = await getLocale();
   const t = await getTranslations("areas");
   const branding = await getBranding(auth.user.organizationId);
+  const darkLogo = branding.logoDarkUrl && branding.logoDarkUrl !== branding.logoUrl ? branding.logoDarkUrl : null;
   const areas = AREAS.filter((a) => can(auth.grants, a.permission));
 
   return (
@@ -34,8 +36,19 @@ export async function AppShell({
         <div className="flex h-14 items-center gap-3 px-4">
           <Link href="/" className="text-brand flex items-center gap-2 font-bold">
             {branding.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={branding.logoUrl} alt={pickText(branding.companyName, locale)} className="h-8 w-auto" />
+              <>
+                {/* Both logos are rendered; CSS picks the one for the active theme, so there is no flash. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={branding.logoUrl}
+                  alt={pickText(branding.companyName, locale)}
+                  className={cn("h-8 w-auto", darkLogo && "dark:hidden")}
+                />
+                {darkLogo && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={darkLogo} alt={pickText(branding.companyName, locale)} className="hidden h-8 w-auto dark:block" />
+                )}
+              </>
             ) : (
               <span className="bg-brand grid size-8 place-items-center rounded-lg text-sm text-white">
                 {pickText(branding.companyName, locale).slice(0, 1)}
@@ -60,6 +73,7 @@ export async function AppShell({
             ))}
           </nav>
           <div className="ms-auto flex items-center gap-1">
+            <ThemeToggle />
             <LanguageSwitcher signedIn />
             <Link
               href="/profile"

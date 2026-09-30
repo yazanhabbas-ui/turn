@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BellRing,
   Building2,
   FlaskConical,
   Route,
@@ -30,6 +31,7 @@ const ITEMS = [
   { href: "/admin/distribution", key: "distribution", icon: Route, permission: "distribution.manage" },
   { href: "/admin/simulate", key: "simulate", icon: FlaskConical, permission: "distribution.simulate" },
   { href: "/admin/screens", key: "screens", icon: Monitor, permission: "displays.manage" },
+  { href: "/admin/notifications", key: "notifications", icon: BellRing, permission: "admin.access" },
   { href: "/admin/settings", key: "settings", icon: Settings, permission: "settings.manage", also: ["branches.manage"] },
   { href: "/admin/audit", key: "audit", icon: ScrollText, permission: "audit.view" },
 ] as const;

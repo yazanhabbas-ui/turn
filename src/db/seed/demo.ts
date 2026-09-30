@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { normalizeArabic } from "@/domain/i18n/arabic-normalize";
 import { EXAMPLE_SUPERVISOR_PERMISSIONS } from "@/domain/rbac/permissions";
 import { hashPassword } from "@/server/auth/password";
+import { DEFAULT_TEMPLATES } from "@/server/notifications/defaults";
 import { putSetting } from "@/server/settings/service";
 import { defaultSetting } from "@/server/settings/registry";
 import type { Tx } from "../client";
@@ -383,33 +384,8 @@ async function createDemo(tx: Tx, organizationId: string) {
       event: "ticket_issued",
       body: voice("نرحب بكم\nرقمكم {ticket}\n{reason}\nأمامكم {ahead}", "Welcome\nYour number {ticket}\n{reason}\n{ahead} ahead"),
     },
-    {
-      organizationId,
-      channel: "whatsapp",
-      event: "ticket_issued",
-      body: voice(
-        "أهلاً بك، رقمك {ticket} لخدمة {reason}. تابع دورك: {link}",
-        "Welcome, your number is {ticket} for {reason}. Track your turn: {link}",
-      ),
-    },
-    {
-      organizationId,
-      channel: "whatsapp",
-      event: "turn_near",
-      body: voice("اقترب دورك! أمامك {ahead} فقط. رقمك {ticket}", "Your turn is near! Only {ahead} ahead. Number {ticket}"),
-    },
-    {
-      organizationId,
-      channel: "whatsapp",
-      event: "ticket_called",
-      body: voice("تفضل، رقمك {ticket}، الرجاء التوجه إلى المكتب {desk}", "Please proceed: number {ticket}, desk {desk}"),
-    },
-    {
-      organizationId,
-      channel: "sms",
-      event: "ticket_called",
-      body: voice("رقمك {ticket}: تفضل إلى المكتب {desk}", "Number {ticket}: please go to desk {desk}"),
-    },
+    // Visitor notifications (WhatsApp / SMS / email × ticket events): the built-in wording, editable in Admin → Notifications.
+    ...DEFAULT_TEMPLATES.map((d) => ({ organizationId, channel: d.channel, event: d.event, subject: d.subject, body: d.body })),
     {
       organizationId,
       channel: "email",

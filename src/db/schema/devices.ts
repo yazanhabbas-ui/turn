@@ -101,10 +101,23 @@ export const notificationsLog = pgTable(
     status: text("status").notNull().default("queued"),
     providerMessageId: text("provider_message_id"),
     error: text("error"),
+    /** Delivery attempts made so far (across channels). */
+    attempts: integer("attempts").notNull().default(0),
+    /** When a queued or retrying notification is due; also the lease that lets the sweeper recover a lost job. */
+    nextAttemptAt: ts("next_attempt_at"),
+    /** Visitor notifications: "<ticket id>:<event>". Unique, so one event is never sent twice for a ticket. */
+    dedupeKey: text("dedupe_key"),
+    /** Non-personal template variables captured when the event happened, plus delivery bookkeeping. */
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
     createdAt: createdAt(),
     sentAt: ts("sent_at"),
   },
-  (t) => [index("notifications_log_org_created_idx").on(t.organizationId, t.createdAt)],
+  (t) => [
+    index("notifications_log_org_created_idx").on(t.organizationId, t.createdAt),
+    uniqueIndex("notifications_log_dedupe_uq").on(t.dedupeKey),
+    index("notifications_log_due_idx").on(t.status, t.nextAttemptAt),
+    index("notifications_log_ticket_idx").on(t.ticketId),
+  ],
 );
 
 /**

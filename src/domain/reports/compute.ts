@@ -1,7 +1,10 @@
+import { averageScore, satisfiedPct, summarizeCsat, type FeedbackFact } from "../feedback/csat";
 import { zonedParts } from "../schedule/time";
 import { minuteInShift } from "../shifts/window";
 import type {
   AgentReport,
+  CsatGroup,
+  CsatReport,
   Forecast,
   ReasonReport,
   RepeatReport,
@@ -176,6 +179,77 @@ export function repeatVisitors(facts: TicketFact[]): RepeatReport {
   };
 }
 
+/** Satisfaction of the answers whose ticket is in the period, overall and by agent, reason, branch, shift and day. */
+export function computeCsat(input: ReportInput, shiftOf: (f: TicketFact) => string | null): CsatReport {
+  const byTicket = new Map(input.facts.map((f) => [f.id, f]));
+  const answers = (input.feedback ?? [])
+    .map((fb) => ({ fb, t: byTicket.get(fb.ticketId) }))
+    .filter((x): x is { fb: FeedbackFact; t: TicketFact } => !!x.t);
+  const eligible = input.facts.filter((f) => f.status === "COMPLETED").length;
+  const group = (
+    keyOf: (t: TicketFact) => string | null,
+    nameOf: (key: string | null) => Record<string, string>,
+  ): CsatGroup[] => {
+    const map = new Map<string | null, number[]>();
+    for (const { fb, t } of answers) {
+      const key = keyOf(t);
+      map.set(key, [...(map.get(key) ?? []), fb.score]);
+    }
+    return [...map]
+      .map(([key, scores]) => ({
+        key,
+        name: nameOf(key),
+        responses: scores.length,
+        avg: averageScore(scores),
+        satisfiedPct: satisfiedPct(scores),
+      }))
+      .sort((a, b) => b.responses - a.responses);
+  };
+  const days = new Map<string, number[]>();
+  for (const { fb, t } of answers) {
+    const date = zonedParts(t.arrivedAt, input.branches.get(t.branchId)?.timezone ?? "Asia/Damascus").date;
+    days.set(date, [...(days.get(date) ?? []), fb.score]);
+  }
+  const threshold = input.lowScoreThreshold ?? 2;
+  return {
+    summary: summarizeCsat(
+      answers.map((x) => x.fb),
+      eligible,
+    ),
+    byDay: [...days]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, scores]) => ({ date, responses: scores.length, avg: averageScore(scores) })),
+    byAgent: group(
+      (t) => t.agentId,
+      (k) => (k ? (input.agents.get(k)?.name ?? {}) : {}),
+    ),
+    byReason: group(
+      (t) => t.reasonId,
+      (k) => (k ? (input.reasons.get(k)?.name ?? {}) : {}),
+    ),
+    byBranch: group(
+      (t) => t.branchId,
+      (k) => (k ? (input.branches.get(k)?.name ?? {}) : {}),
+    ),
+    byShift: input.shifts?.length ? group(shiftOf, (k) => input.shifts?.find((x) => x.id === k)?.name ?? {}) : [],
+    lowComments: answers
+      .filter((x) => x.fb.score <= threshold && x.fb.comment)
+      .sort((a, b) => b.fb.at - a.fb.at)
+      .slice(0, 50)
+      .map(({ fb, t }) => ({
+        id: fb.id,
+        at: fb.at,
+        score: fb.score,
+        comment: fb.comment!,
+        displayNumber: fb.displayNumber ?? "",
+        branchId: t.branchId,
+        reasonId: t.reasonId,
+        agentId: t.agentId,
+        visitorId: t.visitorId,
+      })),
+  };
+}
+
 export function computeReport(input: ReportInput): ReportData {
   const { facts, fromMs, toMs, now } = input;
   const tzOf = (branchId: string) => input.branches.get(branchId)?.timezone ?? "Asia/Damascus";
@@ -234,8 +308,23 @@ export function computeReport(input: ReportInput): ReportData {
       servingMin: round1(servingMin),
       idleMin: round1(Math.max(0, t.availableMin - servingMin)),
       utilisationPct: working > 0 ? Math.min(100, pct(servingMin, working)) : 0,
+      csatAvg: null,
+      csatResponses: 0,
     };
   });
+  const scoresOf = new Map<string, number[]>();
+  {
+    const byTicket = new Map(facts.map((f) => [f.id, f]));
+    for (const fb of input.feedback ?? []) {
+      const agentId = byTicket.get(fb.ticketId)?.agentId;
+      if (agentId) scoresOf.set(agentId, [...(scoresOf.get(agentId) ?? []), fb.score]);
+    }
+  }
+  for (const a of agents) {
+    const sc = scoresOf.get(a.agentId) ?? [];
+    a.csatAvg = averageScore(sc);
+    a.csatResponses = sc.length;
+  }
   agents.sort((a, b) => b.served - a.served);
 
   // Per reason.
@@ -375,6 +464,7 @@ export function computeReport(input: ReportInput): ReportData {
     byReason,
     byShift: shiftRows,
     repeat: repeatVisitors(facts),
+    csat: computeCsat(input, (f) => input.shifts?.find((x) => minuteInShift(x, partsOf(f).minutes))?.id ?? null),
     heatmap: { cells, max: cells.reduce((m, c) => Math.max(m, c[2]), 0) },
     agents,
     queueLengthByHour: queueLength(facts, tzOf, fromMs, toMs, now),

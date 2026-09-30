@@ -2,6 +2,7 @@ import { PgBoss } from "pg-boss";
 import { env } from "../env";
 import { logger } from "../logger";
 import { sendTemplated, type SendRequest } from "../messaging/service";
+import { deliverNotification } from "../notifications/deliver";
 
 /**
  * Background jobs on pg-boss (PostgreSQL-backed, no Redis needed). Every job kind has a handler here.
@@ -10,11 +11,15 @@ import { sendTemplated, type SendRequest } from "../messaging/service";
  */
 type JobMap = {
   "messages.send": SendRequest;
+  /** Visitor notification from the outbox (notifications_log row). */
+  "notifications.deliver": { logId: string };
 };
 type JobName = keyof JobMap;
 
 const handlers: { [K in JobName]: (data: JobMap[K]) => Promise<unknown> } = {
   "messages.send": (data) => sendTemplated(data),
+  "notifications.deliver": (data) =>
+    deliverNotification(data.logId, (logId, delaySeconds) => enqueue("notifications.deliver", { logId }, { delaySeconds })),
 };
 
 const g = globalThis as unknown as { __dorBoss?: PgBoss };
@@ -63,11 +68,15 @@ export async function stopJobs(): Promise<void> {
   g.__dorBoss = undefined;
 }
 
-export async function enqueue<K extends JobName>(name: K, data: JobMap[K]): Promise<void> {
+/**
+ * Queues a job. `delaySeconds` postpones it (retries with backoff); without the worker the handler runs at once,
+ * so a delayed retry then happens immediately, which keeps tests deterministic.
+ */
+export async function enqueue<K extends JobName>(name: K, data: JobMap[K], opts: { delaySeconds?: number } = {}): Promise<void> {
   const boss = g.__dorBoss;
   if (!boss) {
     await handlers[name](data as never);
     return;
   }
-  await boss.send(name, data as object);
+  await boss.send(name, data as object, opts.delaySeconds ? { startAfter: opts.delaySeconds } : {});
 }

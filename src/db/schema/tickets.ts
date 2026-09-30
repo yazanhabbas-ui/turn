@@ -1,4 +1,4 @@
-import { date, index, integer, jsonb, pgEnum, pgTable, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, jsonb, pgEnum, pgTable, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { createdAt, id, ts, updatedAt } from "./_common";
 import { users } from "./identity";
 import { queues, visitReasons } from "./services";
@@ -37,6 +37,9 @@ export const visitors = pgTable(
     phoneHash: text("phone_hash"),
     company: text("company"),
     preferredLanguage: text("preferred_language"),
+    /** The visitor asked to stop receiving messages (STOP link); honoured on every channel and every visit. */
+    notificationsOptOut: boolean("notifications_opt_out").notNull().default(false),
+    notificationsOptOutAt: ts("notifications_opt_out_at"),
     visitCount: integer("visit_count").notNull().default(0),
     lastVisitAt: ts("last_visit_at"),
     lastAgentId: uuid("last_agent_id").references(() => users.id),
@@ -201,6 +204,9 @@ export const csatResponses = pgTable(
     score: integer("score").notNull(),
     nps: integer("nps"),
     comment: text("comment"),
+    /** Language of the page the visitor answered in (`ar` or `en`). */
+    language: text("language"),
+    /** `status_page`, `kiosk` or `link`. */
     channel: text("channel").notNull(),
     at: ts("at").notNull().defaultNow(),
   },

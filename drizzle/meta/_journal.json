@@ -78,6 +78,20 @@
       "when": 1790800100000,
       "tag": "0011_brand_assets",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790800200000,
+      "tag": "0012_csat_language",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790800300000,
+      "tag": "0013_visitor_notifications",
+      "breakpoints": true
     }
   ]
 }

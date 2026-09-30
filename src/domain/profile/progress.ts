@@ -1,3 +1,4 @@
+import { averageScore, satisfiedPct } from "../feedback/csat";
 import { agentTimes, mean } from "../reports/compute";
 import { zonedParts, zonedToUtc } from "../schedule/time";
 
@@ -20,6 +21,18 @@ export type ProgressFact = {
 };
 
 export type DayCount = { date: string; count: number };
+
+/** A visitor's answer about a visit the agent served. */
+export type ProgressFeedback = { agentId: string | null; score: number; comment: string | null; at: number };
+
+export type CsatStats = { avg: number | null; responses: number; satisfiedPct: number | null };
+
+export type CsatPeriod = {
+  current: CsatStats;
+  previous: CsatStats;
+  /** Average of every agent's answers in the branch (aggregate only, no colleague is named). */
+  branchAvg: number | null;
+};
 
 export type Stats = {
   served: number;
@@ -67,6 +80,8 @@ export type ProgressInput = {
     servedDaily: DayCount[];
     /** Local days on which anybody at the branch served a visitor (days off are not counted against a streak). */
     branchActiveDays: string[];
+    /** Visitor feedback on the agent's visits, and on the whole branch (aggregated only); omitted when feedback is off. */
+    feedback?: { own: ProgressFeedback[]; branch: ProgressFeedback[] | null };
   };
   /** Tickets issued by the user per local day (reception). */
   issuedDaily?: DayCount[];
@@ -82,6 +97,13 @@ export type Progress = {
   agent: null | {
     periods: Record<Period, AgentPeriod>;
     trend: { date: string; served: number }[];
+    /** Visitor satisfaction; null when feedback is off. */
+    csat: null | {
+      periods: Record<Period, CsatPeriod>;
+      trend: { date: string; avg: number | null; responses: number }[];
+      /** The latest comments on the agent's own visits. */
+      recent: { at: number; score: number; comment: string }[];
+    };
     milestones: {
       totalServed: number;
       bestDay: { date: string; served: number } | null;
@@ -228,11 +250,49 @@ export function computeProgress(input: ProgressInput): Progress {
       };
     }
 
+    let csat: NonNullable<Progress["agent"]>["csat"] = null;
+    if (a.feedback) {
+      const fb = a.feedback;
+      const stats = (list: ProgressFeedback[]): CsatStats => {
+        const scores = list.map((x) => x.score);
+        return { avg: averageScore(scores), responses: scores.length, satisfiedPct: scores.length ? satisfiedPct(scores) : null };
+      };
+      const between = (list: ProgressFeedback[], from: number, to: number) => list.filter((x) => x.at >= from && x.at < to);
+      const csatPeriods = {} as Record<Period, CsatPeriod>;
+      for (const k of PERIODS) {
+        const r = ranges[k];
+        csatPeriods[k] = {
+          current: stats(between(fb.own, r.from, now + 1)),
+          previous: stats(between(fb.own, r.prevFrom, r.prevTo)),
+          branchAvg: fb.branch ? averageScore(between(fb.branch, r.from, now + 1).map((x) => x.score)) : null,
+        };
+      }
+      const byDate = new Map<string, number[]>();
+      for (const x of fb.own) {
+        const date = zonedParts(x.at, tz).date;
+        byDate.set(date, [...(byDate.get(date) ?? []), x.score]);
+      }
+      csat = {
+        periods: csatPeriods,
+        trend: Array.from({ length: days }, (_, i) => addDays(today, i - days + 1)).map((date) => ({
+          date,
+          avg: averageScore(byDate.get(date) ?? []),
+          responses: (byDate.get(date) ?? []).length,
+        })),
+        recent: fb.own
+          .filter((x) => x.comment)
+          .sort((x, y) => y.at - x.at)
+          .slice(0, 5)
+          .map((x) => ({ at: x.at, score: x.score, comment: x.comment! })),
+      };
+    }
+
     const served = a.servedDaily.filter((d) => d.count > 0);
     const best = served.reduce<DayCount | null>((m, d) => (!m || d.count > m.count ? d : m), null);
     agent = {
       periods,
       trend: trendOf(a.servedDaily, today, days).map((t) => ({ date: t.date, served: t.count })),
+      csat,
       milestones: {
         totalServed: served.reduce((n, d) => n + d.count, 0),
         bestDay: best ? { date: best.date, served: best.count } : null,

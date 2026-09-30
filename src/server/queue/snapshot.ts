@@ -41,6 +41,8 @@ export type BranchContext = {
   configFor: (queueId: string) => DistributionConfig;
   /** The one place where waiting times are estimated, so every screen agrees. */
   wait: WaitModel;
+  /** Open tickets that belong to a visitor record (someone we may have a contact for). */
+  visitorTicketIds: Set<string>;
 };
 
 export const OPEN_STATUSES = ["WAITING", "CALLED", "SERVING"] as const;
@@ -189,6 +191,7 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
     shiftEndGraceMinutes: work.shiftEndGraceMinutes,
     serviceDay: day,
     configFor,
+    visitorTicketIds: new Set(ticketRows.filter((t) => t.visitorId).map((t) => t.id)),
     snapshot: {
       now,
       tickets: engineTickets,

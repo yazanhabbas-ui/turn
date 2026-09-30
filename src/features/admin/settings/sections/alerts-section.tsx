@@ -112,6 +112,43 @@ export function AlertsSection({ initial }: { initial: SettingValue<"alerts"> }) 
               onChange={(noShowWindowMinutes) => set({ noShowWindowMinutes })}
             />
           </SettingCard>
+          <SettingCard title={t("cards.alertSatisfaction")} columns={2}>
+            <div className="sm:col-span-2">
+              <Check
+                id="al-lowscore"
+                label={t("lowScoreAlerts")}
+                hint={t("lowScoreAlertsHint")}
+                checked={v.lowScoreAlerts}
+                onChange={(lowScoreAlerts) => set({ lowScoreAlerts })}
+              />
+            </div>
+            <NumField
+              id="al-lowsat"
+              label={t("lowSatisfactionBelow")}
+              hint={t("lowSatisfactionBelowHint")}
+              value={v.lowSatisfactionBelow}
+              min={0}
+              max={5}
+              step={0.1}
+              onChange={(lowSatisfactionBelow) => set({ lowSatisfactionBelow })}
+            />
+            <NumField
+              id="al-lowsat-min"
+              label={t("lowSatisfactionMinResponses")}
+              value={v.lowSatisfactionMinResponses}
+              min={1}
+              max={500}
+              onChange={(lowSatisfactionMinResponses) => set({ lowSatisfactionMinResponses })}
+            />
+            <NumField
+              id="al-lowsat-hours"
+              label={t("lowSatisfactionWindowHours")}
+              value={v.lowSatisfactionWindowHours}
+              min={1}
+              max={168}
+              onChange={(lowSatisfactionWindowHours) => set({ lowSatisfactionWindowHours })}
+            />
+          </SettingCard>
           <SettingCard title={t("cards.alertRecipients")}>
             <EmailsField value={v.notifyEmails} onChange={(notifyEmails) => set({ notifyEmails })} />
           </SettingCard>

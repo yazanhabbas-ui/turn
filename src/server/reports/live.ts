@@ -1,7 +1,8 @@
 import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { serviceDay } from "@/domain/schedule/time";
-import { agentProfiles, alerts, desks, tickets, users, visitReasons } from "@/db/schema";
+import { agentProfiles, alerts, csatResponses, desks, tickets, users, visitReasons } from "@/db/schema";
+import { averageScore, satisfiedPct } from "@/domain/feedback/csat";
 import type { Actor } from "../admin/actor";
 import { now as clockNow } from "../clock";
 import { getSetting } from "../settings/service";
@@ -24,6 +25,7 @@ export async function liveView(actor: Actor, branchId?: string) {
     getSetting(org, "branding", branch.id),
     getSetting(org, "wallboard", branch.id),
   ]);
+  const feedbackSettings = await getSetting(org, "feedback", branch.id);
   const day = serviceDay(now, branch.timezone, (await getSetting(org, "ticketing", branch.id)).dailyResetTime);
 
   const [open, profiles, deskRows, reasonRows, openAlerts] = await Promise.all([
@@ -62,6 +64,18 @@ export async function liveView(actor: Actor, branchId?: string) {
       .where(and(eq(alerts.organizationId, org), eq(alerts.branchId, branch.id), isNull(alerts.acknowledgedAt)))
       .orderBy(asc(alerts.createdAt)),
   ]);
+
+  // Today's satisfaction (answers to today's tickets), only when the tile can be shown.
+  const csatScores =
+    feedbackSettings.enabled && wallboard.showCsat
+      ? (
+          await db()
+            .select({ score: csatResponses.score })
+            .from(csatResponses)
+            .innerJoin(tickets, eq(tickets.id, csatResponses.ticketId))
+            .where(and(eq(csatResponses.branchId, branch.id), eq(tickets.serviceDay, day)))
+        ).map((r) => r.score)
+      : null;
 
   const names = new Map(
     (await db().select({ id: users.id, name: users.displayName }).from(users).where(eq(users.organizationId, org))).map((u) => [
@@ -116,6 +130,10 @@ export async function liveView(actor: Actor, branchId?: string) {
       avgWaitTodayMin: round1(waitsToday.length ? waitsToday.reduce((a, b) => a + b, 0) / waitsToday.length : 0),
       slaTodayPct: calledToday.length ? round1((within / calledToday.length) * 100) : 0,
       visitorsToday: todays.length,
+      /** Null when the satisfaction tile is off (feedback disabled or hidden on the wallboard). */
+      csat: csatScores
+        ? { avg: averageScore(csatScores), responses: csatScores.length, satisfiedPct: satisfiedPct(csatScores) }
+        : null,
     },
     desks: deskRows.map((d) => {
       const agent = profiles.find((p) => p.currentDeskId === d.id && p.status !== "OFFLINE");

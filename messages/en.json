@@ -117,7 +117,8 @@
     "overviewHint": "Configure your offices, services, and how turns are distributed. Every rule here takes effect immediately.",
     "groups": "Agent groups",
     "screens": "Screens",
-    "cities": "Cities"
+    "cities": "Cities",
+    "notifications": "Notifications"
   },
   "workspace": {
     "receptionEmpty": "The reception console opens here: choose a visit reason and issue a ticket in two taps.",
@@ -335,7 +336,9 @@
       "unsupported_type": "This file is not a supported picture. Use PNG, JPEG or WebP.",
       "empty": "The file is empty.",
       "missing": "Choose a picture first.",
-      "invalid_form": "The upload could not be read. Try again."
+      "invalid_form": "The upload could not be read. Try again.",
+      "to": "Enter a valid phone number or email address.",
+      "phone": "Enter a valid phone number."
     },
     "unauthorized": "Your session ended. Please sign in again.",
     "forbidden": {
@@ -367,7 +370,10 @@
       "already_enabled": "Already enabled.",
       "city_has_branches": "This city still has active branches. Archive or move them first.",
       "off_shift": "You cannot go available outside your shift.",
-      "shift_in_use": "Agents still use this shift. Move them to another shift first."
+      "shift_in_use": "Agents still use this shift. Move them to another shift first.",
+      "channel_not_configured": "This channel is not configured on the server yet.",
+      "not_resendable": "This message cannot be sent again.",
+      "already_has_phone": "This ticket already has a phone number."
     },
     "rate_limited": "Too many requests. Please wait a moment.",
     "weak_password": "The password does not meet the policy.",
@@ -597,7 +603,8 @@
       "wallboard": "Wallboard",
       "wifi": "Wi-Fi",
       "breakLimit": "Break limit",
-      "waitEstimate": "Waiting time"
+      "waitEstimate": "Waiting time",
+      "feedback": "Feedback"
     },
     "companyName": "Company name",
     "logoUrl": "Logo URL",
@@ -839,7 +846,8 @@
       "reports": "Targets used in reports and forecasts.",
       "alerts": "When to raise an alert and who receives the emails.",
       "security": "Password rules, lockout and two-step verification.",
-      "privacy": "How long data is kept and the visitor consent text."
+      "privacy": "How long data is kept and the visitor consent text.",
+      "feedback": "Ask visitors how their visit went, and what counts as a low score."
     },
     "cards": {
       "preview": "Preview",
@@ -872,7 +880,11 @@
       "signIn": "Sign-in and invitations",
       "retention": "Retention",
       "consent": "Consent",
-      "displayLook": "Waiting-room screens"
+      "displayLook": "Waiting-room screens",
+      "feedbackScope": "Applies to",
+      "feedbackAsk": "Asking for feedback",
+      "feedbackTexts": "Wording",
+      "alertSatisfaction": "Visitor satisfaction"
     },
     "ui": {
       "search": "Search settings…",
@@ -897,7 +909,36 @@
     "previewTicketNo": "A-007",
     "logoDarkUrl": "Logo for dark backgrounds",
     "displayTheme": "Default look of the waiting-room screens",
-    "displayThemeHint": "Screens set to “Use the default” follow this. Each screen can choose its own look under Screens. Dark and brand-coloured screens use the logo for dark backgrounds when one is uploaded."
+    "displayThemeHint": "Screens set to “Use the default” follow this. Each screen can choose its own look under Screens. Dark and brand-coloured screens use the logo for dark backgrounds when one is uploaded.",
+    "feedbackIntro": "After a visit is completed, visitors can rate it from the page behind their ticket QR code or from a link sent to them.",
+    "feedbackScope": "Where it applies",
+    "feedbackAllBranches": "All branches (default)",
+    "feedbackUseDefault": "Use the default for this branch",
+    "feedbackInherited": "The branch now uses the default",
+    "feedbackEnabled": "Ask visitors for feedback",
+    "feedbackEnabledHint": "Off: the card and the feedback link are hidden and no answers are accepted.",
+    "feedbackOnPage": "Show the card on the visitor page",
+    "feedbackOnPageHint": "Off: only the feedback link opens the card.",
+    "feedbackStyle": "Look of the rating",
+    "feedbackStyleFaces": "Faces",
+    "feedbackStyleStars": "Stars",
+    "feedbackLowScore": "Low score is up to",
+    "feedbackLowScoreHint": "Answers at or below this score raise an alert and appear under low scores in reports.",
+    "feedbackAskComment": "Ask for a comment",
+    "feedbackAskNps": "Also ask how likely they are to recommend us",
+    "feedbackAskNpsHint": "A 0 to 10 question used for the recommend score (NPS).",
+    "feedbackPrompt": "Question",
+    "feedbackCommentPrompt": "Comment prompt",
+    "feedbackNpsPrompt": "Recommend question",
+    "feedbackThanks": "Thank-you message",
+    "feedbackPrivacyNote": "Comments are personal data. They are kept and erased with the rest of the visit data under the retention period in Data protection.",
+    "wallboardShowCsat": "Show today's visitor satisfaction",
+    "lowScoreAlerts": "Alert on every low score",
+    "lowScoreAlertsHint": "Uses the low-score limit of the feedback settings.",
+    "lowSatisfactionBelow": "Alert when average satisfaction is below",
+    "lowSatisfactionBelowHint": "Out of 5. 0 turns this alert off.",
+    "lowSatisfactionMinResponses": "Least answers before this alert",
+    "lowSatisfactionWindowHours": "Hours to average over"
   },
   "audit": {
     "title": "Audit log",
@@ -1282,7 +1323,42 @@
     "estimated": "Estimated wait",
     "minutes": "{n} min",
     "refreshes": "This page updates by itself.",
-    "notFound": "This ticket was not found or the page is turned off."
+    "notFound": "This ticket was not found or the page is turned off.",
+    "feedback": {
+      "title": "Your feedback",
+      "prompt": "How was your visit?",
+      "commentPrompt": "Anything you would like to add? (optional)",
+      "npsPrompt": "How likely are you to recommend us to a friend?",
+      "npsLow": "Not at all likely",
+      "npsHigh": "Very likely",
+      "submit": "Send",
+      "thanks": "Thank you, your opinion helps us improve.",
+      "failed": "We could not send your answer. Please try again.",
+      "scores": {
+        "1": "Very poor",
+        "2": "Poor",
+        "3": "Fair",
+        "4": "Good",
+        "5": "Excellent"
+      }
+    },
+    "updates": {
+      "title": "Get updates on your phone",
+      "phone": "Phone number",
+      "consent": "I agree to receive messages about my turn on this number.",
+      "submit": "Send me updates",
+      "done": "Done. We will message you about your turn.",
+      "invalid": "This phone number does not look right.",
+      "failed": "Could not save. Please try again."
+    },
+    "stop": {
+      "title": "Stop messages",
+      "question": "Do you want to stop receiving messages about your visits?",
+      "confirm": "Yes, stop messages",
+      "done": "Done. You will not receive any more messages from us.",
+      "invalid": "This link is not valid.",
+      "failed": "Something went wrong. Please try again."
+    }
   },
   "screens": {
     "title": "Screens & voice",
@@ -1460,7 +1536,8 @@
       "called": "At desks now",
       "onHold": "On hold",
       "avgWait": "Average wait today",
-      "sla": "Service level today"
+      "sla": "Service level today",
+      "csat": "Satisfaction today"
     },
     "desks": "Desks",
     "desk": "Desk {number}",
@@ -1481,7 +1558,9 @@
       "queue_over_limit": "{waiting} people are waiting (limit {limit})",
       "agent_idle": "An agent has been idle for {idleMin} min while {waiting} are waiting",
       "no_show_spike": "{count} no-shows in the last {windowMinutes} min",
-      "unknown": "New alert"
+      "unknown": "New alert",
+      "low_score": "Ticket {displayNumber} was rated {score} out of 5",
+      "low_satisfaction": "Average satisfaction {avg} from {responses} answers in the last {windowHours} h (limit {limit})"
     }
   },
   "reportExport": {
@@ -1519,7 +1598,12 @@
       "byShift": "By shift",
       "repeatSummary": "Repeat visits",
       "repeatDistribution": "Visitors by number of visits",
-      "repeatTop": "Returning visitors"
+      "repeatTop": "Returning visitors",
+      "csatSummary": "Visitor satisfaction",
+      "csatDistribution": "Satisfaction: answers by score",
+      "csatByDay": "Satisfaction by day",
+      "csatBreakdown": "Satisfaction by agent, reason, branch and shift",
+      "csatComments": "Recent low scores with a comment"
     },
     "units": {
       "min": "min",
@@ -1558,7 +1642,18 @@
       "phone": "Mobile",
       "firstVisit": "First visit",
       "lastVisit": "Last visit",
-      "daysBetween": "Avg days between visits"
+      "daysBetween": "Avg days between visits",
+      "csatAvg": "Satisfaction (1-5)",
+      "csatResponses": "Feedback answers",
+      "score": "Score",
+      "responses": "Answers",
+      "share": "Share (%)",
+      "group": "Grouped by",
+      "name": "Name",
+      "time": "Time",
+      "comment": "Comment",
+      "ticket": "Ticket",
+      "satisfied": "Satisfied (%)"
     },
     "metrics": {
       "visitors": "Visitors",
@@ -1595,7 +1690,22 @@
     },
     "outsideShifts": "Outside shifts",
     "fiveOrMore": "5 or more",
-    "anonymous": "Not identified"
+    "anonymous": "Not identified",
+    "csat": {
+      "avg": "Average score (1-5)",
+      "satisfied": "Satisfied, scores 4-5 (%)",
+      "responses": "Answers",
+      "eligible": "Completed visits",
+      "responseRate": "Response rate (%)",
+      "nps": "Recommend score (NPS)",
+      "npsResponses": "Recommend answers",
+      "promoters": "Promoters (%)",
+      "detractors": "Detractors (%)",
+      "groupAgent": "Agent",
+      "groupReason": "Visit reason",
+      "groupBranch": "Branch",
+      "groupShift": "Shift"
+    }
   },
   "reports": {
     "title": "Reports",
@@ -1656,7 +1766,14 @@
       "returningSub": "First visit {first} · returning {returning}",
       "fairness": "Fairness index",
       "fairnessHint": "Jain's index from 0 to 1: 1 means every agent served the same number of visitors.",
-      "stillOpen": "Still open"
+      "stillOpen": "Still open",
+      "csat": "Visitor satisfaction",
+      "csatSub": "{n} answers",
+      "csatSatisfied": "Satisfied visitors",
+      "csatSatisfiedHint": "Scores of 4 or 5 out of 5.",
+      "csatRate": "Feedback response rate",
+      "nps": "Recommend score (NPS)",
+      "npsHint": "Promoters (9-10) minus detractors (0-6), from -100 to 100."
     },
     "sections": {
       "volume": "Visitor volume",
@@ -1711,7 +1828,8 @@
         "breakMin": "Break",
         "servingMin": "Serving",
         "idleMin": "Idle",
-        "utilisationPct": "Utilisation"
+        "utilisationPct": "Utilisation",
+        "csatAvg": "Satisfaction"
       },
       "shift": "Shift"
     },
@@ -1773,6 +1891,50 @@
         "avgDaysBetween": "Avg days between",
         "reasons": "Reasons"
       }
+    },
+    "csat": {
+      "title": "Visitor satisfaction",
+      "hint": "What visitors said about the visits in the period. Only answers from completed visits count.",
+      "empty": "No visitor feedback in the selected period and filters.",
+      "outOf": "{n} / 5",
+      "kpi": {
+        "avg": "Average score",
+        "satisfied": "Satisfied",
+        "satisfiedHint": "Scores of 4 or 5 out of 5.",
+        "responses": "Answers",
+        "ofVisits": "of {n} completed visits",
+        "rate": "Response rate",
+        "nps": "Recommend score (NPS)",
+        "npsSub": "{n} answers",
+        "npsHint": "Promoters (9-10) minus detractors (0-6), from -100 to 100."
+      },
+      "distribution": "Answers by score",
+      "trend": "Average score by day",
+      "scoreAxis": "Score",
+      "responsesAxis": "Answers",
+      "avgAxis": "Average score",
+      "byAgent": "By agent",
+      "byReason": "By visit reason",
+      "byBranch": "By branch",
+      "byShift": "By shift",
+      "outsideShifts": "Outside shifts",
+      "lowComments": "Recent low scores with a comment",
+      "lowCommentsHint": "The visitor's number is partly hidden unless you may see personal data.",
+      "noLowComments": "No low scores with a comment.",
+      "notIdentified": "Not identified",
+      "cols": {
+        "name": "Name",
+        "responses": "Answers",
+        "avg": "Average",
+        "satisfied": "Satisfied",
+        "time": "Time",
+        "score": "Score",
+        "comment": "Comment",
+        "ticket": "Ticket",
+        "agent": "Agent",
+        "reason": "Visit reason",
+        "visitor": "Visitor"
+      }
     }
   },
   "reportSchedules": {
@@ -1792,7 +1954,8 @@
       "presets": {
         "overview": "Overview",
         "staff": "Staff and shifts",
-        "repeat": "Repeat visits"
+        "repeat": "Repeat visits",
+        "feedback": "Visitor satisfaction"
       },
       "selected": "{count} of {total} selected",
       "download": "Download",
@@ -1993,7 +2156,20 @@
       "activeDays": "on {n} days",
       "bestDay": "Best day",
       "streak": "Current streak",
-      "streakHint": "Working days in a row with at least one visitor served"
+      "streakHint": "Working days in a row with at least one visitor served",
+      "csatTitle": "Feedback from visitors you served",
+      "csatHint": "For your own reflection: what visitors said. It is a guide, not a score against anyone.",
+      "csatAvg": "Average score",
+      "csatNone": "No answers yet",
+      "csatOutOf": "{n} / 5",
+      "csatBranch": "Branch average {value}",
+      "csatResponses": "Answers",
+      "csatSatisfied": "Satisfied visitors",
+      "csatPrevious": "Previous period",
+      "csatTrend": "Average score, last {n} days",
+      "csatTrendAria": "Line chart of your average visitor score per day",
+      "csatRecent": "Recent comments",
+      "csatScore": "Score {n} / 5"
     }
   },
   "logoUpload": {
@@ -2035,5 +2211,170 @@
     "dark": "Dark",
     "light": "Light",
     "brand": "Brand colour"
+  },
+  "theme": {
+    "label": "Colour theme",
+    "toDark": "Switch to dark mode",
+    "toLight": "Switch to light mode"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "description": "Tell visitors about their number, their turn and their call by WhatsApp, SMS or email.",
+    "tabs": {
+      "channels": "Channels",
+      "events": "Events and limits",
+      "templates": "Messages",
+      "log": "Delivery log"
+    },
+    "channels": {
+      "whatsapp": "WhatsApp",
+      "sms": "SMS",
+      "email": "Email"
+    },
+    "status": {
+      "configured": "Configured",
+      "not_configured": "Not configured",
+      "mock": "Test mode (nothing is sent)"
+    },
+    "setup": {
+      "whatsapp": "WhatsApp Cloud API. Set WHATSAPP_TOKEN and WHATSAPP_PHONE_ID on the server.",
+      "sms": "Any HTTP SMS gateway, or Twilio. Set SMS_PROVIDER and the SMS_* or TWILIO_* variables on the server.",
+      "email": "Outgoing mail. Set SMTP_HOST and the other SMTP_* variables on the server."
+    },
+    "channelsHelp": "Keys and passwords are kept in the server environment, never in the database, and are not shown here. A message is only sent when the visitor agreed at reception and left a phone number or email.",
+    "test": {
+      "title": "Send a test message",
+      "description": "Sends the “number issued” message to your own number or email through the selected channel.",
+      "channel": "Channel",
+      "toPhone": "Phone number (with country code)",
+      "toEmail": "Email address",
+      "language": "Language",
+      "send": "Send test",
+      "sent": "Test message sent."
+    },
+    "events": {
+      "scopeTitle": "Where these settings apply",
+      "scope": "Applies to",
+      "allBranches": "All branches (default)",
+      "useDefault": "Use the default",
+      "inherited": "This branch now follows the default.",
+      "generalTitle": "General",
+      "enabled": "Send messages to visitors",
+      "requireConsent": "Only when the visitor agreed at reception",
+      "requireConsentHint": "Recommended. Turn off only if your reception collects agreement in another way.",
+      "matrixTitle": "What is sent, and on which channel",
+      "matrixHint": "A channel is used only if it is configured and the visitor has a matching phone or email.",
+      "event": "Event",
+      "on": "Send",
+      "names": {
+        "ticket_issued": "Number issued",
+        "turns_away": "Turn is near",
+        "called": "Called to the desk",
+        "no_show": "Missed the call",
+        "completed_thanks": "Thank you after the visit"
+      },
+      "hints": {
+        "ticket_issued": "Number, estimated wait and a link to follow the queue.",
+        "turns_away": "When only a few people are left ahead (see Settings, visitor page).",
+        "called": "Which desk to go to.",
+        "no_show": "The visitor did not come when called.",
+        "completed_thanks": "After the visit, with the feedback link when feedback is on."
+      },
+      "orderTitle": "Channel order",
+      "orderHint": "The first channel is tried first. If it is not available or keeps failing, the next one is used.",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "limitsTitle": "Limits",
+      "limitsHint": "Volume limits protect visitors from too many messages and your providers from overload.",
+      "maxPerTicket": "Most messages per ticket",
+      "maxAttempts": "Attempts per channel",
+      "maxAttemptsHint": "Then the next channel is tried.",
+      "retryBase": "First retry after (seconds)",
+      "retryBaseHint": "Doubles after each failed attempt.",
+      "rate": "{channel}: most per minute",
+      "footerTitle": "Opt-out footer",
+      "footerHint": "Added to every SMS and email. Keep '{stopLink}', the visitor''s personal stop link.",
+      "footer": "Footer text"
+    },
+    "templates": {
+      "event": "Event",
+      "channel": "Channel",
+      "variables": "Insert a value",
+      "variablesHint": "Click a value to insert it where the cursor is. Lines with an empty optional value are left out.",
+      "subject": "Subject",
+      "body": "Message",
+      "providerTemplate": "WhatsApp approved template name",
+      "providerTemplateHint": "Needed to message a visitor first. Values are sent in the order they appear in the message. Leave empty to send plain text.",
+      "active": "Use this message",
+      "save": "Save",
+      "saved": "Message saved.",
+      "restore": "Restore the default wording",
+      "preview": "Preview",
+      "previewHint": "Sample values. Real messages use the visitor's ticket."
+    },
+    "variables": {
+      "number": "Ticket number",
+      "ticket": "Ticket number (same as number)",
+      "name": "Visitor name (optional)",
+      "desk": "Desk number",
+      "wait": "Estimated wait (optional)",
+      "ahead": "People ahead",
+      "branch": "Branch name",
+      "reason": "Visit reason",
+      "link": "Link to follow the queue",
+      "feedbackLink": "Feedback link (optional)",
+      "stopLink": "Personal stop link"
+    },
+    "sample": {
+      "name": {
+        "ar": "سارة",
+        "en": "Sara"
+      },
+      "wait": {
+        "ar": "10 دقائق",
+        "en": "10 min"
+      },
+      "branch": {
+        "ar": "فرع دمشق",
+        "en": "Damascus branch"
+      },
+      "reason": {
+        "ar": "خدمة عامة",
+        "en": "General service"
+      }
+    },
+    "log": {
+      "status": "Status",
+      "channel": "Channel",
+      "event": "Event",
+      "from": "From",
+      "to": "To",
+      "all": "All",
+      "when": "When",
+      "ticket": "Ticket",
+      "recipient": "To",
+      "empty": "No messages yet.",
+      "more": "Show more",
+      "resend": "Send again",
+      "resent": "Queued to send again.",
+      "statuses": {
+        "queued": "Queued",
+        "sending": "Sending",
+        "sent": "Sent",
+        "failed": "Failed",
+        "skipped": "Not sent"
+      },
+      "reasons": {
+        "no_consent": "No agreement from the visitor",
+        "opted_out": "Visitor stopped messages",
+        "limit_reached": "Message limit for this ticket",
+        "no_channel": "No usable channel",
+        "channel_not_configured": "Channel not configured",
+        "template_missing": "No message text",
+        "no_recipient": "No phone or email",
+        "disabled": "Turned off",
+        "ticket_missing": "Ticket not found"
+      }
+    }
   }
 }

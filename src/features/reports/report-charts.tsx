@@ -550,3 +550,80 @@ export function RepeatDistributionChart({ data }: { data: ReportData["repeat"]["
   }, [data, f, t]);
   return <EChart option={option} height={260} ariaLabel={t("distribution")} />;
 }
+
+/* ─────────────── Visitor satisfaction ─────────────── */
+
+/** Answers per score, 1 to 5. */
+export function CsatDistributionChart({ data }: { data: ReportData["csat"]["summary"]["distribution"] }) {
+  const t = useTranslations("reports.csat");
+  const f = useReportFormat();
+  const option = useMemo(
+    () => ({
+      ...baseOption(th),
+      color: [th.series[0]],
+      grid,
+      legend: noLegend,
+      tooltip: axisTooltip((_, v) => f.num(v)),
+      xAxis: categoryAxis(
+        data.map((d) => f.num(d.score)),
+        t("scoreAxis"),
+      ),
+      yAxis: valueAxis(t("responsesAxis")),
+      series: [
+        {
+          name: t("responsesAxis"),
+          type: "bar",
+          data: data.map((d) => d.count),
+          barMaxWidth: 48,
+          itemStyle: { borderRadius: [3, 3, 0, 0] },
+          label: { show: true, position: "top", color: th.textSecondary, formatter: (p: { value: number }) => f.num(p.value) },
+        },
+      ],
+    }),
+    [data, f, t],
+  );
+  return <EChart option={option} height={260} ariaLabel={t("distribution")} />;
+}
+
+/** Average score and number of answers per day. */
+export function CsatTrendChart({ data }: { data: ReportData["csat"]["byDay"] }) {
+  const t = useTranslations("reports.csat");
+  const f = useReportFormat();
+  const option = useMemo(
+    () => ({
+      ...baseOption(th),
+      color: [th.series[0], th.series[1]],
+      grid,
+      tooltip: axisTooltip((i, v) => (i === 0 ? f.num(v, 2) : f.num(v))),
+      xAxis: categoryAxis(
+        data.map((d) => f.day(d.date)),
+        undefined,
+        { axisLabel: { color: th.muted, hideOverlap: true } },
+      ),
+      yAxis: [
+        valueAxis(t("avgAxis"), { min: 1, max: 5, minInterval: 1 }),
+        valueAxis(t("responsesAxis"), { splitLine: { show: false } }),
+      ],
+      series: [
+        {
+          name: t("avgAxis"),
+          type: "line",
+          connectNulls: true,
+          data: data.map((d) => d.avg),
+          symbolSize: 6,
+          lineStyle: { width: 2 },
+        },
+        {
+          name: t("responsesAxis"),
+          type: "bar",
+          yAxisIndex: 1,
+          data: data.map((d) => d.responses),
+          barMaxWidth: 28,
+          itemStyle: { borderRadius: [3, 3, 0, 0], opacity: 0.35 },
+        },
+      ],
+    }),
+    [data, f, t],
+  );
+  return <EChart option={option} height={280} ariaLabel={t("trend")} />;
+}

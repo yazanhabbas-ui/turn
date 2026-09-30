@@ -38,6 +38,8 @@ import { AppError } from "../http/errors";
 import { now as clockNow } from "../clock";
 import { getSetting } from "../settings/service";
 import { cancelBreakRequest, offerFreedBreaks, requestBreak } from "./breaks";
+import { dispatchNotifications } from "../notifications/dispatch";
+import { aheadBefore, recordNotifications, type NotifyRequest } from "../notifications/record";
 import { publish, type QueueEvent } from "./publish";
 import { loadBranchContext, lockBranch, type BranchContext } from "./snapshot";
 
@@ -46,17 +48,38 @@ type TicketRow = typeof tickets.$inferSelect;
 export type QueueActor = Actor | { system: true };
 const isSystem = (a: QueueActor): a is { system: true } => "system" in a;
 
-type Ctx = { tx: Tx; bctx: BranchContext; events: QueueEvent[]; actor: QueueActor };
+type Ctx = { tx: Tx; bctx: BranchContext; events: QueueEvent[]; actor: QueueActor; notify: NotifyRequest[] };
+
+/** Ticket events that tell the visitor something. */
+const NOTIFY_ON: Record<string, NotifyRequest["event"]> = {
+  ISSUED: "ticket_issued",
+  CALLED: "called",
+  NO_SHOW: "no_show",
+  COMPLETED: "completed_thanks",
+};
 
 /** Runs a queue mutation under the branch lock and publishes realtime events after commit. */
 async function withBranch<T>(branchId: string, actor: QueueActor, fn: (ctx: Ctx) => Promise<T>): Promise<T> {
   const events: QueueEvent[] = [];
+  const notify: NotifyRequest[] = [];
+  let outbox: string[] = [];
   const result = await db().transaction(async (tx) => {
     await lockBranch(tx, branchId);
     const bctx = await loadBranchContext(tx, branchId);
-    return fn({ tx, bctx, events, actor });
+    const before = aheadBefore(bctx);
+    const out = await fn({ tx, bctx, events, actor, notify });
+    // Visitor messages are written to the outbox in this same transaction (nothing is lost or duplicated on rollback).
+    outbox = await recordNotifications(tx, {
+      bctx,
+      requests: notify,
+      before,
+      changed: events.length > 0,
+      reload: () => loadBranchContext(tx, branchId),
+    });
+    return out;
   });
   publish(events);
+  dispatchNotifications(outbox);
   return result;
 }
 
@@ -77,6 +100,8 @@ async function recordEvent(
     payload?: Record<string, unknown>;
   },
 ) {
+  const notifyEvent = NOTIFY_ON[e.type];
+  if (notifyEvent && t.visitorId) ctx.notify.push({ ticketId: t.id, event: notifyEvent });
   await ctx.tx.insert(ticketEvents).values({
     organizationId: t.organizationId,
     branchId: t.branchId,

@@ -8,6 +8,8 @@ import { pickText } from "@/i18n/locales";
 import { waitLine, type WaitDisplay } from "../queue/wait-text";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { FeedbackCard, type FeedbackCardConfig } from "./feedback-card";
+import { NotifyOptIn } from "./notify-optin";
 
 export type PublicStatus = {
   displayNumber: string;
@@ -18,10 +20,25 @@ export type PublicStatus = {
   desk: { number: string; name: Record<string, string> } | null;
   position: { ahead: number; estimatedWaitMinutes: number; waitLow?: number; waitHigh?: number } | null;
   waitDisplay: WaitDisplay;
+  /** Rating card for a completed visit (null when feedback is off or the visit is not completed). */
+  feedback?: FeedbackCardConfig | null;
+  /** The card is also shown on the status page itself (not only behind the feedback link). */
+  feedbackOnPage?: boolean;
+  /** Offer "get updates on my phone": the ticket has no phone yet and a messaging channel is available. */
+  notifyOptIn?: boolean;
 };
 
 /** Mobile page behind the ticket QR code. Polls every 10 s (no login, no personal data). */
-export function VisitorStatus({ token, initial }: { token: string; initial: PublicStatus }) {
+export function VisitorStatus({
+  token,
+  initial,
+  focusFeedback = false,
+}: {
+  token: string;
+  initial: PublicStatus;
+  /** Opened from the feedback link: show the card even when the status page hides it, and focus it. */
+  focusFeedback?: boolean;
+}) {
   const t = useTranslations("visitorStatus");
   const locale = useLocale();
   const { data } = useQuery({
@@ -90,6 +107,10 @@ export function VisitorStatus({ token, initial }: { token: string; initial: Publ
         {s.status === "CANCELLED" && t("cancelled")}
         {s.status === "NO_SHOW" && t("noShow")}
       </div>
+      {s.status === "COMPLETED" && s.feedback && (s.feedbackOnPage !== false || focusFeedback) && (
+        <FeedbackCard token={token} config={s.feedback} autoFocus={focusFeedback} />
+      )}
+      {s.notifyOptIn && ["WAITING", "CALLED"].includes(s.status) && <NotifyOptIn token={token} />}
       <p className="text-muted-foreground mt-auto pt-10 text-xs">{t("refreshes")}</p>
     </main>
   );

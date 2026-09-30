@@ -21,12 +21,22 @@ function BrandPreview({ v }: { v: Branding }) {
     <SettingCard title={t("cards.preview")} description={t("cards.previewHint")}>
       <div className="overflow-hidden rounded-lg border" style={{ fontFamily: `${v.font}, sans-serif` }} aria-hidden>
         <div
-          className="flex items-center gap-2 border-b-2 bg-white px-3 py-2 text-neutral-900"
+          className="bg-card text-card-foreground flex items-center gap-2 border-b-2 px-3 py-2"
           style={{ borderColor: v.primaryColor }}
         >
           {v.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={v.logoUrl} alt="" className="h-8 w-auto max-w-32 object-contain" />
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={v.logoUrl}
+                alt=""
+                className={`h-8 w-auto max-w-32 object-contain ${v.logoDarkUrl ? "dark:hidden" : ""}`}
+              />
+              {v.logoDarkUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={v.logoDarkUrl} alt="" className="hidden h-8 w-auto max-w-32 object-contain dark:block" />
+              )}
+            </>
           ) : (
             <span
               className="grid size-8 place-items-center rounded-lg text-sm font-bold text-white"

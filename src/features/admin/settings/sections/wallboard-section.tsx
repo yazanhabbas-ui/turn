@@ -96,6 +96,7 @@ function WallboardForm({ initial }: { initial: SettingValue<"wallboard"> }) {
               checked={v.showClock}
               onChange={(showClock) => set({ showClock })}
             />
+            <Check id="wb-csat" label={t("wallboardShowCsat")} checked={v.showCsat} onChange={(showCsat) => set({ showCsat })} />
           </SettingCard>
           <p className="text-muted-foreground text-sm">{t("wallboardBrandHint")}</p>
         </>

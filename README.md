@@ -82,16 +82,19 @@ Integration tests **truncate tables**. They always run against a separate databa
 
 See [.env.example](.env.example) for the full, commented list.
 
-| Variable                       | Required | Description                                                                         |
-| ------------------------------ | -------- | ----------------------------------------------------------------------------------- |
-| `APP_URL`                      | yes      | URL browsers use to reach the server on the LAN (QR codes and invite links use it)  |
-| `DATABASE_URL`                 | yes      | PostgreSQL connection string                                                        |
-| `APP_ENCRYPTION_KEY`           | yes      | 32 bytes, base64: encrypts 2FA secrets at rest                                      |
-| `PHONE_HASH_KEY`               | yes      | Keys the visitor phone hash (returning-visitor routing without storing numbers)     |
-| `REDIS_URL`                    | no       | Enables Redis for multi-node realtime and rate limiting; in-memory otherwise        |
-| `SMTP_*`                       | no       | Outgoing mail for invites and reports; without it, invite links are copied manually |
-| `TRUST_PROXY`, `COOKIE_SECURE` | no       | Reverse-proxy and TLS settings                                                      |
-| `SEED_DEMO`, `SEED_PASSWORD`   | no       | Docker: seed the demo organization on start                                         |
+| Variable                                                                                                                                                                                     | Required | Description                                                                                                 |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------- |
+| `APP_URL`                                                                                                                                                                                    | yes      | URL browsers use to reach the server on the LAN (QR codes and invite links use it)                          |
+| `DATABASE_URL`                                                                                                                                                                               | yes      | PostgreSQL connection string                                                                                |
+| `APP_ENCRYPTION_KEY`                                                                                                                                                                         | yes      | 32 bytes, base64: encrypts 2FA secrets at rest                                                              |
+| `PHONE_HASH_KEY`                                                                                                                                                                             | yes      | Keys the visitor phone hash (returning-visitor routing without storing numbers)                             |
+| `REDIS_URL`                                                                                                                                                                                  | no       | Enables Redis for multi-node realtime and rate limiting; in-memory otherwise                                |
+| `SMTP_*`                                                                                                                                                                                     | no       | Outgoing mail for invites and reports; without it, invite links are copied manually                         |
+| `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`                                                                                                                                                        | no       | WhatsApp Cloud API for visitor messages (optional `WHATSAPP_API_VERSION`, `WHATSAPP_API_URL`)               |
+| `SMS_PROVIDER` (`http` or `twilio`), `SMS_URL`, `SMS_METHOD`, `SMS_AUTH_HEADER`, `SMS_BODY_FORMAT`, `SMS_BODY`, `SMS_FROM`, `SMS_MESSAGE_ID_PATH`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | no       | SMS gateway: any HTTP gateway described by these variables, or the Twilio preset                            |
+| `MESSAGING_MOCK`, `MESSAGING_TIMEOUT_SECONDS`                                                                                                                                                | no       | `true` records messages in memory instead of sending (dev, tests); provider request timeout in seconds (15) |
+| `TRUST_PROXY`, `COOKIE_SECURE`                                                                                                                                                               | no       | Reverse-proxy and TLS settings                                                                              |
+| `SEED_DEMO`, `SEED_PASSWORD`                                                                                                                                                                 | no       | Docker: seed the demo organization on start                                                                 |
 
 ## Deploying on a single office server
 
@@ -114,6 +117,10 @@ Nothing calls a service outside your network at runtime: fonts are bundled, QR c
 ## Reception speed
 
 Admin → Settings → Reception controls the desk: one-tap issuing, auto-print, whether priority and language are asked, and what happens after a ticket. The visitor details collected (and which are required) are set per visit reason. For printing without the browser dialog, start Chrome on the reception PC with `--kiosk-printing` and set the thermal printer as the default printer.
+
+## Visitor feedback
+
+After a visit is completed, the status page behind the ticket QR asks the visitor to rate it (faces or stars, an optional comment, optionally a "would you recommend us" question). Edit the wording and switches in **Admin → Settings → Feedback**; `/t/<token>/feedback` is a direct link for messages (`{feedbackLink}`). Satisfaction appears in Reports (KPIs, charts, exports), as alerts for low scores, as a wallboard tile and on each agent's own profile. Comments are personal data and follow your retention period (decision D53).
 
 ## Project layout
 

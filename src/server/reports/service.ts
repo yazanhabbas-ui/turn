@@ -2,8 +2,9 @@ import { and, asc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { agentProfiles, agentStatusLog, branches, shifts, tickets, users, visitReasons, visitors } from "@/db/schema";
+import type { FeedbackFact } from "@/domain/feedback/csat";
 import { computeForecast, computeReport } from "@/domain/reports/compute";
-import type { RepeatVisitor, StatusEntry, TicketFact } from "@/domain/reports/types";
+import type { StatusEntry, TicketFact } from "@/domain/reports/types";
 import { zonedParts, zonedToUtc } from "@/domain/schedule/time";
 import { isoDate, uuid } from "@/domain/validation";
 import { branchesFor, can } from "@/domain/rbac/permissions";
@@ -216,6 +217,35 @@ async function buildReportForBranches(org: string, bs: (typeof branches.$inferSe
     .from(users)
     .where(eq(users.organizationId, org));
   const settings = await getSetting(org, "reports", f.branchId ?? null);
+  const feedbackSettings = await getSetting(org, "feedback", f.branchId ?? null);
+
+  // Visitor feedback for the tickets of the period (the domain code keeps those of the filtered tickets).
+  const feedbackRows = await db().execute<{
+    id: string;
+    ticket_id: string;
+    score: number;
+    nps: number | null;
+    comment: string | null;
+    at: Date;
+    display_number: string;
+  }>(sql`
+    select c.id, c.ticket_id, c.score, c.nps, c.comment, c.at, t.display_number
+    from csat_responses c join tickets t on t.id = c.ticket_id
+    where t.organization_id = ${org}
+      and t.branch_id in (${sql.join(
+        branchIds.map((id) => sql`${id}`),
+        sql`, `,
+      )})
+      and t.service_day between ${f.from} and ${f.to}`);
+  const feedback: FeedbackFact[] = feedbackRows.rows.map((r) => ({
+    id: r.id,
+    ticketId: r.ticket_id,
+    score: r.score,
+    nps: r.nps,
+    comment: r.comment,
+    at: new Date(r.at).getTime(),
+    displayNumber: r.display_number,
+  }));
 
   const shiftRows = await db()
     .select()
@@ -237,10 +267,13 @@ async function buildReportForBranches(org: string, bs: (typeof branches.$inferSe
     toMs,
     now,
     serviceLevel: { minutes: settings.serviceLevelMinutes, targetPct: settings.serviceLevelTargetPct },
+    feedback,
+    lowScoreThreshold: feedbackSettings.lowScoreThreshold,
     shifts: shiftRows.map((x) => ({ id: x.id, name: x.name, startsAt: x.startsAt, endsAt: x.endsAt })),
     agentShift: new Map(profileShifts.filter((p) => p.shiftId).map((p) => [p.userId, p.shiftId!])),
   });
-  await describeRepeatVisitors(data.repeat.top, fullPhone);
+  await describeVisitors(data.repeat.top, fullPhone);
+  await describeVisitors(data.csat.lowComments, fullPhone);
   return { filters: f, timezone: tz, generatedAt: new Date(now).toISOString(), data };
 }
 
@@ -299,21 +332,20 @@ export async function buildForecast(actor: Actor, branchId?: string) {
 
 export { can, reportBranches };
 
-/** Adds who the repeat visitors are: the name, and the phone number masked (in full only when permitted). */
-async function describeRepeatVisitors(top: RepeatVisitor[], fullPhone: boolean) {
-  if (!top.length) return;
+/** Adds who the visitors are (repeat visitors, low-score comments): the name, and the phone number masked (in full only when permitted). */
+async function describeVisitors(
+  top: { visitorId: string | null; name?: string | null; phoneMasked?: string | null; phone?: string | null }[],
+  fullPhone: boolean,
+) {
+  const ids = top.map((t) => t.visitorId).filter((x): x is string => !!x);
+  if (!ids.length) return;
   const rows = await db()
     .select({ id: visitors.id, name: visitors.name, phone: visitors.phone, anonymizedAt: visitors.anonymizedAt })
     .from(visitors)
-    .where(
-      inArray(
-        visitors.id,
-        top.map((t) => t.visitorId),
-      ),
-    );
+    .where(inArray(visitors.id, ids));
   const byId = new Map(rows.map((r) => [r.id, r]));
   for (const t of top) {
-    const v = byId.get(t.visitorId);
+    const v = t.visitorId ? byId.get(t.visitorId) : undefined;
     t.name = v && !v.anonymizedAt ? v.name : null;
     const digits = v && !v.anonymizedAt ? (v.phone ?? "") : "";
     t.phoneMasked = digits ? `••••${digits.slice(-3)}` : null;

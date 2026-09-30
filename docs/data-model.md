@@ -87,19 +87,19 @@ erDiagram
 | `appointments`   | Pre-booked visits with a lookup code, check-in → ticket                                                                                                                                                                       |
 | `tickets`        | Number/prefix/`display_number`, `service_day`, status, priority, language, `public_token` (status page), assigned/serving agent, desk, `arrived_at` (kept on transfer), timestamps, intake values, idempotency key, `version` |
 | `ticket_events`  | Append-only: every transition, with from/to status, actor, agent, desk, queue, payload. **Reports read from here.**                                                                                                           |
-| `csat_responses` | Score 1–5, optional NPS, comment, channel                                                                                                                                                                                     |
+| `csat_responses` | One per completed ticket (unique): agent, reason, score 1–5, optional NPS 0–10, comment (max 500, personal data, erased with the visit), channel (`status_page`, `link`, `kiosk`), language, `at`. See D53                    |
 
 **Ticket states:** `APPOINTMENT_PENDING`, `WAITING`, `CALLED`, `SERVING`, `ON_HOLD`, `COMPLETED`, `NO_SHOW`, `CANCELLED`. A transfer is an event (`TRANSFERRED`) that returns the ticket to `WAITING` in another queue with its original `arrived_at`.
 
 ## Devices and messaging
 
-| Table               | Purpose                                                                                                                                                  |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `displays`          | Paired device: hashed token, pairing code, layout, config (languages, voice, ticker, `theme`: `default`/`dark`/`light`/`brand`), last seen, `revoked_at` |
-| `announcements`     | Ticker lines and slides, scheduled                                                                                                                       |
-| `message_templates` | Per channel (voice, sms, whatsapp, email, ticket_print, display) × event, bilingual body with placeholders                                               |
-| `notifications_log` | Outbound messages with masked recipient and provider status                                                                                              |
-| `tts_audio_packs`   | Pre-recorded clip manifests for kiosks without an Arabic TTS voice                                                                                       |
+| Table               | Purpose                                                                                                                                                                                                                                                                                  |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `displays`          | Paired device: hashed token, pairing code, layout, config (languages, voice, ticker, `theme`: `default`/`dark`/`light`/`brand`), last seen, `revoked_at`                                                                                                                                 |
+| `announcements`     | Ticker lines and slides, scheduled                                                                                                                                                                                                                                                       |
+| `message_templates` | Per channel (voice, sms, whatsapp, email, ticket_print, display) x event, bilingual body with placeholders; `provider_template` = approved WhatsApp template name                                                                                                                        |
+| `notifications_log` | Outbound messages: masked recipient, status (`queued`, `sending`, `sent`, `failed`, `skipped` with the reason in `error`), `attempts`, `next_attempt_at` (due time and lease), unique `dedupe_key` (`<ticket>:<event>`), `payload` (non-personal variables, channel chain, retry cursor) |
+| `tts_audio_packs`   | Pre-recorded clip manifests for kiosks without an Arabic TTS voice                                                                                                                                                                                                                       |
 
 ## Platform
 

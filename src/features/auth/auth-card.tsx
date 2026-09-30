@@ -1,23 +1,33 @@
 import { getLocale } from "next-intl/server";
 import { LanguageSwitcher } from "@/components/app/language-switcher";
+import { ThemeToggle } from "@/components/app/theme-toggle";
 import { pickText } from "@/i18n/locales";
+import { cn } from "@/lib/utils";
 import { getBranding } from "@/server/branding";
 
 /** Centered card layout for sign-in, 2FA and invite acceptance pages. */
 export async function AuthCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   const locale = await getLocale();
   const branding = await getBranding();
+  const darkLogo = branding.logoDarkUrl && branding.logoDarkUrl !== branding.logoUrl ? branding.logoDarkUrl : null;
   return (
     <div className="from-brand/10 to-background flex min-h-dvh flex-col bg-gradient-to-b">
-      <div className="flex justify-end p-3">
+      <div className="flex justify-end gap-1 p-3">
+        <ThemeToggle />
         <LanguageSwitcher />
       </div>
       <div className="flex flex-1 items-start justify-center px-4 pt-[8vh]">
         <div className="w-full max-w-sm">
           <div className="mb-6 text-center">
             {branding.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={branding.logoUrl} alt="" className="mx-auto h-14 w-auto" />
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={branding.logoUrl} alt="" className={cn("mx-auto h-14 w-auto", darkLogo && "dark:hidden")} />
+                {darkLogo && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={darkLogo} alt="" className="mx-auto hidden h-14 w-auto dark:block" />
+                )}
+              </>
             ) : (
               <div className="bg-brand mx-auto grid size-14 place-items-center rounded-2xl text-2xl font-bold text-white">
                 {pickText(branding.companyName, locale).slice(0, 1)}

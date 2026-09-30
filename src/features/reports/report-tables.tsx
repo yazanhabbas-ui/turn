@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { CHART_THEME } from "@/components/charts/echart";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { AgentReport, ReasonReport, RepeatVisitor, ShiftReport } from "@/domain/reports/types";
+import type { AgentReport, CsatGroup, LowScoreComment, ReasonReport, RepeatVisitor, ShiftReport } from "@/domain/reports/types";
 import { pickText } from "@/i18n/locales";
 import { cn } from "@/lib/utils";
 import { useReportFormat } from "./use-report-format";
@@ -68,7 +68,7 @@ const AGENT_COLS = [
   "utilisationPct",
 ] as const;
 type AgentCol = (typeof AGENT_COLS)[number];
-type AgentSortKey = AgentCol | "name";
+type AgentSortKey = AgentCol | "name" | "csatAvg";
 
 const MINUTE_COLS = new Set<AgentCol>([
   "avgServiceMin",
@@ -96,7 +96,7 @@ export function AgentsTable({ agents, shifts = [] }: { agents: AgentReport[]; sh
     return [...agents].sort((a, b) =>
       sort.key === "name"
         ? mult * pickText(a.name, locale).localeCompare(pickText(b.name, locale), locale)
-        : mult * (a[sort.key] - b[sort.key]),
+        : mult * ((a[sort.key] ?? -1) - (b[sort.key] ?? -1)),
     );
   }, [agents, sort, locale]);
 
@@ -116,6 +116,12 @@ export function AgentsTable({ agents, shifts = [] }: { agents: AgentReport[]; sh
             {AGENT_COLS.map((c) => (
               <SortHead key={c} label={t(`cols.${c}`)} active={sort.key === c} dir={sort.dir} onClick={() => toggle(c)} />
             ))}
+            <SortHead
+              label={t("cols.csatAvg")}
+              active={sort.key === "csatAvg"}
+              dir={sort.dir}
+              onClick={() => toggle("csatAvg")}
+            />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -152,6 +158,15 @@ export function AgentsTable({ agents, shifts = [] }: { agents: AgentReport[]; sh
                   </TableCell>
                 ),
               )}
+              <TableCell className="tabular text-end whitespace-nowrap">
+                {a.csatAvg === null ? (
+                  <span className="text-muted-foreground">—</span>
+                ) : (
+                  <>
+                    {f.num(a.csatAvg, 1)} <span className="text-muted-foreground text-xs">({f.num(a.csatResponses)})</span>
+                  </>
+                )}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -340,6 +355,106 @@ export function RepeatVisitorsTable({
                     );
                   })}
                 </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+/* ─────────────── Visitor satisfaction ─────────────── */
+
+/** Satisfaction by agent, reason, branch or shift (one table per grouping). */
+export function CsatGroupTable({ groups, outsideLabel }: { groups: CsatGroup[]; outsideLabel: string }) {
+  const t = useTranslations("reports.csat");
+  const locale = useLocale();
+  const f = useReportFormat();
+  const rows = useMemo(() => [...groups].sort((a, b) => (b.avg ?? 0) - (a.avg ?? 0) || b.responses - a.responses), [groups]);
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t("cols.name")}</TableHead>
+            <TableHead className="text-end">{t("cols.responses")}</TableHead>
+            <TableHead className="text-end">{t("cols.avg")}</TableHead>
+            <TableHead className="text-end">{t("cols.satisfied")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((g) => (
+            <TableRow key={g.key ?? "none"}>
+              <TableCell className="font-medium whitespace-nowrap">
+                {g.key === null && !Object.keys(g.name).length ? outsideLabel : pickText(g.name, locale)}
+              </TableCell>
+              <TableCell className="tabular text-end">{f.num(g.responses)}</TableCell>
+              <TableCell className="tabular text-end">{g.avg === null ? "—" : f.num(g.avg, 1)}</TableCell>
+              <TableCell className="tabular text-end">{f.pct(g.satisfiedPct, 0)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+/** Latest low scores that came with a comment. The visitor's name and number are masked as in the repeat-visits table. */
+export function LowCommentsTable({
+  comments,
+  agents,
+  reasons,
+  timeZone,
+}: {
+  comments: LowScoreComment[];
+  agents: AgentReport[];
+  reasons: { id: string; name: Record<string, string> }[];
+  timeZone: string;
+}) {
+  const t = useTranslations("reports.csat");
+  const locale = useLocale();
+  const f = useReportFormat();
+  const agentName = (id: string | null) => pickText(agents.find((a) => a.agentId === id)?.name, locale, "—");
+  const reasonName = (id: string) => pickText(reasons.find((r) => r.id === id)?.name, locale, "—");
+  let fmt: Intl.DateTimeFormat;
+  try {
+    fmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone });
+  } catch {
+    fmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
+  }
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t("cols.time")}</TableHead>
+            <TableHead className="text-end">{t("cols.score")}</TableHead>
+            <TableHead>{t("cols.comment")}</TableHead>
+            <TableHead>{t("cols.ticket")}</TableHead>
+            <TableHead>{t("cols.agent")}</TableHead>
+            <TableHead>{t("cols.reason")}</TableHead>
+            <TableHead>{t("cols.visitor")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {comments.map((c) => (
+            <TableRow key={c.id}>
+              <TableCell className="tabular whitespace-nowrap">{fmt.format(new Date(c.at))}</TableCell>
+              <TableCell className="tabular text-end">{f.num(c.score)}</TableCell>
+              <TableCell className="min-w-56 whitespace-normal">{c.comment}</TableCell>
+              <TableCell className="tabular whitespace-nowrap" dir="ltr">
+                {c.displayNumber}
+              </TableCell>
+              <TableCell className="whitespace-nowrap">{agentName(c.agentId)}</TableCell>
+              <TableCell className="whitespace-nowrap">{reasonName(c.reasonId)}</TableCell>
+              <TableCell className="whitespace-nowrap">
+                {c.name || <span className="text-muted-foreground">{t("notIdentified")}</span>}
+                {(c.phone ?? c.phoneMasked) && (
+                  <div className="tabular text-muted-foreground text-xs">
+                    <bdi dir="ltr">{c.phone ?? c.phoneMasked}</bdi>
+                  </div>
+                )}
               </TableCell>
             </TableRow>
           ))}

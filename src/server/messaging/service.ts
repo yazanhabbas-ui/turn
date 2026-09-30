@@ -68,6 +68,13 @@ export async function sendTemplated(req: SendRequest): Promise<{ status: "sent" 
       variables: req.vars,
       attachments: req.attachments,
     });
+    if (!result.ok) {
+      const error = (result.error ?? "send_failed").slice(0, 500);
+      await db()
+        .insert(notificationsLog)
+        .values({ ...base, status: "failed", error });
+      return { status: "failed", error };
+    }
     await db()
       .insert(notificationsLog)
       .values({ ...base, status: "sent", providerMessageId: result.providerMessageId ?? null, sentAt: new Date() });

@@ -13,6 +13,11 @@ export const EXPORT_SECTIONS = [
   "repeatSummary",
   "repeatDistribution",
   "repeatTop",
+  "csatSummary",
+  "csatDistribution",
+  "csatByDay",
+  "csatBreakdown",
+  "csatComments",
   "heatmap",
 ] as const;
 export type ExportSectionId = (typeof EXPORT_SECTIONS)[number];
@@ -30,6 +35,11 @@ export const SECTION_SLUGS: Record<ExportSectionId, string> = {
   repeatDistribution: "repeat-distribution",
   repeatTop: "repeat-visitors",
   heatmap: "peak-heatmap",
+  csatSummary: "satisfaction",
+  csatDistribution: "satisfaction-scores",
+  csatByDay: "satisfaction-by-day",
+  csatBreakdown: "satisfaction-breakdown",
+  csatComments: "satisfaction-comments",
 };
 
 /** Quick selections in the download dialog; labels are `reportSchedules.exportMenu.presets.<id>`. */
@@ -37,6 +47,7 @@ export const EXPORT_PRESETS: { id: string; sections: readonly ExportSectionId[] 
   { id: "overview", sections: ["summary", "byDay", "byHour", "heatmap"] },
   { id: "staff", sections: ["byAgent", "byShift"] },
   { id: "repeat", sections: ["repeatSummary", "repeatDistribution", "repeatTop"] },
+  { id: "feedback", sections: ["csatSummary", "csatDistribution", "csatByDay", "csatBreakdown", "csatComments"] },
 ];
 
 export const isSectionId = (v: string): v is ExportSectionId => (EXPORT_SECTIONS as readonly string[]).includes(v);

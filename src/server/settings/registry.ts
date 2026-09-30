@@ -1,10 +1,29 @@
 import { z } from "zod";
 import { DEFAULT_PASSWORD_POLICY } from "@/domain/auth/password-policy";
+import { NOTIFICATION_CHANNELS, NOTIFICATION_EVENTS } from "@/domain/notifications/policy";
 
 const localized = z.record(z.string(), z.string());
 
 /** Fonts the interface, tickets and screens can use. "FF Hekaya Light" is bundled in public/fonts (see globals.css). */
 export const BRAND_FONTS = ["IBM Plex Sans Arabic", "Cairo", "Tajawal", "FF Hekaya Light"] as const;
+
+export { NOTIFICATION_CHANNELS, NOTIFICATION_EVENTS };
+export type { NotificationEvent } from "@/domain/notifications/policy";
+
+const notificationEvent = (enabled: boolean) =>
+  z
+    .object({
+      enabled: z.boolean().default(enabled),
+      /** Which channels may carry this event (the order they are tried in is `channelOrder`). */
+      channels: z
+        .object({
+          whatsapp: z.boolean().default(true),
+          sms: z.boolean().default(true),
+          email: z.boolean().default(true),
+        })
+        .prefault({}),
+    })
+    .prefault({});
 
 /**
  * Every configurable setting: key → schema with defaults. Values live in the `settings` table
@@ -86,6 +105,83 @@ export const SETTINGS = {
       notifyTurnsAway: z.number().int().min(1).max(10).default(2),
     })
     .prefault({}),
+  /** Visitor feedback (satisfaction): the card on the status page after a visit, its wording, and what counts as a low score. */
+  feedback: z
+    .object({
+      enabled: z.boolean().default(true),
+      /** Show the feedback card on the status page once the visit is completed (the direct link works either way). */
+      showOnStatusPage: z.boolean().default(true),
+      style: z.enum(["stars", "faces"]).default("faces"),
+      askComment: z.boolean().default(true),
+      /** Also ask "how likely are you to recommend us" on a 0-10 scale. */
+      askNps: z.boolean().default(false),
+      /** Scores at or below this raise a low-score alert (see Alerts). */
+      lowScoreThreshold: z.number().int().min(1).max(4).default(2),
+      prompt: localized.default({ ar: "كيف كانت تجربتك معنا؟", en: "How was your visit?" }),
+      commentPrompt: localized.default({
+        ar: "هل تودّ إضافة تعليق؟ (اختياري)",
+        en: "Anything you would like to add? (optional)",
+      }),
+      npsPrompt: localized.default({
+        ar: "ما مدى احتمال أن توصي بنا لأصدقائك؟",
+        en: "How likely are you to recommend us to a friend?",
+      }),
+      thanks: localized.default({
+        ar: "شكراً لك، رأيك يساعدنا على التحسّن.",
+        en: "Thank you, your opinion helps us improve.",
+      }),
+    })
+    .prefault({}),
+  /**
+   * Messages to visitors about their ticket (WhatsApp, SMS, email). Providers and their secrets are configured in the
+   * server environment; everything else is here. A branch may override events and the channel order.
+   */
+  notifications: z
+    .object({
+      /** Master switch. */
+      enabled: z.boolean().default(true),
+      /** Send only when the visitor agreed at reception (the consent captured on the ticket). */
+      requireConsent: z.boolean().default(true),
+      events: z
+        .object({
+          ticket_issued: notificationEvent(true),
+          turns_away: notificationEvent(true),
+          called: notificationEvent(true),
+          no_show: notificationEvent(true),
+          completed_thanks: notificationEvent(false),
+        })
+        .prefault({}),
+      /** Channels are tried in this order; the next one is used when a channel cannot be used or keeps failing. */
+      channelOrder: z
+        .array(z.enum(NOTIFICATION_CHANNELS))
+        .min(1)
+        .max(3)
+        .default(["whatsapp", "sms", "email"])
+        .transform((a) => [...new Set(a)]),
+      /** Volume limits only (never a time-of-day rule). */
+      limits: z
+        .object({
+          maxPerTicket: z.number().int().min(1).max(20).default(5),
+          /** Attempts per channel before falling back to the next one, or giving up. */
+          maxAttempts: z.number().int().min(1).max(10).default(4),
+          /** The first retry waits this long, then it doubles each time. */
+          retryBaseSeconds: z.number().int().min(5).max(3600).default(30),
+          ratePerMinute: z
+            .object({
+              whatsapp: z.number().int().min(1).max(6000).default(60),
+              sms: z.number().int().min(1).max(6000).default(60),
+              email: z.number().int().min(1).max(6000).default(120),
+            })
+            .prefault({}),
+        })
+        .prefault({}),
+      /** Added to every SMS and email so the visitor can opt out. {stopLink} is the signed opt-out link. */
+      footer: localized.default({
+        ar: "لإيقاف هذه الرسائل: {stopLink}",
+        en: "To stop these messages: {stopLink}",
+      }),
+    })
+    .prefault({}),
   /** The live operations screen (wallboard): look and content. Colours, logo and font come from Branding. */
   wallboard: z
     .object({
@@ -97,6 +193,8 @@ export const SETTINGS = {
       showCompanyName: z.boolean().default(true),
       showBranch: z.boolean().default(true),
       showClock: z.boolean().default(true),
+      /** Today's average satisfaction tile (when visitor feedback is on). */
+      showCsat: z.boolean().default(true),
       /** Text and tile size for big screens, in percent. */
       textScale: z.number().int().min(80).max(160).default(100),
     })
@@ -229,6 +327,12 @@ export const SETTINGS = {
       /** This many no-shows inside the window. */
       noShowCount: z.number().int().min(1).max(50).default(3),
       noShowWindowMinutes: z.number().int().min(5).max(240).default(30),
+      /** Raise an alert for every response at or below the feedback low-score threshold. */
+      lowScoreAlerts: z.boolean().default(true),
+      /** Raise an alert when the average satisfaction over the window falls below this (0 = off). */
+      lowSatisfactionBelow: z.number().min(0).max(5).default(0),
+      lowSatisfactionMinResponses: z.number().int().min(1).max(500).default(5),
+      lowSatisfactionWindowHours: z.number().int().min(1).max(168).default(24),
       /** Supervisors who also get an email (in-app alerts always appear). */
       notifyEmails: z.array(z.string().email()).max(20).default([]),
     })
@@ -275,6 +379,8 @@ export const BRANCH_OVERRIDABLE: readonly SettingKey[] = [
   "reception",
   "alerts",
   "wallboard",
+  "feedback",
   "displayTheme",
   "waitEstimate",
+  "notifications",
 ];

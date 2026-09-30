@@ -20,36 +20,17 @@ import { branchesFor, can } from "@/domain/rbac/permissions";
 import { shiftState } from "@/domain/shifts/window";
 import type { Actor } from "../admin/actor";
 import { AppError } from "../http/errors";
+import { feedbackCardFor } from "../feedback/service";
 import { getSetting } from "../settings/service";
 import { breakStatus } from "./breaks";
-import { loadBranchContext, type BranchContext } from "./snapshot";
+import { loadBranchContext } from "./snapshot";
+import { canOfferUpdates } from "../notifications/optin";
 import { waitDisplayOf } from "./wait-analytics";
 import { viewOf, type TicketView, type VisitorRow } from "./tickets";
 
 type TicketRow = typeof tickets.$inferSelect;
-export type Position = { ahead: number; estimatedWaitMinutes: number; waitLow: number; waitHigh: number };
-
-/** Position and estimated wait of every waiting ticket, computing each reason's order once. */
-export function positionsFor(bctx: BranchContext): Map<string, Position> {
-  const s = bctx.snapshot;
-  const byReason = new Map<string, typeof s.tickets>();
-  for (const t of s.tickets) {
-    if (t.status !== "WAITING") continue;
-    const list = byReason.get(t.reasonId) ?? [];
-    list.push(t);
-    byReason.set(t.reasonId, list);
-  }
-  const out = new Map<string, Position>();
-  for (const [reasonId, list] of byReason) {
-    const ordered = orderTickets(list, s.now, s.configFor, s.reasons, s.priorities);
-    const agents = s.agents.filter((a) => a.skills.has(reasonId) && (a.status === "AVAILABLE" || a.status === "BUSY")).length;
-    ordered.forEach((t, i) => {
-      const e = bctx.wait.estimate(reasonId, i, agents);
-      out.set(t.id, { ahead: i, estimatedWaitMinutes: e.minutes, waitLow: e.low, waitHigh: e.high });
-    });
-  }
-  return out;
-}
+export { positionsFor, type Position } from "./positions";
+import { positionsFor, type Position } from "./positions";
 
 async function visitorsFor(tx: DbOrTx, rows: TicketRow[]): Promise<Map<string, VisitorRow>> {
   const ids = [...new Set(rows.map((r) => r.visitorId).filter((x): x is string => !!x))];
@@ -463,9 +444,10 @@ export async function lookupAppointment(actor: Actor, branchId: string, code: st
 export async function publicTicketStatus(token: string) {
   const [t] = await db().select().from(tickets).where(eq(tickets.publicToken, token));
   if (!t) return null;
-  const [settings, waitSettings] = await Promise.all([
+  const [settings, waitSettings, feedbackSettings] = await Promise.all([
     getSetting(t.organizationId, "visitorStatus", t.branchId),
     getSetting(t.organizationId, "waitEstimate", t.branchId),
+    getSetting(t.organizationId, "feedback", t.branchId),
   ]);
   if (!settings.enabled) return null;
   const [reason] = await db()
@@ -490,8 +472,12 @@ export async function publicTicketStatus(token: string) {
     desk: desk ?? null,
     position,
     waitDisplay: waitDisplayOf(waitSettings),
+    notifyOptIn: await canOfferUpdates(t),
     arrivedAt: t.arrivedAt.toISOString(),
     calledAt: t.calledAt?.toISOString() ?? null,
+    /** The rating card, only for a completed visit while feedback is on. */
+    feedback: await feedbackCardFor(t),
+    feedbackOnPage: feedbackSettings.showOnStatusPage,
   };
 }
 

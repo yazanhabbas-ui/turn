@@ -183,8 +183,10 @@ export function buildExportDoc(
         c.servingMin,
         c.idleMin,
         c.utilisation,
+        c.csatAvg,
+        c.csatResponses,
       ],
-      kinds: ["text", ...nums(13)],
+      kinds: ["text", ...nums(15)],
       rows: data.agents.map((a) => [
         name(a.name),
         a.served,
@@ -200,6 +202,8 @@ export function buildExportDoc(
         round1(a.servingMin),
         round1(a.idleMin),
         round1(a.utilisationPct),
+        a.csatAvg ?? null,
+        a.csatResponses,
       ]),
     },
   ];
@@ -261,6 +265,92 @@ export function buildExportDoc(
         stamp(v.lastAt),
         round1(v.avgDaysBetween),
         v.reasonIds.map(reasonName).join("، "),
+      ]),
+    });
+  }
+
+  // Visitor feedback (satisfaction). In the default report only when somebody answered.
+  const cs = data.csat;
+  const csatWanted = (id: ExportSectionId) => (want ? want.has(id) : cs.summary.responses > 0);
+  const stampMs = (ms: number) => stampInZone(new Date(ms).toISOString(), report.timezone);
+  if (csatWanted("csatSummary")) {
+    const sm = cs.summary;
+    const rows: ExportTable["rows"] = [
+      [t.csat.avg, sm.avg],
+      [t.csat.satisfied, round1(sm.satisfiedPct)],
+      [t.csat.responses, sm.responses],
+      [t.csat.eligible, sm.eligible],
+      [t.csat.responseRate, round1(sm.responseRatePct)],
+    ];
+    if (sm.nps) {
+      rows.push([t.csat.nps, sm.nps.score], [t.csat.npsResponses, sm.nps.responses]);
+      rows.push([t.csat.promoters, round1(sm.nps.promotersPct)], [t.csat.detractors, round1(sm.nps.detractorsPct)]);
+    }
+    tables.push({
+      id: "csatSummary",
+      title: t.sections.csatSummary,
+      columns: [c.metric, c.value],
+      kinds: ["text", "num"],
+      rows,
+    });
+  }
+  if (csatWanted("csatDistribution")) {
+    tables.push({
+      id: "csatDistribution",
+      title: t.sections.csatDistribution,
+      columns: [c.score, c.responses, c.share],
+      kinds: ["text", "num", "num"],
+      rows: cs.summary.distribution
+        .slice()
+        .reverse()
+        .map((d) => [String(d.score), d.count, cs.summary.responses ? round1((d.count / cs.summary.responses) * 100) : 0]),
+    });
+  }
+  if (csatWanted("csatByDay")) {
+    tables.push({
+      id: "csatByDay",
+      title: t.sections.csatByDay,
+      columns: [c.date, c.responses, c.csatAvg],
+      kinds: ["text", "num", "num"],
+      rows: cs.byDay.map((d) => [d.date, d.responses, d.avg]),
+    });
+  }
+  if (csatWanted("csatBreakdown")) {
+    const groups: [string, typeof cs.byAgent][] = [
+      [t.csat.groupAgent, cs.byAgent],
+      [t.csat.groupReason, cs.byReason],
+      [t.csat.groupBranch, cs.byBranch],
+      [t.csat.groupShift, cs.byShift],
+    ];
+    tables.push({
+      id: "csatBreakdown",
+      title: t.sections.csatBreakdown,
+      columns: [c.group, c.name, c.responses, c.csatAvg, c.satisfied],
+      kinds: ["text", "text", "num", "num", "num"],
+      rows: groups.flatMap(([label, list]) =>
+        list.map((g) => [label, g.key === null ? t.outsideShifts : name(g.name), g.responses, g.avg, round1(g.satisfiedPct)]),
+      ),
+    });
+  }
+  if (csatWanted("csatComments")) {
+    const agentName = (id: string | null) => name(id ? (data.agents.find((a) => a.agentId === id)?.name ?? {}) : {});
+    const reasonName = (id: string) => name(data.byReason.find((r) => r.reasonId === id)?.name ?? {});
+    const branchName = (id: string) => name(data.byBranch.find((b) => b.branchId === id)?.name ?? {});
+    tables.push({
+      id: "csatComments",
+      title: t.sections.csatComments,
+      columns: [c.time, c.score, c.comment, c.ticket, c.agent, c.reason, c.branch, c.visitor, c.phone],
+      kinds: ["text", "num", "text", "text", "text", "text", "text", "text", "text"],
+      rows: cs.lowComments.map((x) => [
+        stampMs(x.at),
+        x.score,
+        x.comment,
+        x.displayNumber,
+        agentName(x.agentId),
+        reasonName(x.reasonId),
+        branchName(x.branchId),
+        x.name ?? t.anonymous,
+        x.phone ?? x.phoneMasked ?? "",
       ]),
     });
   }

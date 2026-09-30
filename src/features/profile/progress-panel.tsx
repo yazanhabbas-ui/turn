@@ -102,6 +102,36 @@ export function ProgressPanel() {
   }, [p]);
 
   const cur = p?.agent?.periods[period];
+  const csat = p?.agent?.csat ?? null;
+  const csatNow = csat?.periods[period];
+
+  const csatChart = useMemo(() => {
+    if (!csat) return null;
+    return {
+      ...baseOption(th),
+      color: [th.series[0]],
+      grid: { left: 8, right: 16, top: 16, bottom: 8, containLabel: true },
+      tooltip: { ...baseOption(th).tooltip, trigger: "axis" },
+      xAxis: {
+        type: "category",
+        data: csat.trend.map((d) => day(d.date)),
+        ...axisStyle(th),
+        splitLine: { show: false },
+        axisLabel: { color: th.muted, hideOverlap: true },
+      },
+      yAxis: { type: "value", min: 1, max: 5, interval: 1, ...axisStyle(th) },
+      series: [
+        {
+          name: t("csatAvg"),
+          type: "line",
+          connectNulls: true,
+          symbolSize: 7,
+          data: csat.trend.map((d) => d.avg),
+        },
+      ],
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [csat]);
 
   return (
     <div className="space-y-4">
@@ -170,6 +200,71 @@ export function ProgressPanel() {
                 note={<ChangeNote change={p.issued.periods[period]} period={period} />}
               />
             </div>
+          )}
+
+          {csat && csatNow && (
+            <section className="space-y-3" aria-label={t("csatTitle")}>
+              <div>
+                <h3 className="text-sm font-semibold">{t("csatTitle")}</h3>
+                <p className="text-muted-foreground text-xs">{t("csatHint")}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <Tile
+                  label={t("csatAvg")}
+                  value={
+                    csatNow.current.avg === null
+                      ? t("csatNone")
+                      : t("csatOutOf", { n: format.number(csatNow.current.avg, { maximumFractionDigits: 1 }) })
+                  }
+                  sub={
+                    csatNow.branchAvg !== null
+                      ? t("csatBranch", { value: format.number(csatNow.branchAvg, { maximumFractionDigits: 1 }) })
+                      : undefined
+                  }
+                />
+                <Tile label={t("csatResponses")} value={format.number(csatNow.current.responses)} />
+                <Tile label={t("csatSatisfied")} value={pct(csatNow.current.satisfiedPct)} />
+                <Tile
+                  label={t("csatPrevious")}
+                  value={
+                    csatNow.previous.avg === null
+                      ? t("csatNone")
+                      : t("csatOutOf", { n: format.number(csatNow.previous.avg, { maximumFractionDigits: 1 }) })
+                  }
+                  sub={t(`vs.${period}`)}
+                />
+              </div>
+              {csat.trend.some((d) => d.responses > 0) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{t("csatTrend", { n: csat.trend.length })}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {csatChart && <EChart option={csatChart} height={200} ariaLabel={t("csatTrendAria")} />}
+                  </CardContent>
+                </Card>
+              )}
+              {csat.recent.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{t("csatRecent")}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-3">
+                      {csat.recent.map((c) => (
+                        <li key={`${c.at}-${c.score}`} className="border-s-2 ps-3 text-sm">
+                          <p>{c.comment}</p>
+                          <p className="text-muted-foreground mt-0.5 text-xs">
+                            {t("csatScore", { n: c.score })} ·{" "}
+                            {format.dateTime(new Date(c.at), { month: "short", day: "numeric" })}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+            </section>
           )}
 
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

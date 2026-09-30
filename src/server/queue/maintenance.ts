@@ -3,6 +3,7 @@ import { db } from "@/db/client";
 import { agentProfiles, branches, tickets } from "@/db/schema";
 import { logger } from "../logger";
 import { raiseAlerts } from "../reports/alerts";
+import { sweepNotifications } from "../notifications/dispatch";
 import { maintainBranch } from "./tickets";
 
 const INTERVAL_MS = 15_000;
@@ -39,6 +40,7 @@ export async function runQueueMaintenance() {
         logger.error({ err, branchId: b.id }, "queue maintenance failed");
       }
     }
+    await sweepNotifications();
   } finally {
     g.__dorQueueRunning = false;
   }

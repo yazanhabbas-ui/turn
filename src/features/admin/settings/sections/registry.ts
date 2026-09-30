@@ -7,6 +7,7 @@ import {
   Languages,
   ListChecks,
   Lock,
+  MessageSquareHeart,
   MonitorPlay,
   Palette,
   ChartColumn,
@@ -33,6 +34,7 @@ export type SectionId =
   | "wifi"
   | "waitEstimate"
   | "visitorStatus"
+  | "feedback"
   | "priorities"
   | "agents"
   | "breakLimit"
@@ -174,6 +176,42 @@ export const SECTIONS: SectionDef[] = [
     ],
   },
   {
+    id: "feedback",
+    group: "visitors",
+    icon: MessageSquareHeart,
+    scope: "branch",
+    branchLevel: true,
+    keywords: [
+      "feedback",
+      "csat",
+      "satisfaction",
+      "rating",
+      "survey",
+      "stars",
+      "nps",
+      "comment",
+      "رأي",
+      "تقييم",
+      "رضا",
+      "استبيان",
+      "نجوم",
+      "تعليق",
+    ],
+    fields: [
+      { key: "feedbackScope", anchor: "fb-scope" },
+      { key: "feedbackEnabled", anchor: "fb-enabled" },
+      { key: "feedbackOnPage", anchor: "fb-page" },
+      { key: "feedbackStyle", anchor: "fb-style" },
+      { key: "feedbackLowScore", anchor: "fb-low" },
+      { key: "feedbackAskComment", anchor: "fb-comment" },
+      { key: "feedbackAskNps", anchor: "fb-nps" },
+      { key: "feedbackPrompt", anchor: "fb-prompt-ar" },
+      { key: "feedbackCommentPrompt", anchor: "fb-comment-prompt-ar" },
+      { key: "feedbackNpsPrompt", anchor: "fb-nps-prompt-ar" },
+      { key: "feedbackThanks", anchor: "fb-thanks-ar" },
+    ],
+  },
+  {
     id: "priorities",
     group: "visitors",
     icon: Flag,
@@ -231,6 +269,7 @@ export const SECTIONS: SectionDef[] = [
       { key: "wallboardShowCompanyName", anchor: "wb-company" },
       { key: "wallboardShowBranch", anchor: "wb-branch" },
       { key: "wallboardShowClock", anchor: "wb-clock" },
+      { key: "wallboardShowCsat", anchor: "wb-csat" },
     ],
   },
   {
@@ -259,6 +298,10 @@ export const SECTIONS: SectionDef[] = [
       { key: "agentIdleMinutes", anchor: "al-idle" },
       { key: "noShowCount", anchor: "al-ns" },
       { key: "noShowWindowMinutes", anchor: "al-nsw" },
+      { key: "lowScoreAlerts", anchor: "al-lowscore" },
+      { key: "lowSatisfactionBelow", anchor: "al-lowsat" },
+      { key: "lowSatisfactionMinResponses", anchor: "al-lowsat-min" },
+      { key: "lowSatisfactionWindowHours", anchor: "al-lowsat-hours" },
       { key: "notifyEmails", anchor: "al-emails" },
     ],
   },

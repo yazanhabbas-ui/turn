@@ -10,6 +10,7 @@ import { AlertsSection } from "./sections/alerts-section";
 import { BrandingSection } from "./sections/branding-section";
 import { BreakLimitSection } from "./sections/break-limit-section";
 import { BreaksSection } from "./sections/breaks-section";
+import { FeedbackSection } from "./sections/feedback-section";
 import { PrioritiesSection } from "./sections/priorities-section";
 import { PrivacySection } from "./sections/privacy-section";
 import { ReceptionSection } from "./sections/reception-section";
@@ -78,6 +79,8 @@ export function SettingsPage({ organization = true }: { organization?: boolean }
         return <WaitEstimateTab defaults={s.waitEstimate} branches={l.branches} organization={organization} />;
       case "visitorStatus":
         return <VisitorStatusSection initial={s.visitorStatus} />;
+      case "feedback":
+        return <FeedbackSection defaults={s.feedback} branches={l.branches} organization={organization} />;
       case "priorities":
         return <PrioritiesSection items={l.priorities} />;
       case "agents":

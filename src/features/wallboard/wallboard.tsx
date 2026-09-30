@@ -25,6 +25,7 @@ type Live = {
     showCompanyName: boolean;
     showBranch: boolean;
     showClock: boolean;
+    showCsat?: boolean;
     textScale: number;
   };
   tiles: {
@@ -42,6 +43,7 @@ type Live = {
     avgWaitTodayMin: number;
     slaTodayPct: number;
     visitorsToday: number;
+    csat?: { avg: number | null; responses: number; satisfiedPct: number } | null;
   };
   desks: {
     id: string;
@@ -67,7 +69,7 @@ type Live = {
 };
 type Meta = { meta?: { branches?: { id: string; name: L }[] } };
 
-const KNOWN_ALERTS = ["long_wait", "queue_over_limit", "agent_idle", "no_show_spike"];
+const KNOWN_ALERTS = ["long_wait", "queue_over_limit", "agent_idle", "no_show_spike", "low_score", "low_satisfaction"];
 const LIVE = "/api/v1/reports/live";
 
 /** Palette per theme: the wallboard is dark by default (TV distance) with a light option. */
@@ -287,6 +289,10 @@ export function Wallboard({ canAck }: { canAck: boolean }) {
       idleMin: Math.round(Number(p.idleMin ?? 0)),
       count: Number(p.count ?? 0),
       windowMinutes: Number(p.windowMinutes ?? 0),
+      score: Number(p.score ?? 0),
+      avg: Number(p.avg ?? 0),
+      responses: Number(p.responses ?? 0),
+      windowHours: Number(p.windowHours ?? 0),
     });
   };
 
@@ -565,6 +571,15 @@ function Tiles({ data, th }: { data: Live; th: Theme }) {
         unit="%"
         tone={!anyCalled ? undefined : sla >= 80 ? "ok" : sla >= 60 ? "warn" : "bad"}
       />
+      {x.csat && (
+        <Tile
+          th={th}
+          label={t("tiles.csat")}
+          value={x.csat.avg === null ? "–" : x.csat.avg.toFixed(1)}
+          unit={x.csat.avg === null ? undefined : "/ 5"}
+          tone={x.csat.avg === null ? undefined : x.csat.avg >= 4 ? "ok" : x.csat.avg >= 3 ? "warn" : "bad"}
+        />
+      )}
     </div>
   );
 }

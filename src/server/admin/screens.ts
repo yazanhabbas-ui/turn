@@ -289,6 +289,8 @@ export const templateInput = z.object({
     .regex(/^[a-z0-9_]+$/),
   subject: localizedText({ max: 200, required: false }).nullable().optional(),
   body: localizedText({ max: 2000 }),
+  /** WhatsApp: name of the pre-approved template used for business-initiated messages (empty = plain text). */
+  providerTemplate: z.string().trim().max(100).nullable().optional(),
   isActive: z.boolean().default(true),
 });
 
@@ -305,6 +307,7 @@ export async function listTemplates(actor: Actor) {
     event: t.event,
     subject: t.subject,
     body: t.body,
+    providerTemplate: t.providerTemplate,
     isActive: t.isActive,
     updatedAt: t.updatedAt.toISOString(),
   }));
@@ -327,6 +330,7 @@ export async function saveTemplate(actor: Actor, input: z.infer<typeof templateI
   const values = {
     subject: input.subject ?? null,
     body: input.body,
+    ...(input.providerTemplate !== undefined ? { providerTemplate: input.providerTemplate || null } : {}),
     isActive: input.isActive,
     updatedByUserId: actor.auth.user.id,
     updatedAt: new Date(),

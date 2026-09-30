@@ -4,6 +4,7 @@ import { BarChart, HeatmapChart, LineChart } from "echarts/charts";
 import { GridComponent, LegendComponent, TooltipComponent, VisualMapComponent } from "echarts/components";
 import * as echarts from "echarts/core";
 import { SVGRenderer } from "echarts/renderers";
+import { useTheme } from "next-themes";
 import { useEffect, useRef } from "react";
 
 echarts.use([
@@ -69,6 +70,25 @@ export function axisStyle(t: ChartTheme) {
   };
 }
 
+/** Light palette value (lower-case) -> its dark counterpart, so options written with the light theme re-colour themselves. */
+const TO_DARK = new Map<string, string>();
+for (const k of Object.keys(CHART_THEME.light) as (keyof ChartTheme)[]) {
+  const l = CHART_THEME.light[k];
+  const d = CHART_THEME.dark[k];
+  if (typeof l === "string") TO_DARK.set(l.toLowerCase(), d as string);
+  else l.forEach((c, i) => TO_DARK.set(c.toLowerCase(), (d as readonly string[])[i]));
+}
+
+/** Deep copy of an ECharts option with every light-theme colour swapped for its dark twin. */
+function darken<T>(value: T): T {
+  if (typeof value === "string") return (TO_DARK.get(value.toLowerCase()) ?? value) as T;
+  if (Array.isArray(value)) return value.map(darken) as T;
+  if (value && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, darken(v)])) as T;
+  }
+  return value;
+}
+
 /** Thin React wrapper around ECharts (SVG renderer: crisp on 4K screens and in print). */
 export function EChart({
   option,
@@ -81,6 +101,17 @@ export function EChart({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const chart = useRef<echarts.ECharts | null>(null);
+  const { resolvedTheme } = useTheme();
+  const dark = resolvedTheme === "dark";
+  const applied = useRef<{ option: echarts.EChartsCoreOption; dark: boolean }>({ option, dark });
+
+  const render = (opt: echarts.EChartsCoreOption, asDark: boolean) => {
+    // Text must be measured with the real page font (Arabic glyph widths differ a lot from the default sans).
+    const fontFamily = ref.current ? getComputedStyle(ref.current).fontFamily : undefined;
+    const base = opt as { textStyle?: Record<string, unknown> };
+    const full = { ...opt, textStyle: { ...base.textStyle, fontFamily } };
+    chart.current?.setOption(asDark ? darken(full) : full, { notMerge: true });
+  };
 
   useEffect(() => {
     if (!ref.current) return;
@@ -95,11 +126,21 @@ export function EChart({
   }, []);
 
   useEffect(() => {
-    // Text must be measured with the real page font (Arabic glyph widths differ a lot from the default sans).
-    const fontFamily = ref.current ? getComputedStyle(ref.current).fontFamily : undefined;
-    const base = option as { textStyle?: Record<string, unknown> };
-    chart.current?.setOption({ ...option, textStyle: { ...base.textStyle, fontFamily } }, { notMerge: true });
-  }, [option]);
+    applied.current = { option, dark };
+    render(option, dark);
+  }, [option, dark]);
+
+  // Printouts and PDFs stay light whatever the screen theme is.
+  useEffect(() => {
+    const before = () => render(applied.current.option, false);
+    const after = () => render(applied.current.option, applied.current.dark);
+    window.addEventListener("beforeprint", before);
+    window.addEventListener("afterprint", after);
+    return () => {
+      window.removeEventListener("beforeprint", before);
+      window.removeEventListener("afterprint", after);
+    };
+  }, []);
 
   // Charts keep a left-to-right time/number axis in both languages; labels are localized.
   return <div ref={ref} dir="ltr" role="img" aria-label={ariaLabel} style={{ height, width: "100%" }} />;

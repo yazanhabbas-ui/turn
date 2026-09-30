@@ -1,7 +1,9 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { env } from "../env";
 import { logger } from "../logger";
+import { HttpSmsProvider } from "./sms";
 import type { Channel, MessageProvider, OutboundMessage, SendResult } from "./types";
+import { WhatsAppCloudProvider } from "./whatsapp";
 
 export class SmtpEmailProvider implements MessageProvider {
   readonly id = "smtp";
@@ -22,15 +24,25 @@ export class SmtpEmailProvider implements MessageProvider {
     });
     const dir = message.locale === "ar" ? "rtl" : "ltr";
     const html = `<div dir="${dir}" style="font-family:Tahoma,Arial,sans-serif;font-size:15px;line-height:1.7;white-space:pre-line">${escapeHtml(message.text)}</div>`;
-    const info = await this.transporter.sendMail({
-      from: e.SMTP_FROM,
-      to: message.to,
-      subject: message.subject,
-      text: message.text,
-      html,
-      attachments: message.attachments?.map((a) => ({ filename: a.filename, contentType: a.contentType, content: a.content })),
-    });
-    return { providerMessageId: info.messageId };
+    try {
+      const info = await this.transporter.sendMail({
+        from: e.SMTP_FROM,
+        to: message.to,
+        subject: message.subject,
+        text: message.text,
+        html,
+        attachments: message.attachments?.map((a) => ({ filename: a.filename, contentType: a.contentType, content: a.content })),
+      });
+      return { ok: true, providerMessageId: info.messageId, retryable: false };
+    } catch (err) {
+      // 5xx replies are temporary; 550-class rejections (bad mailbox) are not.
+      const code = (err as { responseCode?: number }).responseCode;
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message.slice(0, 300) : "smtp_error",
+        retryable: !code || code < 500 || code === 503,
+      };
+    }
   }
 }
 
@@ -48,12 +60,19 @@ export class MockProvider implements MessageProvider {
   }
 
   async send(message: OutboundMessage): Promise<SendResult> {
+    if (mockControl.failNext > 0) {
+      mockControl.failNext--;
+      return { ok: false, error: "mock_failure", retryable: mockControl.retryable };
+    }
     const id = `mock-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     mockOutbox().push({ ...message, id, at: new Date() });
     logger.info({ channel: message.channel, id }, "mock message recorded");
-    return { providerMessageId: id };
+    return { ok: true, providerMessageId: id, retryable: false };
   }
 }
+
+/** Tests: make the next N mock sends fail (retryable or not). */
+export const mockControl = { failNext: 0, retryable: true };
 
 type Recorded = OutboundMessage & { id: string; at: Date };
 const g = globalThis as unknown as { __dorOutbox?: Recorded[] };
@@ -68,6 +87,17 @@ export function providerFor(channel: Channel): MessageProvider | null {
     const smtp = new SmtpEmailProvider();
     return smtp.isConfigured() ? smtp : null;
   }
-  // WhatsApp / SMS adapters are registered in the messaging milestone.
-  return null;
+  const p = channel === "whatsapp" ? new WhatsAppCloudProvider() : new HttpSmsProvider();
+  return p.isConfigured() ? p : null;
+}
+
+export type ProviderStatus = { channel: Channel; state: "configured" | "not_configured" | "mock"; provider: string | null };
+
+/** For the admin page: which channels can send right now, without revealing any secret. */
+export function providerStatus(): ProviderStatus[] {
+  const mock = process.env.MESSAGING_MOCK === "true";
+  return (["whatsapp", "sms", "email"] as const).map((channel) => {
+    const p = providerFor(channel);
+    return { channel, provider: p?.id ?? null, state: !p ? "not_configured" : mock ? "mock" : "configured" };
+  });
 }

@@ -1,4 +1,5 @@
 import type { AgentStatus } from "@/db/schema/agents";
+import type { CsatSummary, FeedbackFact } from "../feedback/csat";
 
 /** One ticket as the reports see it. Built from `tickets` + a few `ticket_events` by the report service. */
 export type TicketFact = {
@@ -44,6 +45,10 @@ export type ReportInput = {
   now: number;
   /** "X% within Y minutes" style service level. */
   serviceLevel: { minutes: number; targetPct: number };
+  /** Visitor feedback for tickets of the period (answers whose ticket is not in `facts` are ignored). */
+  feedback?: FeedbackFact[];
+  /** Scores at or below this are listed as low-score comments. */
+  lowScoreThreshold?: number;
 };
 
 export type Spread = { avg: number; median: number; p90: number; max: number };
@@ -65,6 +70,9 @@ export type AgentReport = {
   servingMin: number;
   idleMin: number;
   utilisationPct: number;
+  /** Average satisfaction of the agent's visitors (1-5); null when nobody answered. */
+  csatAvg: number | null;
+  csatResponses: number;
 };
 
 export type ReasonReport = {
@@ -119,6 +127,41 @@ export type ShiftReport = {
   avgWaitMin: number;
 };
 
+/** Satisfaction of one group (agent, reason, branch, shift). `key` is null for "outside every shift". */
+export type CsatGroup = {
+  key: string | null;
+  name: Record<string, string>;
+  responses: number;
+  avg: number | null;
+  satisfiedPct: number;
+};
+
+/** A low score that came with a comment. Visitor details are filled in by the report service (masked unless permitted). */
+export type LowScoreComment = {
+  id: string;
+  at: number;
+  score: number;
+  comment: string;
+  displayNumber: string;
+  branchId: string;
+  reasonId: string;
+  agentId: string | null;
+  visitorId: string | null;
+  name?: string | null;
+  phoneMasked?: string | null;
+  phone?: string | null;
+};
+
+export type CsatReport = {
+  summary: CsatSummary;
+  byDay: { date: string; responses: number; avg: number | null }[];
+  byAgent: CsatGroup[];
+  byReason: CsatGroup[];
+  byBranch: CsatGroup[];
+  byShift: CsatGroup[];
+  lowComments: LowScoreComment[];
+};
+
 export type ReportData = {
   range: { fromMs: number; toMs: number };
   summary: {
@@ -148,6 +191,7 @@ export type ReportData = {
   /** Visitors by the shift in whose hours they arrived (a last row with shiftId null = outside every shift). */
   byShift: ShiftReport[];
   repeat: RepeatReport;
+  csat: CsatReport;
   heatmap: { cells: [weekday: number, hour: number, count: number][]; max: number };
   agents: AgentReport[];
   queueLengthByHour: { hour: number; avg: number; max: number }[];
