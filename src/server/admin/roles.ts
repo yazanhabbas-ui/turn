@@ -7,7 +7,7 @@ import { localizedText } from "@/domain/validation";
 import { randomCode } from "../crypto";
 import { audit } from "../audit";
 import { AppError } from "../http/errors";
-import { assertCanGrant, auditMeta, orgOf, requirePermission, type Actor } from "./actor";
+import { assertCanGrant, auditMeta, orgOf, requireOrgWide, requirePermission, type Actor } from "./actor";
 
 export const roleInput = z.object({
   name: localizedText({ max: 80 }),
@@ -68,7 +68,7 @@ async function loadRole(actor: Actor, id: string) {
 }
 
 export async function createRole(actor: Actor, input: RoleInput): Promise<{ id: string }> {
-  requirePermission(actor, "roles.manage");
+  requireOrgWide(actor, "roles.manage");
   assertCanGrant(actor, input.permissions);
   return db().transaction(async (tx) => {
     const [role] = await tx
@@ -98,7 +98,7 @@ export async function createRole(actor: Actor, input: RoleInput): Promise<{ id: 
 }
 
 export async function updateRole(actor: Actor, id: string, input: RoleInput): Promise<void> {
-  requirePermission(actor, "roles.manage");
+  requireOrgWide(actor, "roles.manage");
   const role = await loadRole(actor, id);
   // Built-in roles are defined in code and re-synced on every seed; clone them to customise.
   if (role.isSystem) throw new AppError("conflict", { reason: "system_role" });
@@ -137,7 +137,7 @@ export async function cloneRole(actor: Actor, id: string, name: Record<string, s
 }
 
 export async function archiveRole(actor: Actor, id: string): Promise<void> {
-  requirePermission(actor, "roles.manage");
+  requireOrgWide(actor, "roles.manage");
   const role = await loadRole(actor, id);
   if (role.isSystem) throw new AppError("conflict", { reason: "system_role" });
   const [{ n }] = await db().select({ n: count() }).from(userRoles).where(eq(userRoles.roleId, id));

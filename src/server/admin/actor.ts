@@ -1,4 +1,4 @@
-import { branchesFor, can, type Permission } from "@/domain/rbac/permissions";
+import { branchesFor, can, canInCity, citiesFor, type Permission } from "@/domain/rbac/permissions";
 import type { AuthContext } from "../auth/session";
 import { AppError } from "../http/errors";
 
@@ -34,4 +34,14 @@ export function assertCanGrant(a: Actor, permissions: readonly string[]) {
   const mine = actorPermissions(a);
   const missing = permissions.filter((p) => !mine.has(p));
   if (missing.length) throw new AppError("forbidden", { reason: "escalation", missing });
+}
+
+/** City ids the actor may use a permission in; "all" for organization-wide grants. */
+export function allowedCities(a: Actor, permission: Permission): "all" | string[] {
+  return citiesFor(a.auth.grants, permission);
+}
+
+/** Throws unless the actor holds the permission for the whole city (organization-wide or a grant on that city). */
+export function requireCityAccess(a: Actor, permission: Permission, cityId: string) {
+  if (!canInCity(a.auth.grants, permission, cityId)) throw new AppError("forbidden", { permission, cityId });
 }

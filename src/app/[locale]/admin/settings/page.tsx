@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Forbidden } from "@/components/app/app-shell";
+import { can } from "@/domain/rbac/permissions";
 import { SettingsPage } from "@/features/admin/settings/settings-page";
 import { requireAuth } from "@/server/auth/current";
 
@@ -11,8 +12,10 @@ export async function generateMetadata() {
 export default async function Page({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { allowed } = await requireAuth(locale, "settings.manage");
-  if (!allowed) return <Forbidden />;
+  const { auth, allowed } = await requireAuth(locale, "admin.access");
+  // Organization settings need settings.manage; a city or branch admin only gets the settings a branch may own (Wi-Fi).
+  const organization = can(auth.grants, "settings.manage");
+  if (!allowed || !(organization || can(auth.grants, "branches.manage"))) return <Forbidden />;
 
-  return <SettingsPage />;
+  return <SettingsPage organization={organization} />;
 }

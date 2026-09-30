@@ -10,7 +10,7 @@ import { issuePairingCode } from "../display/device";
 import { getSetting, putSetting } from "../settings/service";
 import { AppError } from "../http/errors";
 import { io } from "../realtime";
-import { auditMeta, orgOf, requireOrgWide, requirePermission, type Actor } from "./actor";
+import { allowedBranches, auditMeta, orgOf, requireOrgWide, requirePermission, type Actor } from "./actor";
 
 const ONLINE_WINDOW_MS = 60_000;
 
@@ -76,12 +76,13 @@ function present(d: typeof displays.$inferSelect) {
 
 export async function listDisplays(actor: Actor) {
   requirePermission(actor, "displays.manage");
+  const scope = allowedBranches(actor, "displays.manage");
   const rows = await db()
     .select()
     .from(displays)
     .where(and(eq(displays.organizationId, orgOf(actor)), isNull(displays.archivedAt)))
     .orderBy(asc(displays.createdAt));
-  return rows.map(present);
+  return rows.filter((d) => scope === "all" || scope.includes(d.branchId)).map(present);
 }
 
 export async function createDisplay(actor: Actor, input: z.infer<typeof displayInput>) {
@@ -185,11 +186,14 @@ export const announcementInput = z
 
 export async function listAnnouncements(actor: Actor) {
   requirePermission(actor, "announcements.manage");
-  const rows = await db()
+  const scope = allowedBranches(actor, "announcements.manage");
+  const all = await db()
     .select()
     .from(announcements)
     .where(eq(announcements.organizationId, orgOf(actor)))
     .orderBy(asc(announcements.kind), asc(announcements.sortOrder), asc(announcements.createdAt));
+  // Announcements for all branches belong to the organization; branch-limited roles see only their own branches'.
+  const rows = all.filter((a) => scope === "all" || (a.branchId !== null && scope.includes(a.branchId)));
   return rows.map((a) => ({
     ...a,
     startsAt: a.startsAt?.toISOString() ?? null,
@@ -199,8 +203,14 @@ export async function listAnnouncements(actor: Actor) {
   }));
 }
 
+/** An announcement with no branch reaches every screen of the organization: organization-wide roles only. */
+function requireAnnouncementScope(actor: Actor, branchId: string | null | undefined) {
+  if (branchId) requirePermission(actor, "announcements.manage", branchId);
+  else requireOrgWide(actor, "announcements.manage");
+}
+
 export async function saveAnnouncement(actor: Actor, id: string | null, input: z.infer<typeof announcementInput>) {
-  requirePermission(actor, "announcements.manage", input.branchId ?? undefined);
+  requireAnnouncementScope(actor, input.branchId);
   if (input.branchId) await assertBranch(actor, input.branchId);
   const values = {
     kind: input.kind,
@@ -221,6 +231,7 @@ export async function saveAnnouncement(actor: Actor, id: string | null, input: z
       .from(announcements)
       .where(and(eq(announcements.id, id), eq(announcements.organizationId, orgOf(actor))));
     if (!a) throw new AppError("not_found");
+    requireAnnouncementScope(actor, a.branchId);
     before = a;
     await db()
       .update(announcements)
@@ -252,6 +263,7 @@ export async function deleteAnnouncement(actor: Actor, id: string) {
     .from(announcements)
     .where(and(eq(announcements.id, id), eq(announcements.organizationId, orgOf(actor))));
   if (!a) throw new AppError("not_found");
+  requireAnnouncementScope(actor, a.branchId);
   await db().delete(announcements).where(eq(announcements.id, id));
   await audit({
     ...auditMeta(actor),
@@ -281,7 +293,7 @@ export const templateInput = z.object({
 });
 
 export async function listTemplates(actor: Actor) {
-  requirePermission(actor, "templates.manage");
+  requireOrgWide(actor, "templates.manage");
   const rows = await db()
     .select()
     .from(messageTemplates)
@@ -300,7 +312,7 @@ export async function listTemplates(actor: Actor) {
 
 /** Creates or replaces the template for a channel + event. */
 export async function saveTemplate(actor: Actor, input: z.infer<typeof templateInput>) {
-  requirePermission(actor, "templates.manage");
+  requireOrgWide(actor, "templates.manage");
   const org = orgOf(actor);
   const [before] = await db()
     .select()
@@ -353,7 +365,7 @@ export const audioPackInput = z.object({
 });
 
 export async function listAudioPacks(actor: Actor) {
-  requirePermission(actor, "templates.manage");
+  requireOrgWide(actor, "templates.manage");
   const rows = await db()
     .select()
     .from(ttsAudioPacks)
@@ -370,7 +382,7 @@ export async function listAudioPacks(actor: Actor) {
 }
 
 export async function saveAudioPack(actor: Actor, id: string | null, input: z.infer<typeof audioPackInput>) {
-  requirePermission(actor, "templates.manage");
+  requireOrgWide(actor, "templates.manage");
   const org = orgOf(actor);
   let entityId = id;
   if (id) {
@@ -437,14 +449,14 @@ export async function activateAudioPack(actor: Actor, id: string) {
 
 /** Adds the voices that ship with the project (public/audio/ar) to this organization. */
 export async function addBundledVoices(actor: Actor) {
-  requirePermission(actor, "templates.manage");
+  requireOrgWide(actor, "templates.manage");
   const result = await installBundledVoices(orgOf(actor));
   await audit({ ...auditMeta(actor), action: "audio_pack.bundled_installed", entityType: "audio_pack", after: result });
   return result;
 }
 
 export async function deleteAudioPack(actor: Actor, id: string) {
-  requirePermission(actor, "templates.manage");
+  requireOrgWide(actor, "templates.manage");
   const [p] = await db()
     .select()
     .from(ttsAudioPacks)

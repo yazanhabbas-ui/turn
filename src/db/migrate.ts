@@ -4,6 +4,8 @@ import { sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { logger } from "@/server/logger";
 import { db, pool } from "./client";
+import { organizations } from "./schema";
+import { syncPermissions } from "./seed/permissions";
 
 /**
  * Arabic text requires a UTF-8 database. Clusters initialised on Windows default to WIN1252,
@@ -25,6 +27,9 @@ async function assertUtf8() {
 export async function runMigrations() {
   await assertUtf8();
   await migrate(db(), { migrationsFolder: path.join(process.cwd(), "drizzle") });
+  // Existing installations must get new permissions and built-in role changes without re-running the seed.
+  const orgs = await db().select({ id: organizations.id }).from(organizations);
+  for (const o of orgs) await db().transaction((tx) => syncPermissions(tx, o.id));
 }
 
 if (process.argv[1]?.replace(/\\/g, "/").endsWith("src/db/migrate.ts")) {

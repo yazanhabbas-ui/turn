@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, MapPin, Pencil, Plus, Star, Trash2 } from "lucide-react";
+import { Building2, MapPin, MapPinned, Pencil, Plus, Star, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { ConfirmButton } from "@/components/admin/confirm-button";
@@ -13,8 +13,8 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { REGION_TIMEZONES } from "@/domain/validation";
-import type { Branch, Desk, Floor, L } from "../types";
-import { LOOKUPS, useText } from "../use-lookups";
+import type { Branch, City, Desk, Floor, L } from "../types";
+import { LOOKUPS, useLookups, useText } from "../use-lookups";
 import { useListJoin } from "../use-list";
 
 const BRANCHES = "/api/v1/admin/branches";
@@ -29,8 +29,16 @@ function presetOf(days: number[]): string {
 
 export function BranchesPage({ canManage }: { canManage: boolean }) {
   const t = useTranslations("branches");
+  const text = useText();
   const branches = useApiQuery<{ items: Branch[] }>(BRANCHES);
+  const lookups = useLookups();
+  const cities = useMemo(() => lookups.data?.cities ?? [], [lookups.data]);
   const [editing, setEditing] = useState<Branch | "new" | null>(null);
+  const [cityFilter, setCityFilter] = useState("");
+  const visible = (branches.data?.items ?? []).filter((b) => !cityFilter || b.cityId === cityFilter);
+  const groups = cities
+    .map((c) => ({ city: c, items: visible.filter((b) => b.cityId === c.id) }))
+    .filter((g) => g.items.length > 0);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -46,18 +54,46 @@ export function BranchesPage({ canManage }: { canManage: boolean }) {
           )
         }
       />
+      {cities.length > 1 && (
+        <div className="mb-4">
+          <NativeSelect
+            className="w-56"
+            value={cityFilter}
+            onChange={(e) => setCityFilter(e.target.value)}
+            aria-label={t("city")}
+          >
+            <option value="">{t("allCities")}</option>
+            {cities.map((c) => (
+              <option key={c.id} value={c.id}>
+                {text(c.name)}
+              </option>
+            ))}
+          </NativeSelect>
+        </div>
+      )}
       {branches.isLoading ? (
         <LoadingRows />
       ) : branches.isError ? (
         <ErrorState onRetry={() => branches.refetch()} />
       ) : (
-        <div className="space-y-6">
-          {branches.data!.items.map((b) => (
-            <BranchCard key={b.id} branch={b} canManage={canManage} onEdit={() => setEditing(b)} />
+        <div className="space-y-8">
+          {groups.map(({ city, items }) => (
+            <section key={city.id} className="space-y-4">
+              {cities.length > 1 && (
+                <h2 className="text-muted-foreground flex items-center gap-2 text-sm font-semibold">
+                  <MapPinned className="size-4" aria-hidden />
+                  {text(city.name)}
+                </h2>
+              )}
+              {items.map((b) => (
+                <BranchCard key={b.id} branch={b} canManage={canManage} onEdit={() => setEditing(b)} />
+              ))}
+            </section>
           ))}
         </div>
       )}
       <BranchDialog
+        cities={cities}
         branch={editing === "new" ? null : editing}
         open={editing !== null}
         onOpenChange={(o) => !o && setEditing(null)}
@@ -225,10 +261,12 @@ function BranchCard({ branch, canManage, onEdit }: { branch: Branch; canManage: 
 }
 
 function BranchDialog({
+  cities,
   branch,
   open,
   onOpenChange,
 }: {
+  cities: City[];
   branch: Branch | null;
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -237,7 +275,9 @@ function BranchDialog({
   const tu = useTranslations("ui");
   const tc = useTranslations("common");
   const tw = useTranslations("weekdays");
+  const text = useText();
   const blank = {
+    cityId: "",
     code: "",
     name: {} as L,
     address: {} as L,
@@ -257,6 +297,7 @@ function BranchDialog({
     const v = branch
       ? { ...branch, address: branch.address ?? {} }
       : {
+          cityId: cities.length === 1 ? cities[0].id : "",
           code: "",
           name: {},
           address: {},
@@ -266,7 +307,7 @@ function BranchDialog({
         };
     setF(v);
     setPreset(presetOf(v.weekend));
-  }, [open, branch]);
+  }, [open, branch, cities]);
 
   const save = useApiMutation(
     () => {
@@ -296,6 +337,18 @@ function BranchDialog({
           <LocalizedInput id="b-name" label={tu("name")} value={f.name} onChange={(name) => setF({ ...f, name })} required />
           <LocalizedInput id="b-address" label={t("address")} value={f.address} onChange={(address) => setF({ ...f, address })} />
           <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={t("city")} htmlFor="b-city">
+              <NativeSelect id="b-city" required value={f.cityId} onChange={(e) => setF({ ...f, cityId: e.target.value })}>
+                <option value="" disabled>
+                  {t("chooseCity")}
+                </option>
+                {cities.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {text(c.name)}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
             <Field label={t("code")} htmlFor="b-code">
               <Input
                 id="b-code"

@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lt, lte, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, lte, sql, type SQL } from "drizzle-orm";
 import { io } from "../realtime";
 import { db } from "@/db/client";
 import { auditLogs, branches, settings, users } from "@/db/schema";
@@ -6,7 +6,7 @@ import { audit } from "../audit";
 import { AppError } from "../http/errors";
 import { BRANCH_OVERRIDABLE, SETTINGS, type SettingKey, type SettingValue } from "../settings/registry";
 import { getSetting, putSetting } from "../settings/service";
-import { auditMeta, orgOf, requireOrgWide, requirePermission, type Actor } from "./actor";
+import { allowedBranches, auditMeta, orgOf, requireOrgWide, requirePermission, type Actor } from "./actor";
 
 export const SETTING_KEYS = Object.keys(SETTINGS) as SettingKey[];
 
@@ -73,6 +73,9 @@ export async function listAudit(
 ) {
   requirePermission(actor, "audit.view");
   const conds: SQL[] = [eq(auditLogs.organizationId, orgOf(actor))];
+  // Branch-limited roles only see what happened in their own branches.
+  const scope = allowedBranches(actor, "audit.view");
+  if (scope !== "all") conds.push(scope.length ? inArray(auditLogs.branchId, scope) : sql`false`);
   if (filter.entityType) conds.push(eq(auditLogs.entityType, filter.entityType));
   if (filter.actorUserId) conds.push(eq(auditLogs.actorUserId, filter.actorUserId));
   if (filter.from) conds.push(gte(auditLogs.at, new Date(filter.from)));

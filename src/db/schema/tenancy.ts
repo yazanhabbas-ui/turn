@@ -12,6 +12,26 @@ export const organizations = pgTable("organizations", {
   updatedAt: updatedAt(),
 });
 
+/**
+ * A city groups branches. Access can be granted per city (a city admin manages every branch of the city, including
+ * ones added later); the organization-wide "super admin" manages all cities.
+ */
+export const cities = pgTable(
+  "cities",
+  {
+    id: id(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    code: text("code").notNull(),
+    name: jsonb("name").$type<LocalizedText>().notNull(),
+    archivedAt: archivedAt(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("cities_org_code_uq").on(t.organizationId, t.code)],
+);
+
 /** Weekend expressed as JS weekday numbers (0 = Sunday … 6 = Saturday). */
 export type Weekend = number[];
 
@@ -22,6 +42,9 @@ export const branches = pgTable(
     organizationId: uuid("organization_id")
       .notNull()
       .references(() => organizations.id),
+    cityId: uuid("city_id")
+      .notNull()
+      .references(() => cities.id),
     code: text("code").notNull(),
     name: jsonb("name").$type<LocalizedText>().notNull(),
     address: jsonb("address").$type<LocalizedText>(),
@@ -32,7 +55,7 @@ export const branches = pgTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [uniqueIndex("branches_org_code_uq").on(t.organizationId, t.code)],
+  (t) => [uniqueIndex("branches_org_code_uq").on(t.organizationId, t.code), index("branches_city_idx").on(t.cityId)],
 );
 
 export const floors = pgTable(

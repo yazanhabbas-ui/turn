@@ -5,7 +5,7 @@
 export const PERMISSION_GROUPS = {
   admin: ["admin.access", "settings.manage", "audit.view"],
   users: ["users.view", "users.manage", "users.invite", "roles.view", "roles.manage"],
-  organization: ["branches.manage", "displays.manage", "announcements.manage", "templates.manage"],
+  organization: ["cities.manage", "branches.manage", "displays.manage", "announcements.manage", "templates.manage"],
   services: ["reasons.view", "reasons.manage", "distribution.manage", "distribution.simulate"],
   tickets: [
     "tickets.view",
@@ -32,11 +32,27 @@ export function isPermission(value: string): value is Permission {
   return (ALL_PERMISSIONS as string[]).includes(value);
 }
 
-export type SystemRoleKey = "admin" | "receptionist" | "agent";
+/**
+ * Permissions that only make sense for the whole organization (cities, organization settings, role definitions,
+ * shared templates, integrations). The city-level "admin" role does not include them; the super admin does.
+ */
+export const ORGANIZATION_LEVEL_PERMISSIONS: Permission[] = [
+  "cities.manage",
+  "settings.manage",
+  "roles.manage",
+  "templates.manage",
+  "apikeys.manage",
+  "webhooks.manage",
+];
+
+export type SystemRoleKey = "super_admin" | "admin" | "receptionist" | "agent";
 
 /** Built-in roles. They can be cloned into custom roles but never deleted. */
 export const SYSTEM_ROLES: Record<SystemRoleKey, Permission[]> = {
-  admin: ALL_PERMISSIONS,
+  /** Controls every city and the organization itself. */
+  super_admin: ALL_PERMISSIONS,
+  /** Runs one city (or one branch): people, branches, screens, reports; not the organization-level settings. */
+  admin: ALL_PERMISSIONS.filter((p) => !ORGANIZATION_LEVEL_PERMISSIONS.includes(p)),
   receptionist: [
     "tickets.view",
     "tickets.issue",
@@ -64,8 +80,15 @@ export const EXAMPLE_SUPERVISOR_PERMISSIONS: Permission[] = [
   "users.view",
 ];
 
-/** A role grant, possibly scoped to one branch (null = all branches). */
-export type Grant = { branchId: string | null; permissions: readonly string[] };
+/**
+ * A role grant. `branchId` null = the whole organization. A city grant is expanded into one grant per branch of the
+ * city, each carrying the `cityId` it came from (a city with no branch yet yields a single grant on NO_BRANCH so
+ * the city admin can still create the first one).
+ */
+export type Grant = { branchId: string | null; permissions: readonly string[]; cityId?: string | null };
+
+/** Matches no branch; stands in for a city that has no branches yet. */
+export const NO_BRANCH = "00000000-0000-0000-0000-000000000000";
 
 /** Pure permission check used by the server and (for UI hints only) by the client. */
 export function can(grants: readonly Grant[], permission: Permission, branchId?: string | null): boolean {
@@ -83,4 +106,21 @@ export function branchesFor(grants: readonly Grant[], permission: Permission): "
     ids.add(g.branchId);
   }
   return [...ids];
+}
+
+/** City ids the grants allow for a permission; `"all"` when an organization-wide grant exists. */
+export function citiesFor(grants: readonly Grant[], permission: Permission): "all" | string[] {
+  const ids = new Set<string>();
+  for (const g of grants) {
+    if (!g.permissions.includes(permission)) continue;
+    if (g.branchId === null) return "all";
+    if (g.cityId) ids.add(g.cityId);
+  }
+  return [...ids];
+}
+
+/** Can the holder use this permission across a whole city (organization-wide or a grant on that city)? */
+export function canInCity(grants: readonly Grant[], permission: Permission, cityId: string): boolean {
+  const cities = citiesFor(grants, permission);
+  return cities === "all" || cities.includes(cityId);
 }

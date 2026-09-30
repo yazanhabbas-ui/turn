@@ -113,7 +113,8 @@
     "welcome": "Welcome, {name}",
     "overviewHint": "Configure your offices, services, and how turns are distributed. Every rule here takes effect immediately.",
     "groups": "Agent groups",
-    "screens": "Screens"
+    "screens": "Screens",
+    "cities": "Cities"
   },
   "workspace": {
     "receptionEmpty": "The reception console opens here: choose a visit reason and issue a ticket in two taps.",
@@ -231,6 +232,9 @@
     },
     "webhooks": {
       "manage": "Manage webhooks"
+    },
+    "cities": {
+      "manage": "Manage cities"
     }
   },
   "ticketStatus": {
@@ -321,12 +325,16 @@
     "6": "Sat"
   },
   "apiErrors": {
-    "validation": "Please check the highlighted fields.",
+    "validation": {
+      "_": "Please check the highlighted fields.",
+      "scope_required": "Give this user at least one role scope or agent branch within your city."
+    },
     "unauthorized": "Your session ended. Please sign in again.",
     "forbidden": {
       "_": "You do not have permission to do this.",
       "escalation": "You cannot grant permissions that you do not have yourself.",
-      "branch_scope": "You can only manage users in your own branches."
+      "branch_scope": "You can only manage users in your own branches.",
+      "user_scope": "You are not allowed to manage this user."
     },
     "not_found": {
       "_": "Not found. It may have been removed.",
@@ -348,7 +356,8 @@
       "already_used": "This invitation was already used.",
       "not_pending": "This invitation is no longer pending.",
       "builtin_priority": "The normal priority cannot be archived.",
-      "already_enabled": "Already enabled."
+      "already_enabled": "Already enabled.",
+      "city_has_branches": "This city still has active branches. Archive or move them first."
     },
     "rate_limited": "Too many requests. Please wait a moment.",
     "weak_password": "The password does not meet the policy.",
@@ -404,7 +413,11 @@
     "filterRole": "Any role",
     "filterStatus": "Any status",
     "maxConcurrentHint": "Leave empty to use the organization setting. Only applies when serving several visitors at once is enabled (Settings → Agents).",
-    "organizationDefault": "Organization setting"
+    "organizationDefault": "Organization setting",
+    "scope": "Scope",
+    "scopeOrganization": "Whole organization",
+    "scopeCity": "City: {name} (all its branches)",
+    "scopeBranch": "Branch: {name}"
   },
   "invites": {
     "title": "Invitations",
@@ -489,7 +502,10 @@
     "zone": "Zone",
     "zoneHint": "Optional, for multi-zone display layouts.",
     "noFloor": "No floor",
-    "noDesks": "No desks yet."
+    "noDesks": "No desks yet.",
+    "city": "City",
+    "chooseCity": "Choose a city",
+    "allCities": "All cities"
   },
   "reasons": {
     "title": "Visit reasons",
@@ -1524,5 +1540,17 @@
     "sendNow": "Send now",
     "sentNow": "Sent to {sent} of {total} recipients.",
     "sentNone": "Nothing was sent. Check that email is set up and the addresses are correct."
+  },
+  "cities": {
+    "title": "Cities",
+    "description": "Group branches by city. Grant a role for a whole city to let a city admin manage all its branches.",
+    "add": "Add city",
+    "edit": "Edit city",
+    "empty": "No cities yet.",
+    "code": "Code",
+    "codeHint": "Letters A-Z, digits, hyphen and underscore.",
+    "branchesCount": "{count, plural, one {# branch} other {# branches}}",
+    "archiveTitle": "Archive this city?",
+    "archiveBody": "A city can only be archived when it has no active branches."
   }
 }

@@ -1,7 +1,19 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { db, pool } from "@/db/client";
-import { agentProfiles, auditLogs, branches, desks, invites, queues, roles, userRoles, users, visitReasons } from "@/db/schema";
+import {
+  agentProfiles,
+  auditLogs,
+  branches,
+  cities,
+  desks,
+  invites,
+  queues,
+  roles,
+  userRoles,
+  users,
+  visitReasons,
+} from "@/db/schema";
 import type { Actor } from "@/server/admin/actor";
 import { archiveBranch, branchInput, createBranch, createDesk } from "@/server/admin/branches";
 import { acceptInvite, createInvite, describeInvite, revokeInvite } from "@/server/admin/invites";
@@ -83,7 +95,7 @@ describe.runIf(available)("admin core (database)", () => {
       const res = await createUser(admin, {
         email: "Fahad@Dor.Local",
         displayName: { ar: "فهد السبيعي", en: "Fahad Al-Subaie" },
-        grants: [{ roleId: await roleId("agent"), branchId }],
+        grants: [{ roleId: await roleId("agent"), branchId, cityId: null }],
         agent: { branchId, maxConcurrent: 2, weight: 3 },
       });
       expect(res.setPasswordLink).toMatch(/\/reset-password\/[a-z0-9]+$/);
@@ -198,8 +210,10 @@ describe.runIf(available)("admin core (database)", () => {
 
   describe("branches and desks", () => {
     it("creating a branch creates a queue for every active reason", async () => {
+      const [{ id: cityId }] = await db().select({ id: cities.id }).from(cities).where(eq(cities.code, "JED"));
       const { id } = await createBranch(admin, {
-        code: "JED-01",
+        cityId,
+        code: "JED-02",
         name: { ar: "فرع جدة" },
         timezone: "Asia/Riyadh",
         weekend: [5, 6],
@@ -207,10 +221,12 @@ describe.runIf(available)("admin core (database)", () => {
       const active = await db().select().from(visitReasons).where(isNull(visitReasons.archivedAt));
       expect(await db().select().from(queues).where(eq(queues.branchId, id))).toHaveLength(active.length);
       await expectCode(
-        createBranch(admin, { code: "JED-01", name: { ar: "مكرر" }, timezone: "Asia/Riyadh", weekend: [5] }),
+        createBranch(admin, { cityId, code: "JED-02", name: { ar: "مكرر" }, timezone: "Asia/Riyadh", weekend: [5] }),
         "conflict",
       );
-      expect(branchInput.safeParse({ code: "X", name: { ar: "x" }, timezone: "Mars/Base", weekend: [] }).success).toBe(false);
+      expect(branchInput.safeParse({ cityId, code: "X", name: { ar: "x" }, timezone: "Mars/Base", weekend: [] }).success).toBe(
+        false,
+      );
     });
 
     it("desk numbers are unique per branch but reusable after archiving", async () => {
@@ -225,6 +241,8 @@ describe.runIf(available)("admin core (database)", () => {
     });
 
     it("the last branch cannot be archived", async () => {
+      const others = await db().select({ id: branches.id }).from(branches).where(ne(branches.id, branchId));
+      for (const o of others) await archiveBranch(admin, o.id);
       await expectCode(archiveBranch(admin, branchId), "conflict");
     });
   });
@@ -246,7 +264,8 @@ describe.runIf(available)("admin core (database)", () => {
 
     it("adds a reason with an Arabic prefix, creates queues, and assigns agents with proficiency", async () => {
       const { id } = await createReason(admin, base);
-      expect(await db().select().from(queues).where(eq(queues.reasonId, id))).toHaveLength(1);
+      // One queue per branch (the demo has a Riyadh and a Jeddah branch).
+      expect(await db().select().from(queues).where(eq(queues.reasonId, id))).toHaveLength(2);
       const khalid = (await listUsers(admin, { q: "khalid" }))[0];
       await setAssignments(admin, id, [{ userId: khalid.id, proficiency: 5, isPrimary: true }]);
       const reason = (await listReasons(admin)).find((r) => r.id === id)!;
@@ -280,6 +299,6 @@ describe.runIf(available)("admin core (database)", () => {
   });
 
   it("every seeded user exists exactly once", async () => {
-    expect(await db().select().from(users)).toHaveLength(8);
+    expect(await db().select().from(users)).toHaveLength(11);
   });
 });

@@ -36,24 +36,25 @@ erDiagram
 | Table           | Purpose                                                                          |
 | --------------- | -------------------------------------------------------------------------------- |
 | `organizations` | Tenant: name, slug, default locale, enabled locales                              |
-| `branches`      | Office: code, name, **timezone**, **weekend days**                               |
+| `cities`        | Groups branches; access can be granted per city                                  |
+| `branches`      | Office: `city_id`, code, name, **timezone**, **weekend days**                    |
 | `floors`        | Optional grouping of desks                                                       |
 | `desks`         | Counter/office; `number` is announced ("Desk 3"); `zone` for multi-zone displays |
 
 ## Identity and access
 
-| Table                   | Purpose                                                                                                             |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `users`                 | Email (unique per org), bilingual display name, argon2id hash, encrypted TOTP secret, lockout counters, `is_active` |
-| `sessions`              | `id` = SHA-256(cookie token), expiry, `two_factor_verified`, IP, user agent                                         |
-| `oidc_accounts`         | (provider, subject) → user, for SSO                                                                                 |
-| `permissions`           | Catalogue synced from code                                                                                          |
-| `roles`                 | `is_system` for the built-in roles (admin, receptionist, agent)                                                     |
-| `role_permissions`      | Role ↔ permission                                                                                                   |
-| `user_roles`            | User ↔ role, optional `branch_id` scope (null = all branches); unique with NULLS NOT DISTINCT                       |
-| `invites`               | Hashed single-use token, role, branch, channel, expiry, `used_at`, `revoked_at`                                     |
-| `password_reset_tokens` | Hashed single-use tokens                                                                                            |
-| `api_keys`              | Hashed keys with permission list and optional branch scope                                                          |
+| Table                   | Purpose                                                                                                                                                            |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `users`                 | Email (unique per org), bilingual display name, argon2id hash, encrypted TOTP secret, lockout counters, `is_active`                                                |
+| `sessions`              | `id` = SHA-256(cookie token), expiry, `two_factor_verified`, IP, user agent                                                                                        |
+| `oidc_accounts`         | (provider, subject) → user, for SSO                                                                                                                                |
+| `permissions`           | Catalogue synced from code                                                                                                                                         |
+| `roles`                 | `is_system` for the built-in roles (admin, receptionist, agent)                                                                                                    |
+| `role_permissions`      | Role ↔ permission                                                                                                                                                  |
+| `user_roles`            | User ↔ role with a scope: `branch_id` (one branch), `city_id` (every branch of a city) or neither (whole organization); never both; unique with NULLS NOT DISTINCT |
+| `invites`               | Hashed single-use token, role, branch, channel, expiry, `used_at`, `revoked_at`                                                                                    |
+| `password_reset_tokens` | Hashed single-use tokens                                                                                                                                           |
+| `api_keys`              | Hashed keys with permission list and optional branch scope                                                                                                         |
 
 ## Agents
 

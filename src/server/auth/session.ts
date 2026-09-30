@@ -1,7 +1,7 @@
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull } from "drizzle-orm";
 import { db, type DbOrTx } from "@/db/client";
-import { rolePermissions, roles, sessions, userRoles, users } from "@/db/schema";
-import type { Grant } from "@/domain/rbac/permissions";
+import { branches, cities, rolePermissions, roles, sessions, userRoles, users } from "@/db/schema";
+import { NO_BRANCH, type Grant } from "@/domain/rbac/permissions";
 import { randomToken, sha256Hex } from "../crypto";
 import { env } from "../env";
 
@@ -48,19 +48,51 @@ export async function createSession(
 
 export async function loadGrants(userId: string, tx: DbOrTx = db()): Promise<Grant[]> {
   const rows = await tx
-    .select({ branchId: userRoles.branchId, roleId: userRoles.roleId, permission: rolePermissions.permissionKey })
+    .select({
+      branchId: userRoles.branchId,
+      cityId: userRoles.cityId,
+      roleId: userRoles.roleId,
+      permission: rolePermissions.permissionKey,
+    })
     .from(userRoles)
     .innerJoin(roles, and(eq(roles.id, userRoles.roleId), isNull(roles.archivedAt)))
     .leftJoin(rolePermissions, eq(rolePermissions.roleId, userRoles.roleId))
     .where(eq(userRoles.userId, userId));
-  const byGrant = new Map<string, Grant & { permissions: string[] }>();
+  const byGrant = new Map<string, { branchId: string | null; cityId: string | null; permissions: string[] }>();
   for (const r of rows) {
-    const key = `${r.roleId}:${r.branchId ?? "*"}`;
+    const key = `${r.roleId}:${r.branchId ?? "*"}:${r.cityId ?? "*"}`;
     let g = byGrant.get(key);
-    if (!g) byGrant.set(key, (g = { branchId: r.branchId, permissions: [] }));
+    if (!g) byGrant.set(key, (g = { branchId: r.branchId, cityId: r.cityId, permissions: [] }));
     if (r.permission) g.permissions.push(r.permission);
   }
-  return [...byGrant.values()];
+
+  // A city grant applies to every current branch of that (active) city, so branches added later are covered too.
+  const cityIds = [...new Set([...byGrant.values()].map((g) => g.cityId).filter((c): c is string => !!c))];
+  const cityBranches = new Map<string, string[]>();
+  if (cityIds.length) {
+    const live = await tx
+      .select({ id: cities.id })
+      .from(cities)
+      .where(and(inArray(cities.id, cityIds), isNull(cities.archivedAt)));
+    for (const c of live) cityBranches.set(c.id, []);
+    const bs = await tx
+      .select({ id: branches.id, cityId: branches.cityId })
+      .from(branches)
+      .where(and(inArray(branches.cityId, cityIds), isNull(branches.archivedAt)));
+    for (const b of bs) cityBranches.get(b.cityId)?.push(b.id);
+  }
+
+  const out: Grant[] = [];
+  for (const g of byGrant.values()) {
+    if (!g.cityId) {
+      out.push({ branchId: g.branchId, permissions: g.permissions });
+      continue;
+    }
+    const list = cityBranches.get(g.cityId);
+    if (!list) continue; // archived city: the grant is dormant
+    for (const branchId of list.length ? list : [NO_BRANCH]) out.push({ branchId, cityId: g.cityId, permissions: g.permissions });
+  }
+  return out;
 }
 
 /** Validates a raw cookie token. Returns null for unknown, expired, or deactivated users. */

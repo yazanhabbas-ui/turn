@@ -17,12 +17,14 @@ docker compose up -d        # builds the app, starts Postgres, migrates, seeds d
 
 Open <http://localhost:3000> and sign in:
 
-| Account                | Role                  | Password (demo) |
-| ---------------------- | --------------------- | --------------- |
-| `admin@dor.local`      | Administrator         | `Dor@Demo2026`  |
-| `supervisor@dor.local` | Supervisor (custom)   | `Dor@Demo2026`  |
-| `reception@dor.local`  | Receptionist          | `Dor@Demo2026`  |
-| `khalid@dor.local` …   | Agent (5 demo agents) | `Dor@Demo2026`  |
+| Account                  | Role                     | Password (demo) |
+| ------------------------ | ------------------------ | --------------- |
+| `admin@dor.local`        | Super admin (all cities) | `Dor@Demo2026`  |
+| `riyadh.admin@dor.local` | City admin (Riyadh)      | `Dor@Demo2026`  |
+| `jeddah.admin@dor.local` | City admin (Jeddah)      | `Dor@Demo2026`  |
+| `supervisor@dor.local`   | Supervisor (custom)      | `Dor@Demo2026`  |
+| `reception@dor.local`    | Receptionist             | `Dor@Demo2026`  |
+| `khalid@dor.local` …     | Agent (5 demo agents)    | `Dor@Demo2026`  |
 
 **Change these passwords before real use**, or set `SEED_DEMO=false` and create your own admin (see _Production_ below).
 

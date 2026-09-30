@@ -257,6 +257,25 @@ Each entry records a choice, its reasons, and how to revisit it. Newest entries 
 - **Logo:** the supplied 15499 x 5947 px PNG (700 KB, ~370 MB decoded) was resized to 1200 px (`public/branding/yallago-logo.png`, 43 KB) and 400 px; huge images can crash a TV browser. The original stays in `assets/`.
 - **Font:** "FF Hekaya Light" is bundled (`public/fonts`, declared in globals.css) and selectable under Branding → Font. It covers Arabic letters and digits, Latin and punctuation, but it is a single Light weight (bold text is synthesized by the browser). Confirm your licence covers web embedding on customer sites; the readme in the font folder contains no licence text.
 
+## D37: Round robin distribution mode
+
+- New mode **Round robin** (Admin → Distribution): every new ticket goes to the next agent in a fixed rotation. The engine treats it as auto-assign with the `rotation` strategy (`toEngineConfig`), so reservation, capacity, hybrid timeouts and the simulator all keep working. The rotation is stateless: it continues after the agent who received the queue's previous ticket (read from `tickets.assigned_agent_id`), in agent-id order, skipping agents who are away, full or not skilled for the reason, and wraps around. `rotation` is also available as a step in the auto-assign strategy chain.
+- The older strategy named "Round robin" (least recently assigned) is now labelled **Least recently assigned** to avoid confusion; its key `round_robin` in stored rules is unchanged. Note: the mode key `round_robin` and that strategy key share a name in stored data, but they are different settings (`mode` vs `push.strategies`).
+
+## D38: Free Wi-Fi on the ticket
+
+- Setting `wifi` (Admin → Settings → Wi-Fi): on/off, network name, password (empty = open network), an optional join-QR code, and editable heading and labels in both languages. It prints between the ticket body and the footer, in the ticket's language. Each branch can have its own values; the tab shows an "Applies to" selector, and "Use the default for this branch" removes the override.
+- Branch overrides exist for settings a branch may own (`wifi`, `reception`, `alerts`, `wallboard`). Writing the organization value needs settings.manage; writing a branch value needs branches.manage on that branch, which city admins have. Everything else stays organization-wide.
+- The password is printed in clear on every ticket by design (it is a public guest network); the admin page warns to use a guest network only.
+
+## D39: Cities, super admin and city admins
+
+- **City** groups branches (`cities`, `branches.city_id` required). Existing installations get one starter city ("Main city") holding their branches; rename it under Admin → Cities.
+- **Roles.** `super_admin` has every permission organization-wide, including `cities.manage`. `admin` is now the **city admin**: everything except the organization-level permissions (cities, organization settings, role definitions, shared templates and voice packs, API keys, webhooks). On upgrade, people who held the old organization-wide `admin` role are moved to `super_admin` once so nobody loses access.
+- **Scope.** A role grant is organization-wide, for one branch, or for a whole city (`user_roles.city_id`). A city grant is expanded when a session loads into one grant per branch of the city, so branches added later are covered automatically; a city with no branch yet still lets its admin create the first one.
+- **Enforcement** (each covered by `tests/integration/cities.test.ts`): a city admin lists and manages only their city's branches, desks, screens, announcements, groups, distribution overrides, report schedules, alerts, audit entries and people. They cannot manage a person unless all of that person's access lies inside their scope (so never a super admin or someone who also works in another city), cannot grant more than they hold (existing escalation guard) or outside their scope, cannot create organization-wide announcements, invites or groups, cannot change the default branch, roles or organization settings. New users made by a scoped admin must be placed inside the scope.
+- **Demo data:** two cities (Riyadh, Jeddah), a Jeddah branch with two desks and an agent, and accounts `admin@dor.local` (super admin), `riyadh.admin@dor.local` and `jeddah.admin@dor.local` (city admins). Demo staff now hold branch-scoped instead of organization-wide roles.
+
 ## Milestones
 
 1. **Foundation** (done): repo, Docker, schema, auth + 2FA, RBAC, i18n/RTL, seed, health, CI.

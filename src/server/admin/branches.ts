@@ -1,13 +1,15 @@
 import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db, type DbOrTx } from "@/db/client";
-import { branches, desks, floors, queues, visitReasons } from "@/db/schema";
+import { branches, cities, desks, floors, queues, visitReasons } from "@/db/schema";
+import { branchesFor } from "@/domain/rbac/permissions";
 import { localizedText, timezone, uuid, weekdays } from "@/domain/validation";
 import { audit } from "../audit";
 import { AppError } from "../http/errors";
-import { allowedBranches, auditMeta, orgOf, requireOrgWide, requirePermission, type Actor } from "./actor";
+import { allowedBranches, auditMeta, orgOf, requireCityAccess, requirePermission, type Actor } from "./actor";
 
 export const branchInput = z.object({
+  cityId: uuid,
   code: z
     .string()
     .trim()
@@ -98,8 +100,21 @@ async function clearOtherDefaults(tx: DbOrTx, organizationId: string, keepId: st
     .where(and(eq(branches.organizationId, organizationId), ne(branches.id, keepId)));
 }
 
+/** The city must exist in the organization and the actor must control it. */
+async function assertCity(actor: Actor, cityId: string) {
+  requireCityAccess(actor, "branches.manage", cityId);
+  const [c] = await db()
+    .select({ id: cities.id })
+    .from(cities)
+    .where(and(eq(cities.id, cityId), eq(cities.organizationId, orgOf(actor)), isNull(cities.archivedAt)));
+  if (!c) throw new AppError("validation", { field: "cityId" });
+}
+
+/** Only the organization-wide administrator decides which branch is the default one. */
+const canSetDefault = (actor: Actor) => branchesFor(actor.auth.grants, "branches.manage") === "all";
+
 export async function createBranch(actor: Actor, input: z.infer<typeof branchInput>) {
-  requireOrgWide(actor, "branches.manage");
+  await assertCity(actor, input.cityId);
   const org = orgOf(actor);
   return db().transaction(async (tx) => {
     const [dup] = await tx
@@ -109,7 +124,12 @@ export async function createBranch(actor: Actor, input: z.infer<typeof branchInp
     if (dup) throw new AppError("conflict", { field: "code" });
     const [b] = await tx
       .insert(branches)
-      .values({ ...input, organizationId: org, address: input.address ?? null, isDefault: input.isDefault ?? false })
+      .values({
+        ...input,
+        organizationId: org,
+        address: input.address ?? null,
+        isDefault: canSetDefault(actor) ? (input.isDefault ?? false) : false,
+      })
       .returning();
     if (b.isDefault) await clearOtherDefaults(tx, org, b.id);
     await ensureQueues(tx, org);
@@ -123,6 +143,7 @@ export async function createBranch(actor: Actor, input: z.infer<typeof branchInp
 
 export async function updateBranch(actor: Actor, id: string, input: z.infer<typeof branchInput>) {
   const before = await loadBranch(actor, id);
+  if (input.cityId !== before.cityId) await assertCity(actor, input.cityId);
   await db().transaction(async (tx) => {
     const [dup] = await tx
       .select({ id: branches.id })
@@ -131,7 +152,11 @@ export async function updateBranch(actor: Actor, id: string, input: z.infer<type
     if (dup) throw new AppError("conflict", { field: "code" });
     const [after] = await tx
       .update(branches)
-      .set({ ...input, address: input.address ?? null, isDefault: input.isDefault ?? before.isDefault })
+      .set({
+        ...input,
+        address: input.address ?? null,
+        isDefault: canSetDefault(actor) ? (input.isDefault ?? before.isDefault) : before.isDefault,
+      })
       .where(eq(branches.id, id))
       .returning();
     if (after.isDefault) await clearOtherDefaults(tx, before.organizationId, id);
@@ -143,7 +168,6 @@ export async function updateBranch(actor: Actor, id: string, input: z.infer<type
 }
 
 export async function archiveBranch(actor: Actor, id: string) {
-  requireOrgWide(actor, "branches.manage");
   const before = await loadBranch(actor, id);
   const active = await db()
     .select({ id: branches.id })

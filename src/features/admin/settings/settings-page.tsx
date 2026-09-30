@@ -94,34 +94,39 @@ function SettingForm<K extends SettingKey>({
   );
 }
 
-export function SettingsPage() {
+export function SettingsPage({ organization = true }: { organization?: boolean }) {
   const t = useTranslations("settings");
   const settings = useApiQuery<AllSettings>(SETTINGS);
   const lookups = useLookups();
   if (settings.isLoading || lookups.isLoading) return <LoadingRows rows={6} />;
   if (settings.isError || !settings.data || !lookups.data) return <ErrorState onRetry={() => settings.refetch()} />;
   const s = settings.data;
-  const tabs = [
-    "branding",
-    "regional",
-    "ticketing",
-    "reception",
-    "wifi",
-    "agents",
-    "wallboard",
-    "reports",
-    "alerts",
-    "security",
-    "privacy",
-    "visitorStatus",
-    "priorities",
-    "breaks",
-  ] as const;
+  // A city or branch admin manages only what a branch may own; organization settings are for the super admin.
+  const tabs = (
+    organization
+      ? [
+          "branding",
+          "regional",
+          "ticketing",
+          "reception",
+          "wifi",
+          "agents",
+          "wallboard",
+          "reports",
+          "alerts",
+          "security",
+          "privacy",
+          "visitorStatus",
+          "priorities",
+          "breaks",
+        ]
+      : ["wifi"]
+  ) as readonly string[];
 
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader title={t("title")} description={t("description")} />
-      <Tabs defaultValue="branding">
+      <Tabs defaultValue={tabs[0]}>
         <TabsList className="flex h-auto flex-wrap">
           {tabs.map((tab) => (
             <TabsTrigger key={tab} value={tab}>
@@ -142,7 +147,7 @@ export function SettingsPage() {
           <ReceptionForm initial={s.reception} />
         </TabsContent>
         <TabsContent value="wifi" className="mt-4">
-          <WifiTab defaults={s.wifi} branches={lookups.data.branches} />
+          <WifiTab defaults={s.wifi} branches={lookups.data.branches} organization={organization} />
         </TabsContent>
         <TabsContent value="agents" className="mt-4">
           <AgentWorkForm initial={s.agentWork} />
@@ -593,10 +598,19 @@ function AlertsForm({ initial }: { initial: SettingValue<"alerts"> }) {
 }
 
 /** Free Wi-Fi on the ticket: an organization default, plus an own value per branch (e.g. per city office). */
-function WifiTab({ defaults, branches }: { defaults: SettingValue<"wifi">; branches: { id: string; name: L }[] }) {
+function WifiTab({
+  defaults,
+  branches,
+  organization,
+}: {
+  defaults: SettingValue<"wifi">;
+  branches: { id: string; name: L }[];
+  organization: boolean;
+}) {
   const t = useTranslations("settings");
   const text = useText();
-  const [branchId, setBranchId] = useState("");
+  // Without organization rights there is no "all branches" choice: start on the first branch you manage.
+  const [branchId, setBranchId] = useState(organization ? "" : (branches[0]?.id ?? ""));
   const scoped = useApiQuery<AllSettings>(branchId ? `${SETTINGS}?branchId=${branchId}` : null);
   const clear = useApiMutation(() => api(`${SETTINGS}/wifi?branchId=${branchId}`, { method: "DELETE" }), {
     invalidate: [[SETTINGS], [`${SETTINGS}?branchId=${branchId}`]],
@@ -610,7 +624,7 @@ function WifiTab({ defaults, branches }: { defaults: SettingValue<"wifi">; branc
       {branches.length > 0 && (
         <Field label={t("wifiScope")} htmlFor="wf-scope" className="max-w-sm">
           <NativeSelect id="wf-scope" value={branchId} onChange={(e) => setBranchId(e.target.value)}>
-            <option value="">{t("wifiAllBranches")}</option>
+            {organization && <option value="">{t("wifiAllBranches")}</option>}
             {branches.map((b) => (
               <option key={b.id} value={b.id}>
                 {text(b.name)}

@@ -1,6 +1,6 @@
 import { boolean, index, integer, jsonb, pgTable, primaryKey, text, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { archivedAt, createdAt, id, ts, updatedAt, type LocalizedText } from "./_common";
-import { branches, organizations } from "./tenancy";
+import { branches, cities, organizations } from "./tenancy";
 
 export const users = pgTable(
   "users",
@@ -104,7 +104,10 @@ export const rolePermissions = pgTable(
   (t) => [primaryKey({ columns: [t.roleId, t.permissionKey] })],
 );
 
-/** Role grant, optionally limited to one branch. `branch_id` null means all branches of the organization. */
+/**
+ * Role grant. `branch_id` limits it to one branch, `city_id` to every branch of one city (including branches added
+ * later); with neither it applies to the whole organization. Never both.
+ */
 export const userRoles = pgTable(
   "user_roles",
   {
@@ -116,10 +119,11 @@ export const userRoles = pgTable(
       .notNull()
       .references(() => roles.id),
     branchId: uuid("branch_id").references(() => branches.id),
+    cityId: uuid("city_id").references(() => cities.id),
     createdAt: createdAt(),
   },
   (t) => [
-    unique("user_roles_uq").on(t.userId, t.roleId, t.branchId).nullsNotDistinct(),
+    unique("user_roles_uq").on(t.userId, t.roleId, t.branchId, t.cityId).nullsNotDistinct(),
     index("user_roles_user_idx").on(t.userId),
   ],
 );

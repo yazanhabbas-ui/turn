@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { and, eq, inArray, notInArray } from "drizzle-orm";
+import { and, eq, inArray, isNull, notInArray } from "drizzle-orm";
 import type { DbOrTx } from "@/db/client";
-import { permissions, rolePermissions, roles } from "@/db/schema";
+import { permissions, rolePermissions, roles, userRoles } from "@/db/schema";
 import { PERMISSION_GROUPS, SYSTEM_ROLES, type SystemRoleKey } from "@/domain/rbac/permissions";
 import { LOCALE_CODES } from "@/i18n/locales";
 
@@ -32,10 +32,17 @@ export async function syncPermissions(tx: DbOrTx, organizationId: string) {
   }
 
   const roleNames: Record<SystemRoleKey, Record<string, string>> = {
-    admin: { ar: "مسؤول النظام", en: "Administrator" },
+    super_admin: { ar: "المسؤول العام", en: "Super admin" },
+    admin: { ar: "مسؤول المدينة", en: "City admin" },
     receptionist: { ar: "موظف استقبال", en: "Receptionist" },
     agent: { ar: "موظف خدمة", en: "Agent" },
   };
+  // Before cities existed the "admin" role was organization-wide. Those people become super admins (once, when the
+  // super admin role is first created) so nobody loses access; the admin role is then used per city.
+  const [hadSuperAdmin] = await tx
+    .select({ id: roles.id })
+    .from(roles)
+    .where(and(eq(roles.organizationId, organizationId), eq(roles.key, "super_admin")));
   for (const [key, perms] of Object.entries(SYSTEM_ROLES) as [SystemRoleKey, string[]][]) {
     const [role] = await tx
       .insert(roles)
@@ -53,5 +60,25 @@ export async function syncPermissions(tx: DbOrTx, organizationId: string) {
     const missing = perms.filter((p) => !have.has(p));
     if (missing.length)
       await tx.insert(rolePermissions).values(missing.map((permissionKey) => ({ roleId: role.id, permissionKey })));
+  }
+  if (!hadSuperAdmin) {
+    const [superAdmin] = await tx
+      .select({ id: roles.id })
+      .from(roles)
+      .where(and(eq(roles.organizationId, organizationId), eq(roles.key, "super_admin")));
+    const [admin] = await tx
+      .select({ id: roles.id })
+      .from(roles)
+      .where(and(eq(roles.organizationId, organizationId), eq(roles.key, "admin")));
+    if (superAdmin && admin) {
+      const wide = await tx
+        .select()
+        .from(userRoles)
+        .where(and(eq(userRoles.roleId, admin.id), isNull(userRoles.branchId), isNull(userRoles.cityId)));
+      for (const g of wide) {
+        await tx.insert(userRoles).values({ userId: g.userId, roleId: superAdmin.id }).onConflictDoNothing();
+        await tx.delete(userRoles).where(eq(userRoles.id, g.id));
+      }
+    }
   }
 }

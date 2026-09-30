@@ -36,6 +36,13 @@
       "when": 1790759115142,
       "tag": "0004_agent_max_concurrent_optional",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790760955540,
+      "tag": "0005_cities",
+      "breakpoints": true
     }
   ]
 }

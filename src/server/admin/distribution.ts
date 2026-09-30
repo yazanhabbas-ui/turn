@@ -9,7 +9,7 @@ import { isoDate, uuid } from "@/domain/validation";
 import { audit } from "../audit";
 import { AppError } from "../http/errors";
 import { loadBranchContext } from "../queue/snapshot";
-import { auditMeta, orgOf, requireOrgWide, requirePermission, type Actor } from "./actor";
+import { allowedBranches, auditMeta, orgOf, requireOrgWide, requirePermission, type Actor } from "./actor";
 
 export type RuleScope = "global" | "branch" | "queue";
 
@@ -33,6 +33,8 @@ function validateLayer(config: Record<string, unknown>) {
 export async function listRules(actor: Actor) {
   requirePermission(actor, "distribution.manage");
   const org = orgOf(actor);
+  const scope = allowedBranches(actor, "distribution.manage");
+  const inScope = (branchId: string | null) => scope === "all" || (branchId !== null && scope.includes(branchId));
   const [rules, queueRows] = await Promise.all([
     db().select().from(distributionRules).where(eq(distributionRules.organizationId, org)),
     db()
@@ -41,18 +43,22 @@ export async function listRules(actor: Actor) {
       .innerJoin(visitReasons, and(eq(visitReasons.id, queues.reasonId), isNull(visitReasons.archivedAt)))
       .where(eq(queues.organizationId, org)),
   ]);
+  const queueBranch = new Map(queueRows.map((q) => [q.id, q.branchId]));
   return {
     defaults: DEFAULT_CONFIG,
-    rules: rules.map((r) => ({
-      id: r.id,
-      scope: r.scope as RuleScope,
-      branchId: r.branchId,
-      queueId: r.queueId,
-      config: r.config,
-      version: r.version,
-      updatedAt: r.updatedAt,
-    })),
-    queues: queueRows,
+    // The organization-wide rule is visible to everyone (read-only unless organization-wide); overrides only where allowed.
+    rules: rules
+      .filter((r) => r.scope === "global" || inScope(r.branchId ?? (r.queueId ? (queueBranch.get(r.queueId) ?? null) : null)))
+      .map((r) => ({
+        id: r.id,
+        scope: r.scope as RuleScope,
+        branchId: r.branchId,
+        queueId: r.queueId,
+        config: r.config,
+        version: r.version,
+        updatedAt: r.updatedAt,
+      })),
+    queues: queueRows.filter((q) => inScope(q.branchId)),
   };
 }
 
@@ -138,6 +144,11 @@ export async function deleteRule(actor: Actor, id: string) {
     .where(and(eq(distributionRules.id, id), eq(distributionRules.organizationId, orgOf(actor))));
   if (!r) throw new AppError("not_found");
   if (r.scope === "global") throw new AppError("conflict", { reason: "global_rule" });
+  const ruleBranch =
+    r.branchId ??
+    (r.queueId ? ((await db().select({ b: queues.branchId }).from(queues).where(eq(queues.id, r.queueId)))[0]?.b ?? null) : null);
+  if (ruleBranch) requirePermission(actor, "distribution.manage", ruleBranch);
+  else requireOrgWide(actor, "distribution.manage");
   await db().delete(distributionRules).where(eq(distributionRules.id, id));
   await audit({
     ...auditMeta(actor),

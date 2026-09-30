@@ -27,6 +27,13 @@ type Form = {
   groupIds: string[];
 };
 
+/** Where a new role grant starts: organization-wide for organization admins, else the admin's own city or branch. */
+function defaultScope(lookups: Lookups): { branchId: string | null; cityId: string | null } {
+  if (lookups.organizationScope) return { branchId: null, cityId: null };
+  if (lookups.cities[0]) return { branchId: null, cityId: lookups.cities[0].id };
+  return { branchId: lookups.branches[0]?.id ?? null, cityId: null };
+}
+
 function toForm(u: UserRow | null, lookups: Lookups): Form {
   return {
     email: u?.email ?? "",
@@ -35,7 +42,7 @@ function toForm(u: UserRow | null, lookups: Lookups): Form {
     locale: u?.locale ?? "",
     password: "",
     grants: u?.grants ?? [
-      { roleId: lookups.roles.find((r) => r.key === "agent")?.id ?? lookups.roles[0]?.id ?? "", branchId: null },
+      { roleId: lookups.roles.find((r) => r.key === "agent")?.id ?? lookups.roles[0]?.id ?? "", ...defaultScope(lookups) },
     ],
     agent: u?.agent ?? null,
     groupIds: u?.groupIds ?? [],
@@ -78,7 +85,7 @@ export function UserDialog({
         displayName: body.displayName,
         phone: body.phone || null,
         locale: body.locale || null,
-        grants: body.grants.filter((g) => g.roleId),
+        grants: body.grants.filter((g) => g.roleId).map((g) => ({ ...g, cityId: g.cityId ?? null })),
         agent: body.agent,
         groupIds: body.groupIds,
         ...(user ? {} : { password: body.password || undefined }),
@@ -200,19 +207,28 @@ export function UserDialog({
                     ))}
                   </NativeSelect>
                   <NativeSelect
-                    aria-label={tu("branch")}
-                    value={g.branchId ?? ""}
-                    onChange={(e) =>
+                    aria-label={t("scope")}
+                    value={g.cityId ? `c:${g.cityId}` : g.branchId ? `b:${g.branchId}` : ""}
+                    onChange={(e) => {
+                      const [kind, id] = e.target.value.split(":");
+                      const scope = { branchId: kind === "b" ? id : null, cityId: kind === "c" ? id : null };
                       set(
                         "grants",
-                        form.grants.map((x, j) => (j === i ? { ...x, branchId: e.target.value || null } : x)),
-                      )
-                    }
+                        form.grants.map((x, j) => (j === i ? { ...x, ...scope } : x)),
+                      );
+                    }}
                   >
-                    <option value="">{tu("allBranches")}</option>
+                    {(lookups.organizationScope || (!g.branchId && !g.cityId)) && (
+                      <option value="">{t("scopeOrganization")}</option>
+                    )}
+                    {lookups.cities.map((c) => (
+                      <option key={c.id} value={`c:${c.id}`}>
+                        {t("scopeCity", { name: text(c.name) })}
+                      </option>
+                    ))}
                     {lookups.branches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {text(b.name)}
+                      <option key={b.id} value={`b:${b.id}`}>
+                        {t("scopeBranch", { name: text(b.name) })}
                       </option>
                     ))}
                   </NativeSelect>
@@ -236,7 +252,7 @@ export function UserDialog({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => set("grants", [...form.grants, { roleId: lookups.roles[0]?.id ?? "", branchId: null }])}
+                onClick={() => set("grants", [...form.grants, { roleId: lookups.roles[0]?.id ?? "", ...defaultScope(lookups) }])}
               >
                 <Plus aria-hidden />
                 {t("addRole")}

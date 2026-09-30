@@ -12,10 +12,13 @@ import { syncPermissions } from "./permissions";
 /** Demo password for every seeded account. Change it after first login (README → Security). */
 export const DEMO_PASSWORD = process.env.SEED_PASSWORD ?? "Dor@Demo2026";
 
-type Person = { email: string; ar: string; en: string; role: string; phone?: string };
+/** `city` limits the role to one city; `office` puts an agent in the second (Jeddah) branch. */
+type Person = { email: string; ar: string; en: string; role: string; phone?: string; city?: "RUH" | "JED"; office?: "JED" };
 
 const PEOPLE: Person[] = [
-  { email: "admin@dor.local", ar: "مدير النظام", en: "System Admin", role: "admin" },
+  { email: "admin@dor.local", ar: "المسؤول العام", en: "Super Admin", role: "super_admin" },
+  { email: "riyadh.admin@dor.local", ar: "مسؤول مدينة الرياض", en: "Riyadh City Admin", role: "admin", city: "RUH" },
+  { email: "jeddah.admin@dor.local", ar: "مسؤول مدينة جدة", en: "Jeddah City Admin", role: "admin", city: "JED" },
   { email: "supervisor@dor.local", ar: "ريم المطيري", en: "Reem Al-Mutairi", role: "supervisor" },
   { email: "reception@dor.local", ar: "هند الزهراني", en: "Hind Al-Zahrani", role: "receptionist" },
   { email: "khalid@dor.local", ar: "خالد العتيبي", en: "Khalid Al-Otaibi", role: "agent" },
@@ -23,13 +26,22 @@ const PEOPLE: Person[] = [
   { email: "mohammed@dor.local", ar: "محمد الشهري", en: "Mohammed Al-Shehri", role: "agent" },
   { email: "sara@dor.local", ar: "سارة الدوسري", en: "Sara Al-Dosari", role: "agent" },
   { email: "abdullah@dor.local", ar: "عبدالله الحربي", en: "Abdullah Al-Harbi", role: "agent" },
+  { email: "faisal@dor.local", ar: "فيصل الغامدي", en: "Faisal Al-Ghamdi", role: "agent", office: "JED" },
 ];
 
 async function createDemo(tx: Tx, organizationId: string) {
+  const [riyadh, jeddah] = await tx
+    .insert(s.cities)
+    .values([
+      { organizationId, code: "RUH", name: { ar: "الرياض", en: "Riyadh" } },
+      { organizationId, code: "JED", name: { ar: "جدة", en: "Jeddah" } },
+    ])
+    .returning();
   const [branch] = await tx
     .insert(s.branches)
     .values({
       organizationId,
+      cityId: riyadh.id,
       code: "RUH-01",
       name: { ar: "الفرع الرئيسي - الرياض", en: "Main Branch - Riyadh" },
       address: { ar: "طريق الملك فهد، الرياض", en: "King Fahd Road, Riyadh" },
@@ -42,6 +54,31 @@ async function createDemo(tx: Tx, organizationId: string) {
   const [floor] = await tx
     .insert(s.floors)
     .values({ organizationId, branchId: branch.id, name: { ar: "الطابق الأرضي", en: "Ground floor" } })
+    .returning();
+
+  const [jeddahBranch] = await tx
+    .insert(s.branches)
+    .values({
+      organizationId,
+      cityId: jeddah.id,
+      code: "JED-01",
+      name: { ar: "فرع جدة", en: "Jeddah Branch" },
+      address: { ar: "شارع التحلية، جدة", en: "Tahlia Street, Jeddah" },
+      timezone: "Asia/Riyadh",
+      weekend: [5, 6],
+    })
+    .returning();
+  const jeddahDesks = await tx
+    .insert(s.desks)
+    .values(
+      [1, 2].map((n) => ({
+        organizationId,
+        branchId: jeddahBranch.id,
+        number: String(n),
+        name: { ar: `المكتب ${n}`, en: `Desk ${n}` },
+        sortOrder: n,
+      })),
+    )
     .returning();
 
   const deskRows = await tx
@@ -91,10 +128,13 @@ async function createDemo(tx: Tx, organizationId: string) {
       })
       .returning();
     userIds.set(p.email, u.id);
-    await tx.insert(s.userRoles).values({ userId: u.id, roleId: roleByKey.get(p.role)!.id, branchId: null });
+    const cityId = p.city === "RUH" ? riyadh.id : p.city === "JED" ? jeddah.id : null;
+    // Only the super admin is organization-wide; a city admin covers a city; everyone else works in one branch.
+    const branchId = p.role === "super_admin" || cityId ? null : p.office === "JED" ? jeddahBranch.id : branch.id;
+    await tx.insert(s.userRoles).values({ userId: u.id, roleId: roleByKey.get(p.role)!.id, branchId, cityId });
   }
 
-  const agents = PEOPLE.filter((p) => p.role === "agent");
+  const agents = PEOPLE.filter((p) => p.role === "agent" && !p.office);
   await tx.insert(s.agentProfiles).values(
     agents.map((a, i) => ({
       userId: userIds.get(a.email)!,
@@ -104,6 +144,13 @@ async function createDemo(tx: Tx, organizationId: string) {
       weight: i === 0 ? 2 : 1,
     })),
   );
+
+  await tx.insert(s.agentProfiles).values({
+    userId: userIds.get("faisal@dor.local")!,
+    organizationId,
+    branchId: jeddahBranch.id,
+    defaultDeskId: jeddahDesks[0].id,
+  });
 
   const [customerService, corporate] = await tx
     .insert(s.agentGroups)
@@ -293,9 +340,19 @@ async function createDemo(tx: Tx, organizationId: string) {
     { reasonId: reason.complaint.id, userId: uid("khalid@dor.local"), proficiency: 3, isPrimary: false },
     { reasonId: reason.documents.id, groupId: customerService.id, proficiency: 4, isPrimary: true },
     { reasonId: reason.account_manager.id, groupId: corporate.id, proficiency: 5, isPrimary: true },
+    { reasonId: reason.general.id, userId: uid("faisal@dor.local"), branchId: jeddahBranch.id, proficiency: 4, isPrimary: true },
+    {
+      reasonId: reason.documents.id,
+      userId: uid("faisal@dor.local"),
+      branchId: jeddahBranch.id,
+      proficiency: 4,
+      isPrimary: true,
+    },
   ]);
 
-  await tx.insert(s.queues).values(reasons.map((r) => ({ organizationId, branchId: branch.id, reasonId: r.id })));
+  await tx
+    .insert(s.queues)
+    .values([branch, jeddahBranch].flatMap((b) => reasons.map((r) => ({ organizationId, branchId: b.id, reasonId: r.id }))));
 
   // Default distribution: bank-style pull with priority + aging. Refined by the distribution engine milestone.
   await tx.insert(s.distributionRules).values({ organizationId, scope: "global", config: { mode: "pull" } });

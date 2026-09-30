@@ -5,6 +5,7 @@ import {
   agentGroupMembers,
   agentProfiles,
   branches,
+  cities,
   desks,
   passwordResetTokens,
   rolePermissions,
@@ -23,9 +24,12 @@ import { randomToken, sha256Hex } from "../crypto";
 import { AppError } from "../http/errors";
 import { appLink } from "../links";
 import { enqueue } from "../jobs";
-import { allowedBranches, assertCanGrant, auditMeta, orgOf, requirePermission, type Actor } from "./actor";
+import { allowedBranches, allowedCities, assertCanGrant, auditMeta, orgOf, requirePermission, type Actor } from "./actor";
 
-export const grantInput = z.object({ roleId: uuid, branchId: uuid.nullable() });
+/** A role for the whole organization (no scope), one branch, or every branch of one city. */
+export const grantInput = z
+  .object({ roleId: uuid, branchId: uuid.nullable(), cityId: uuid.nullable().default(null) })
+  .refine((g) => !(g.branchId && g.cityId), { message: "one_scope" });
 
 export const agentInput = z.object({
   branchId: uuid,
@@ -60,7 +64,7 @@ export type UserView = {
   lastLoginAt: Date | null;
   lockedUntil: Date | null;
   createdAt: Date;
-  grants: { roleId: string; branchId: string | null }[];
+  grants: { roleId: string; branchId: string | null; cityId: string | null }[];
   agent: z.infer<typeof agentInput> | null;
   groupIds: string[];
 };
@@ -103,7 +107,7 @@ export async function listUsers(
       lastLoginAt: u.lastLoginAt,
       lockedUntil: u.lockedUntil,
       createdAt: u.createdAt,
-      grants: grants.filter((g) => g.userId === u.id).map((g) => ({ roleId: g.roleId, branchId: g.branchId })),
+      grants: grants.filter((g) => g.userId === u.id).map((g) => ({ roleId: g.roleId, branchId: g.branchId, cityId: g.cityId })),
       agent: p
         ? { branchId: p.branchId, defaultDeskId: p.defaultDeskId, maxConcurrent: p.maxConcurrent, weight: p.weight }
         : null,
@@ -112,8 +116,13 @@ export async function listUsers(
   });
 
   if (scope !== "all") {
+    const cityScope = allowedCities(actor, "users.view");
     result = result.filter(
-      (u) => u.grants.some((g) => g.branchId && scope.includes(g.branchId)) || (u.agent && scope.includes(u.agent.branchId)),
+      (u) =>
+        u.grants.some(
+          (g) => (g.branchId && scope.includes(g.branchId)) || (g.cityId && cityScope !== "all" && cityScope.includes(g.cityId)),
+        ) ||
+        (u.agent && scope.includes(u.agent.branchId)),
     );
   }
   if (filter.q) {
@@ -138,12 +147,32 @@ export async function listUsers(
   return result;
 }
 
+/**
+ * A user is managed by someone whose scope covers ALL of the user's access. A city admin can manage the people of
+ * their city, but never an organization-wide administrator, nor someone who also works in another city.
+ */
+async function assertManages(actor: Actor, userId: string, tx: DbOrTx) {
+  const scope = allowedBranches(actor, "users.manage");
+  if (scope === "all") return;
+  const cityScope = allowedCities(actor, "users.manage");
+  const [grants, profile] = await Promise.all([
+    tx.select().from(userRoles).where(eq(userRoles.userId, userId)),
+    tx.select({ branchId: agentProfiles.branchId }).from(agentProfiles).where(eq(agentProfiles.userId, userId)),
+  ]);
+  const inScope = (g: { branchId: string | null; cityId: string | null }) =>
+    g.cityId ? cityScope !== "all" && cityScope.includes(g.cityId) : !!g.branchId && scope.includes(g.branchId);
+  const everythingInScope = grants.every(inScope) && profile.every((p) => scope.includes(p.branchId));
+  if (!everythingInScope || (grants.length === 0 && profile.length === 0))
+    throw new AppError("forbidden", { reason: "user_scope" });
+}
+
 async function loadUser(actor: Actor, id: string, tx: DbOrTx = db()) {
   const [u] = await tx
     .select()
     .from(users)
     .where(and(eq(users.id, id), eq(users.organizationId, orgOf(actor)), isNull(users.archivedAt)));
   if (!u) throw new AppError("not_found");
+  await assertManages(actor, id, tx);
   return u;
 }
 
@@ -153,11 +182,15 @@ async function loadUser(actor: Actor, id: string, tx: DbOrTx = db()) {
  */
 async function resolveGrants(tx: DbOrTx, actor: Actor, userId: string | null, submitted: z.infer<typeof grantInput>[]) {
   const scope = allowedBranches(actor, "users.manage");
-  const manageable = (branchId: string | null) => scope === "all" || (branchId !== null && scope.includes(branchId));
+  const cityScope = allowedCities(actor, "users.manage");
+  const manageable = (branchId: string | null, cityId: string | null = null) =>
+    scope === "all" ||
+    (cityId ? cityScope !== "all" && cityScope.includes(cityId) : branchId !== null && scope.includes(branchId));
 
   const roleIds = [...new Set(submitted.map((g) => g.roleId))];
   const branchIds = [...new Set(submitted.map((g) => g.branchId).filter((b): b is string => !!b))];
-  const [roleRows, permRows, branchRows] = await Promise.all([
+  const cityIds = [...new Set(submitted.map((g) => g.cityId).filter((c): c is string => !!c))];
+  const [roleRows, permRows, branchRows, cityRows] = await Promise.all([
     roleIds.length
       ? tx
           .select()
@@ -171,12 +204,19 @@ async function resolveGrants(tx: DbOrTx, actor: Actor, userId: string | null, su
           .from(branches)
           .where(and(inArray(branches.id, branchIds), eq(branches.organizationId, orgOf(actor))))
       : [],
+    cityIds.length
+      ? tx
+          .select({ id: cities.id })
+          .from(cities)
+          .where(and(inArray(cities.id, cityIds), eq(cities.organizationId, orgOf(actor)), isNull(cities.archivedAt)))
+      : [],
   ]);
-  if (roleRows.length !== roleIds.length || branchRows.length !== branchIds.length)
+  if (roleRows.length !== roleIds.length || branchRows.length !== branchIds.length || cityRows.length !== cityIds.length)
     throw new AppError("validation", { field: "grants" });
 
   for (const g of submitted) {
-    if (!manageable(g.branchId)) throw new AppError("forbidden", { reason: "branch_scope", branchId: g.branchId });
+    if (!manageable(g.branchId, g.cityId))
+      throw new AppError("forbidden", { reason: "branch_scope", branchId: g.branchId, cityId: g.cityId });
     assertCanGrant(
       actor,
       permRows.filter((p) => p.roleId === g.roleId).map((p) => p.permissionKey),
@@ -184,10 +224,12 @@ async function resolveGrants(tx: DbOrTx, actor: Actor, userId: string | null, su
   }
 
   const existing = userId ? await tx.select().from(userRoles).where(eq(userRoles.userId, userId)) : [];
-  const kept = existing.filter((g) => !manageable(g.branchId)).map((g) => ({ roleId: g.roleId, branchId: g.branchId }));
+  const kept = existing
+    .filter((g) => !manageable(g.branchId, g.cityId))
+    .map((g) => ({ roleId: g.roleId, branchId: g.branchId, cityId: g.cityId }));
   const seen = new Set<string>();
-  return [...kept, ...submitted].filter((g) => {
-    const k = `${g.roleId}:${g.branchId ?? "*"}`;
+  return [...kept, ...submitted.map((g) => ({ roleId: g.roleId, branchId: g.branchId, cityId: g.cityId }))].filter((g) => {
+    const k = `${g.roleId}:${g.branchId ?? "*"}:${g.cityId ?? "*"}`;
     if (seen.has(k)) return false;
     seen.add(k);
     return true;
@@ -209,6 +251,7 @@ async function assertAdminRemains(tx: Tx, organizationId: string) {
         isNull(users.archivedAt),
         isNull(roles.archivedAt),
         isNull(userRoles.branchId),
+        isNull(userRoles.cityId),
       ),
     )
     .limit(1);
@@ -275,6 +318,8 @@ export async function createUser(
       .where(and(eq(users.organizationId, org), eq(users.email, email)));
     if (dup) throw new AppError("conflict", { field: "email" });
     const grants = await resolveGrants(tx, actor, null, input.grants);
+    if (allowedBranches(actor, "users.manage") !== "all" && !grants.length && !input.agent)
+      throw new AppError("validation", { field: "grants", reason: "scope_required" });
     const [u] = await tx
       .insert(users)
       .values({
@@ -331,7 +376,7 @@ export async function updateUser(actor: Actor, id: string, input: z.infer<typeof
         action: "user.updated",
         entityType: "user",
         entityId: id,
-        before: { ...before, grants: beforeGrants.map((g) => ({ roleId: g.roleId, branchId: g.branchId })) },
+        before: { ...before, grants: beforeGrants.map((g) => ({ roleId: g.roleId, branchId: g.branchId, cityId: g.cityId })) },
         after: { ...input, email, grants },
       },
       tx,

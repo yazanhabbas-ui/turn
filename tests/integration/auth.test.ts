@@ -2,7 +2,7 @@ import { generateTOTP } from "@oslojs/otp";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { db, pool } from "@/db/client";
-import { branches, organizations, roles, rolePermissions, userRoles, users } from "@/db/schema";
+import { branches, cities, organizations, roles, rolePermissions, userRoles, users } from "@/db/schema";
 import { syncPermissions } from "@/db/seed/permissions";
 import { can } from "@/domain/rbac/permissions";
 import { hashPassword } from "@/server/auth/password";
@@ -37,9 +37,13 @@ describe.runIf(available)("auth (database)", () => {
       .returning();
     orgId = org.id;
     await syncPermissions(db(), orgId);
+    const [city] = await db()
+      .insert(cities)
+      .values({ organizationId: orgId, code: "C1", name: { ar: "مدينة", en: "City" } })
+      .returning();
     const [b] = await db()
       .insert(branches)
-      .values({ organizationId: orgId, code: "B1", name: { ar: "فرع", en: "Branch" } })
+      .values({ organizationId: orgId, cityId: city.id, code: "B1", name: { ar: "فرع", en: "Branch" } })
       .returning();
     branchId = b.id;
     const [u] = await db()
@@ -120,7 +124,7 @@ describe.runIf(available)("auth (database)", () => {
   });
 
   it("keeps built-in roles in sync and never grants archived roles", async () => {
-    const [adminRole] = await db().select().from(roles).where(eq(roles.key, "admin"));
+    const [adminRole] = await db().select().from(roles).where(eq(roles.key, "super_admin"));
     expect(adminRole.isSystem).toBe(true);
     const perms = await db().select().from(rolePermissions).where(eq(rolePermissions.roleId, adminRole.id));
     expect(perms.length).toBeGreaterThan(30);

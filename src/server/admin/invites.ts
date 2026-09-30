@@ -15,7 +15,7 @@ import { enqueue } from "../jobs";
 import { appLink } from "../links";
 import { providerFor } from "../messaging/providers";
 import { getSetting } from "../settings/service";
-import { assertCanGrant, auditMeta, orgOf, requirePermission, type Actor } from "./actor";
+import { allowedBranches, assertCanGrant, auditMeta, orgOf, requireOrgWide, requirePermission, type Actor } from "./actor";
 
 export const INVITE_CHANNELS = ["email", "whatsapp", "sms"] as const;
 
@@ -42,6 +42,7 @@ function statusOf(i: typeof invites.$inferSelect): InviteStatus {
 
 export async function listInvites(actor: Actor) {
   requirePermission(actor, "users.invite");
+  const scope = allowedBranches(actor, "users.invite");
   const rows = await db()
     .select({ invite: invites, roleName: roles.name })
     .from(invites)
@@ -49,21 +50,23 @@ export async function listInvites(actor: Actor) {
     .where(eq(invites.organizationId, orgOf(actor)))
     .orderBy(desc(invites.createdAt))
     .limit(200);
-  return rows.map(({ invite: i, roleName }) => ({
-    id: i.id,
-    email: i.email,
-    phone: i.phone,
-    displayName: i.displayName,
-    roleId: i.roleId,
-    roleName,
-    branchId: i.branchId,
-    channel: i.channel,
-    locale: i.locale,
-    expiresAt: i.expiresAt,
-    usedAt: i.usedAt,
-    createdAt: i.createdAt,
-    status: statusOf(i),
-  }));
+  return rows
+    .filter(({ invite: i }) => scope === "all" || (i.branchId !== null && scope.includes(i.branchId)))
+    .map(({ invite: i, roleName }) => ({
+      id: i.id,
+      email: i.email,
+      phone: i.phone,
+      displayName: i.displayName,
+      roleId: i.roleId,
+      roleName,
+      branchId: i.branchId,
+      channel: i.channel,
+      locale: i.locale,
+      expiresAt: i.expiresAt,
+      usedAt: i.usedAt,
+      createdAt: i.createdAt,
+      status: statusOf(i),
+    }));
 }
 
 async function roleForInvite(actor: Actor, roleId: string) {
@@ -139,7 +142,8 @@ export async function createInvite(actor: Actor, input: z.infer<typeof inviteInp
       .where(and(eq(branches.id, input.branchId), eq(branches.organizationId, org)));
     if (!b) throw new AppError("validation", { field: "branchId" });
   } else {
-    requirePermission(actor, "users.invite");
+    // An invite with no branch grants organization-wide access.
+    requireOrgWide(actor, "users.invite");
   }
   const email = input.email ? normalizeEmail(input.email) : null;
   if (email) {

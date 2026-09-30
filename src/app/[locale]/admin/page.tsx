@@ -1,8 +1,11 @@
-import { and, count, eq, isNull } from "drizzle-orm";
+import { and, count, eq, inArray, isNull } from "drizzle-orm";
 import { Building2, KeyRound, Monitor, ListChecks, Users } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { db } from "@/db/client";
-import { branches, desks, roles, users, visitReasons } from "@/db/schema";
+import { desks, roles, visitReasons } from "@/db/schema";
+import { can } from "@/domain/rbac/permissions";
+import { visibleBranchIds } from "@/server/admin/branches";
+import { listUsers } from "@/server/admin/users";
 import { pickText } from "@/i18n/locales";
 import { requireAuth } from "@/server/auth/current";
 
@@ -13,19 +16,16 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
   const t = await getTranslations("admin");
   const org = auth.user.organizationId;
 
-  const [[b], [d], [u], [r], [ro]] = await Promise.all([
-    db()
-      .select({ n: count() })
-      .from(branches)
-      .where(and(eq(branches.organizationId, org), isNull(branches.archivedAt))),
-    db()
-      .select({ n: count() })
-      .from(desks)
-      .where(and(eq(desks.organizationId, org), isNull(desks.archivedAt))),
-    db()
-      .select({ n: count() })
-      .from(users)
-      .where(and(eq(users.organizationId, org), isNull(users.archivedAt))),
+  // Counts only cover what this administrator may manage (a city admin does not learn about other cities).
+  const actor = { auth };
+  const branchIds = await visibleBranchIds(actor, "admin.access");
+  const [[d], [r], [ro], userCount] = await Promise.all([
+    branchIds.length
+      ? db()
+          .select({ n: count() })
+          .from(desks)
+          .where(and(inArray(desks.branchId, branchIds), isNull(desks.archivedAt)))
+      : [{ n: 0 }],
     db()
       .select({ n: count() })
       .from(visitReasons)
@@ -34,7 +34,10 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
       .select({ n: count() })
       .from(roles)
       .where(and(eq(roles.organizationId, org), isNull(roles.archivedAt))),
+    can(auth.grants, "users.view") ? listUsers(actor).then((x) => x.length) : Promise.resolve(0),
   ]);
+  const b = { n: branchIds.length };
+  const u = { n: userCount };
 
   const stats = [
     { key: "branches", value: b.n, icon: Building2 },

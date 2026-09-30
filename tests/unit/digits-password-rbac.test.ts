@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { checkPassword, DEFAULT_PASSWORD_POLICY } from "@/domain/auth/password-policy";
 import { formatTicketNumber, toEasternDigits, toWesternDigits } from "@/domain/i18n/digits";
-import { ALL_PERMISSIONS, branchesFor, can, SYSTEM_ROLES } from "@/domain/rbac/permissions";
+import { ALL_PERMISSIONS, branchesFor, can, ORGANIZATION_LEVEL_PERMISSIONS, SYSTEM_ROLES } from "@/domain/rbac/permissions";
 
 describe("digits", () => {
   it("round-trips Western and Eastern Arabic-Indic digits", () => {
@@ -39,8 +39,11 @@ describe("rbac", () => {
     { branchId: "b1", permissions: SYSTEM_ROLES.receptionist },
   ];
 
-  it("admin role holds every permission", () => {
-    expect(new Set(SYSTEM_ROLES.admin)).toEqual(new Set(ALL_PERMISSIONS));
+  it("the super admin holds every permission; the city admin lacks the organization-level ones", () => {
+    expect(new Set(SYSTEM_ROLES.super_admin)).toEqual(new Set(ALL_PERMISSIONS));
+    for (const p of ORGANIZATION_LEVEL_PERMISSIONS) expect(SYSTEM_ROLES.admin).not.toContain(p);
+    expect(SYSTEM_ROLES.admin).toContain("branches.manage");
+    expect(SYSTEM_ROLES.admin).toContain("users.manage");
   });
 
   it("respects branch scoping", () => {

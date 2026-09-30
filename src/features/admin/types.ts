@@ -1,7 +1,17 @@
 /** Client-side shapes of admin API responses (dates arrive as ISO strings). */
 export type L = Record<string, string>;
 
-export type Grant = { roleId: string; branchId: string | null };
+export type Grant = { roleId: string; branchId: string | null; cityId?: string | null };
+export type City = {
+  id: string;
+  organizationId?: string;
+  code: string;
+  name: L;
+  archivedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  branchCount: number;
+};
 export type AgentProfile = { branchId: string; defaultDeskId?: string | null; maxConcurrent: number | null; weight: number };
 
 export type UserRow = {
@@ -41,6 +51,7 @@ export type Desk = {
 export type Floor = { id: string; branchId: string; name: L; sortOrder: number };
 export type Branch = {
   id: string;
+  cityId: string;
   code: string;
   name: L;
   address: L | null;
@@ -94,6 +105,9 @@ export type Reason = {
 };
 
 export type Lookups = {
+  /** True for organization-wide administrators (they may grant roles for the whole organization). */
+  organizationScope: boolean;
+  cities: City[];
   branches: Branch[];
   roles: RoleRow[];
   agents: AgentRef[];

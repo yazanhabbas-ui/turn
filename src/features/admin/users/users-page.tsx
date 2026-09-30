@@ -117,7 +117,12 @@ function UsersTable({ lookups, onEdit }: { lookups: Lookups; onEdit: (u: UserRow
   const params = new URLSearchParams({ ...(deferred && { q: deferred }), ...(roleId && { roleId }), ...(status && { status }) });
   const users = useApiQuery<{ items: UserRow[] }>(`/api/v1/admin/users?${params}`);
   const roleName = (id: string) => text(lookups.roles.find((r) => r.id === id)?.name);
-  const branchName = (id: string | null) => (id ? text(lookups.branches.find((b) => b.id === id)?.name) : tu("allBranches"));
+  const scopeLabel = (g: { branchId: string | null; cityId?: string | null }) =>
+    g.cityId
+      ? text(lookups.cities.find((c) => c.id === g.cityId)?.name)
+      : g.branchId
+        ? text(lookups.branches.find((b) => b.id === g.branchId)?.name)
+        : null;
 
   return (
     <div className="space-y-3">
@@ -175,9 +180,9 @@ function UsersTable({ lookups, onEdit }: { lookups: Lookups; onEdit: (u: UserRow
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {u.grants.map((g) => (
-                        <Badge key={`${g.roleId}${g.branchId}`} variant="secondary">
+                        <Badge key={`${g.roleId}${g.branchId}${g.cityId}`} variant="secondary">
                           {roleName(g.roleId)}
-                          {g.branchId && <span className="text-muted-foreground"> · {branchName(g.branchId)}</span>}
+                          {scopeLabel(g) && <span className="text-muted-foreground"> · {scopeLabel(g)}</span>}
                         </Badge>
                       ))}
                     </div>
