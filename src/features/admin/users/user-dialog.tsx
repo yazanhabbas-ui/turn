@@ -255,7 +255,7 @@ export function UserDialog({
                       e.target.checked
                         ? {
                             branchId: lookups.branches.find((b) => b.isDefault)?.id ?? lookups.branches[0]?.id ?? "",
-                            maxConcurrent: 1,
+                            maxConcurrent: null,
                             weight: 1,
                             defaultDeskId: null,
                           }
@@ -295,14 +295,17 @@ export function UserDialog({
                       ))}
                     </NativeSelect>
                   </Field>
-                  <Field label={t("maxConcurrent")} htmlFor="a-max">
+                  <Field label={t("maxConcurrent")} htmlFor="a-max" hint={t("maxConcurrentHint")}>
                     <Input
                       id="a-max"
                       type="number"
                       min={1}
                       max={20}
-                      value={form.agent.maxConcurrent}
-                      onChange={(e) => set("agent", { ...form.agent!, maxConcurrent: Number(e.target.value) })}
+                      value={form.agent.maxConcurrent ?? ""}
+                      placeholder={t("organizationDefault")}
+                      onChange={(e) =>
+                        set("agent", { ...form.agent!, maxConcurrent: e.target.value === "" ? null : Number(e.target.value) })
+                      }
                     />
                   </Field>
                   <Field label={t("weight")} htmlFor="a-weight" hint={t("weightHint")}>

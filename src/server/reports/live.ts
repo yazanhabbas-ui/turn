@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { serviceDay } from "@/domain/schedule/time";
 import { agentProfiles, alerts, desks, tickets, users, visitReasons } from "@/db/schema";
@@ -20,6 +20,10 @@ export async function liveView(actor: Actor, branchId?: string) {
   const org = orgOf(actor);
   const now = clockNow();
   const settings = await getSetting(org, "alerts", branch.id);
+  const [branding, wallboard] = await Promise.all([
+    getSetting(org, "branding", branch.id),
+    getSetting(org, "wallboard", branch.id),
+  ]);
   const day = serviceDay(now, branch.timezone, (await getSetting(org, "ticketing", branch.id)).dailyResetTime);
 
   const [open, profiles, deskRows, reasonRows, openAlerts] = await Promise.all([
@@ -35,9 +39,16 @@ export async function liveView(actor: Actor, branchId?: string) {
         startedAt: tickets.startedAt,
         servingAgentId: tickets.servingAgentId,
         deskId: tickets.deskId,
+        serviceDay: tickets.serviceDay,
       })
       .from(tickets)
-      .where(and(eq(tickets.branchId, branch.id), eq(tickets.serviceDay, day))),
+      // Today's tickets plus anything still open from an earlier day (nobody is lost across the daily reset).
+      .where(
+        and(
+          eq(tickets.branchId, branch.id),
+          or(eq(tickets.serviceDay, day), inArray(tickets.status, ["WAITING", "CALLED", "SERVING", "ON_HOLD"])),
+        ),
+      ),
     db().select().from(agentProfiles).where(eq(agentProfiles.branchId, branch.id)),
     db()
       .select()
@@ -62,21 +73,33 @@ export async function liveView(actor: Actor, branchId?: string) {
   const waiting = open.filter((t) => t.status === "WAITING");
   const waitMin = (t: (typeof open)[number]) => (now - t.arrivedAt.getTime()) / MIN;
 
-  const done = open.filter((t) => t.status === "COMPLETED");
-  const calledToday = open.filter((t) => t.calledAt);
+  const todays = open.filter((t) => t.serviceDay === day);
+  const done = todays.filter((t) => t.status === "COMPLETED");
+  const calledToday = todays.filter((t) => t.calledAt);
   const waitsToday = calledToday.map((t) => (t.calledAt!.getTime() - t.arrivedAt.getTime()) / MIN);
   const within = calledToday.filter(
     (t) => (t.calledAt!.getTime() - t.arrivedAt.getTime()) / MIN <= (reasonById.get(t.reasonId)?.slaTargetWaitMinutes ?? 15),
   ).length;
 
   const byStatus = (s: string) => profiles.filter((p) => p.status === s).length;
-  const activeByAgent = new Map(
-    open.filter((t) => t.status === "CALLED" || t.status === "SERVING").map((t) => [t.servingAgentId, t]),
-  );
+  // An agent may have several visitors at once: keep them all, oldest first.
+  const activeByAgent = new Map<string | null, typeof open>();
+  for (const t of open
+    .filter((x) => x.status === "CALLED" || x.status === "SERVING")
+    .sort((a, b) => a.arrivedAt.getTime() - b.arrivedAt.getTime())) {
+    activeByAgent.set(t.servingAgentId, [...(activeByAgent.get(t.servingAgentId) ?? []), t]);
+  }
 
   return {
     now: new Date(now).toISOString(),
-    branch: { id: branch.id, name: branch.name },
+    branch: { id: branch.id, name: branch.name, timezone: branch.timezone },
+    branding: {
+      companyName: branding.companyName,
+      logoUrl: branding.logoUrl,
+      primaryColor: branding.primaryColor,
+      accentColor: branding.accentColor,
+    },
+    wallboard,
     tiles: {
       waiting: waiting.length,
       longestWaitMin: round1(waiting.length ? Math.max(...waiting.map(waitMin)) : 0),
@@ -88,14 +111,20 @@ export async function liveView(actor: Actor, branchId?: string) {
       agentsOnBreak: byStatus("ON_BREAK"),
       agentsOffline: byStatus("OFFLINE") + byStatus("AWAY"),
       servedToday: done.length,
-      noShowToday: open.filter((t) => t.status === "NO_SHOW").length,
+      noShowToday: todays.filter((t) => t.status === "NO_SHOW").length,
       avgWaitTodayMin: round1(waitsToday.length ? waitsToday.reduce((a, b) => a + b, 0) / waitsToday.length : 0),
       slaTodayPct: calledToday.length ? round1((within / calledToday.length) * 100) : 0,
-      visitorsToday: open.length,
+      visitorsToday: todays.length,
     },
     desks: deskRows.map((d) => {
       const agent = profiles.find((p) => p.currentDeskId === d.id && p.status !== "OFFLINE");
-      const t = agent ? activeByAgent.get(agent.userId) : undefined;
+      const mine = agent ? (activeByAgent.get(agent.userId) ?? []) : [];
+      const list = mine.map((t) => ({
+        displayNumber: t.displayNumber,
+        status: t.status,
+        reasonId: t.reasonId,
+        minutes: round1((now - (t.startedAt ?? t.calledAt ?? t.arrivedAt).getTime()) / MIN),
+      }));
       return {
         id: d.id,
         number: d.number,
@@ -109,14 +138,9 @@ export async function liveView(actor: Actor, branchId?: string) {
               statusSinceMin: round1((now - agent.statusChangedAt.getTime()) / MIN),
             }
           : null,
-        ticket: t
-          ? {
-              displayNumber: t.displayNumber,
-              status: t.status,
-              reasonId: t.reasonId,
-              minutes: round1((now - (t.startedAt ?? t.calledAt ?? t.arrivedAt).getTime()) / MIN),
-            }
-          : null,
+        ticket: list[0] ?? null,
+        /** Every visitor the agent has at the moment (several when multiple visitors are allowed). */
+        tickets: list,
       };
     }),
     reasons: reasonRows

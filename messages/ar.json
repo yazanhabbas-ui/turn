@@ -402,7 +402,9 @@
     "activate": "تفعيل",
     "done": "تم",
     "filterRole": "أي دور",
-    "filterStatus": "أي حالة"
+    "filterStatus": "أي حالة",
+    "maxConcurrentHint": "اتركه فارغاً لاستخدام إعداد المؤسسة. يعمل فقط إذا فُعّلت خدمة عدة زوار معاً (الإعدادات ← الموظفون).",
+    "organizationDefault": "إعداد المؤسسة"
   },
   "invites": {
     "title": "الدعوات",
@@ -560,7 +562,9 @@
       "breaks": "أنواع الاستراحات",
       "reception": "الاستقبال",
       "reports": "التقارير",
-      "alerts": "التنبيهات"
+      "alerts": "التنبيهات",
+      "agents": "الموظفون",
+      "wallboard": "لوحة المتابعة"
     },
     "companyName": "اسم المنشأة",
     "logoUrl": "رابط الشعار",
@@ -649,7 +653,25 @@
     "noShowWindowMinutesHint": "الفترة المستخدمة لعدّ حالات عدم الحضور.",
     "notifyEmails": "مستلمو البريد",
     "notifyEmailsHint": "عنوان واحد في كل سطر (حتى 20). يصل بريد للمشرفين أيضاً؛ وتظهر التنبيهات داخل النظام دائماً.",
-    "notifyEmailsInvalid": "تحقق من عناوين البريد (عنوان في كل سطر، حتى 20)."
+    "notifyEmailsInvalid": "تحقق من عناوين البريد (عنوان في كل سطر، حتى 20).",
+    "agentsIntro": "تحكّم في عدد الزوار الذين يخدمهم الموظف في الوقت نفسه.",
+    "multipleVisitors": "السماح للموظف بخدمة عدة زوار معاً",
+    "multipleVisitorsHint": "عند الإيقاف يخدم كل موظف زائراً واحداً فقط. عند التفعيل يستطيع استدعاء زائر آخر قبل إنهاء الأول ويتنقّل بينهم في شاشته.",
+    "visitorsPerAgent": "عدد الزوار لكل موظف (الافتراضي)",
+    "visitorsPerAgentHint": "يُطبَّق على الموظفين الذين لم يُحدَّد لهم رقم خاص في ملفهم (المستخدمون ← ملف الموظف).",
+    "wallboardIntro": "شكل لوحة المتابعة المباشرة. الشعار والألوان والخط تؤخذ من إعدادات الهوية.",
+    "wallboardTheme": "المظهر",
+    "wallboardThemeDark": "داكن",
+    "wallboardThemeLight": "فاتح",
+    "wallboardThemeBrand": "داكن بلون الهوية",
+    "wallboardTextScale": "حجم النص (٪)",
+    "wallboardTextScaleHint": "كبّر النص للشاشات البعيدة (100 = عادي).",
+    "wallboardTitle": "عنوان اللوحة (اختياري)",
+    "wallboardShowLogo": "إظهار الشعار",
+    "wallboardShowCompanyName": "إظهار اسم الشركة",
+    "wallboardShowBranch": "إظهار اسم الفرع",
+    "wallboardShowClock": "إظهار الساعة والتاريخ",
+    "wallboardBrandHint": "لتغيير الشعار واللون الأساسي والخط اذهب إلى تبويب الهوية."
   },
   "audit": {
     "title": "سجل التدقيق",
@@ -987,7 +1009,11 @@
     "waitedFor": "مدة الانتظار",
     "notAgentTitle": "حسابك غير مهيأ لخدمة الزوار",
     "notAgentBody": "يتيح دورك مساحة الموظف، لكن لا يوجد لحسابك ملف موظف بعد. من لوحة الإدارة ← المستخدمون، افتح مستخدمك وفعّل «يخدم الزوار» لاختيار الفرع والمكتب والسعة.",
-    "notAgentAction": "فتح المستخدمين"
+    "notAgentAction": "فتح المستخدمين",
+    "callAnother": "استدعاء زائر آخر",
+    "visitorsNow": "{count} من {max} زوار",
+    "tabCalled": "تم الاستدعاء",
+    "tabServing": "قيد الخدمة"
   },
   "visitorStatus": {
     "title": "دورك",

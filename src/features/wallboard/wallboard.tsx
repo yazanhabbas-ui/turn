@@ -15,7 +15,17 @@ import { useLiveQuery } from "@/features/queue/use-queue";
 type L = Record<string, string>;
 type Live = {
   now: string;
-  branch: { id: string; name: L };
+  branch: { id: string; name: L; timezone: string };
+  branding: { companyName: L; logoUrl: string | null; primaryColor: string; accentColor: string };
+  wallboard: {
+    theme: "dark" | "light" | "brand";
+    title: L;
+    showLogo: boolean;
+    showCompanyName: boolean;
+    showBranch: boolean;
+    showClock: boolean;
+    textScale: number;
+  };
   tiles: {
     waiting: number;
     longestWaitMin: number;
@@ -39,6 +49,7 @@ type Live = {
     zone: string | null;
     agent: { id: string; name: L; status: string; statusSinceMin: number } | null;
     ticket: { displayNumber: string; status: string; reasonId: string; minutes: number } | null;
+    tickets: { displayNumber: string; status: string; reasonId: string; minutes: number }[];
   }[];
   reasons: {
     id: string;
@@ -73,6 +84,20 @@ const THEME = {
     warnBox: "border-amber-500/60 bg-amber-950/40",
     empty: "border-slate-700 text-slate-500",
   },
+  // Dark tinted with the primary brand colour (CSS variable --wb-primary set on the root).
+  brand: {
+    root: "text-slate-100",
+    card: "border-[color-mix(in_srgb,var(--wb-primary)_40%,#1e293b)] bg-[color-mix(in_srgb,var(--wb-primary)_16%,#0a0f1c)]",
+    divider: "border-[color-mix(in_srgb,var(--wb-primary)_30%,#1e293b)]",
+    muted: "text-slate-300",
+    track: "bg-[color-mix(in_srgb,var(--wb-primary)_25%,#0a0f1c)]",
+    ok: "text-emerald-300",
+    warn: "text-amber-300",
+    bad: "text-red-300",
+    badBox: "border-red-500/60 bg-red-950/60",
+    warnBox: "border-amber-500/60 bg-amber-950/50",
+    empty: "border-[color-mix(in_srgb,var(--wb-primary)_40%,#334155)] text-slate-400",
+  },
   light: {
     root: "bg-slate-100 text-slate-900",
     card: "bg-white border-slate-200",
@@ -88,6 +113,21 @@ const THEME = {
   },
 };
 type Theme = typeof THEME.dark;
+const ACCENT = { borderColor: "var(--wb-primary)" } as const;
+
+function Clock({ timezone, locale, tick, muted }: { timezone: string; locale: string; tick: number; muted: string }) {
+  const at = new Date(tick);
+  const time = new Intl.DateTimeFormat(locale, { timeZone: timezone, hour: "numeric", minute: "2-digit" }).format(at);
+  const date = new Intl.DateTimeFormat(locale, { timeZone: timezone, weekday: "long", day: "numeric", month: "long" }).format(at);
+  return (
+    <div className="text-end leading-tight">
+      <div className="tabular text-xl font-bold 2xl:text-4xl" dir="ltr">
+        {time}
+      </div>
+      <div className={cn("text-xs 2xl:text-lg", muted)}>{date}</div>
+    </div>
+  );
+}
 type Level = "ok" | "warn" | "bad";
 const level = (value: number, limit: number): Level => (value >= limit ? "bad" : value >= limit * 0.8 ? "warn" : "ok");
 const STATUS_DOT: Record<string, string> = {
@@ -124,29 +164,22 @@ export function Wallboard({ canAck }: { canAck: boolean }) {
   const locale = useLocale();
   const format = useFormatter();
   const rootRef = useRef<HTMLDivElement>(null);
-  const [dark, setDark] = useState(true);
+  // A person at the screen can flip dark/light for themselves; otherwise the organization's wallboard theme applies.
+  const [pref, setPref] = useState<"dark" | "light" | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [branchId, setBranchId] = useState<string | null>(null);
   const [flash, setFlash] = useState(false);
   const [tick, setTick] = useState(() => Date.now());
-  const th = dark ? THEME.dark : THEME.light;
   const name = useCallback((v: L | null | undefined) => pickText(v, locale, ""), [locale]);
 
   useEffect(() => {
     try {
-      if (localStorage.getItem("wallboard-theme") === "light") setDark(false);
+      const v = localStorage.getItem("wallboard-theme");
+      if (v === "light" || v === "dark") setPref(v);
     } catch {
       /* storage unavailable */
     }
   }, []);
-  const toggleTheme = () => {
-    try {
-      localStorage.setItem("wallboard-theme", dark ? "light" : "dark");
-    } catch {
-      /* storage unavailable */
-    }
-    setDark(!dark);
-  };
 
   const today = new Date().toISOString().slice(0, 10);
   const branches = useQuery<Meta>({
@@ -158,6 +191,22 @@ export function Wallboard({ canAck }: { canAck: boolean }) {
 
   const live = useLiveQuery<Live>(["wallboard", branchId], branchId ? `${LIVE}?branchId=${branchId}` : LIVE, branchId);
   const data = live.data;
+  const configured = data?.wallboard.theme ?? "dark";
+  const theme: keyof typeof THEME =
+    pref === "light" ? "light" : pref === "dark" ? (configured === "brand" ? "brand" : "dark") : configured;
+  const dark = theme !== "light";
+  const th = THEME[theme];
+  const wb = data?.wallboard;
+  const brand = data?.branding;
+  const toggleTheme = () => {
+    const next = dark ? "light" : "dark";
+    try {
+      localStorage.setItem("wallboard-theme", next);
+    } catch {
+      /* storage unavailable */
+    }
+    setPref(next);
+  };
   useEffect(() => {
     if (!branchId && data) setBranchId(data.branch.id);
   }, [branchId, data]);
@@ -244,12 +293,34 @@ export function Wallboard({ canAck }: { canAck: boolean }) {
       className={cn(
         "min-h-[calc(100dvh-4rem)] overflow-auto rounded-xl p-3 transition-shadow md:p-5 2xl:p-8",
         th.root,
+        theme === "light" ? "" : "bg-slate-950",
         fullscreen && "min-h-dvh rounded-none",
         flash && "ring-4 ring-red-500 ring-inset",
       )}
+      style={
+        {
+          "--wb-primary": brand?.primaryColor ?? "#0f766e",
+          "--wb-accent": brand?.accentColor ?? "#b45309",
+          zoom: (wb?.textScale ?? 100) / 100,
+          ...(theme === "brand" ? { backgroundColor: "color-mix(in srgb, var(--wb-primary) 22%, #04060c)" } : {}),
+        } as React.CSSProperties
+      }
     >
       <header className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-xl font-bold md:text-2xl 2xl:text-4xl">{t("title")}</h1>
+        {wb?.showLogo !== false && brand?.logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element -- the organization's own logo, size unknown
+          <img
+            src={brand.logoUrl}
+            alt=""
+            className="h-10 max-w-[14rem] rounded-lg bg-white/95 object-contain px-2 py-1 md:h-14 2xl:h-20"
+          />
+        )}
+        <div className="min-w-0">
+          {wb?.showCompanyName !== false && brand && (
+            <div className={cn("truncate text-sm 2xl:text-xl", th.muted)}>{name(brand.companyName)}</div>
+          )}
+          <h1 className="text-xl font-bold md:text-2xl 2xl:text-4xl">{name(wb?.title) || t("title")}</h1>
+        </div>
         {branchList.length > 1 ? (
           <select
             aria-label={t("branch")}
@@ -264,9 +335,13 @@ export function Wallboard({ canAck }: { canAck: boolean }) {
             ))}
           </select>
         ) : (
-          data && <span className={cn("text-lg 2xl:text-2xl", th.muted)}>{name(data.branch.name)}</span>
+          data &&
+          wb?.showBranch !== false && <span className={cn("text-lg 2xl:text-2xl", th.muted)}>{name(data.branch.name)}</span>
         )}
         <div className="ms-auto flex items-center gap-2">
+          {data && wb?.showClock !== false && (
+            <Clock timezone={data.branch.timezone} locale={locale} tick={tick} muted={th.muted} />
+          )}
           <span className={cn("tabular text-sm 2xl:text-lg", th.muted)}>{t("updatedAgo", { seconds: secondsAgo })}</span>
           <ConnectionPill state={live.connection} />
           <Button
@@ -302,7 +377,9 @@ export function Wallboard({ canAck }: { canAck: boolean }) {
           <Tiles data={data} th={th} />
           <div className="grid gap-4 xl:grid-cols-3">
             <section className={cn("rounded-xl border p-4 xl:col-span-2", th.card)}>
-              <h2 className="mb-3 text-lg font-semibold 2xl:text-2xl">{t("desks")}</h2>
+              <h2 className="mb-3 border-s-4 ps-2 text-lg font-semibold 2xl:text-2xl" style={ACCENT}>
+                {t("desks")}
+              </h2>
               {data.desks.length === 0 ? (
                 <p className={th.muted}>{t("noDesks")}</p>
               ) : (
@@ -359,7 +436,9 @@ export function Wallboard({ canAck }: { canAck: boolean }) {
                 )}
               </section>
               <section className={cn("rounded-xl border p-4", th.card)}>
-                <h2 className="mb-3 text-lg font-semibold 2xl:text-2xl">{t("byReason")}</h2>
+                <h2 className="mb-3 border-s-4 ps-2 text-lg font-semibold 2xl:text-2xl" style={ACCENT}>
+                  {t("byReason")}
+                </h2>
                 {waitingReasons.length === 0 ? (
                   <p className={th.muted}>{t("nobodyWaiting")}</p>
                 ) : (
@@ -389,7 +468,9 @@ export function Wallboard({ canAck }: { canAck: boolean }) {
                 )}
               </section>
               <section className={cn("rounded-xl border p-4", th.card)}>
-                <h2 className="mb-3 text-lg font-semibold 2xl:text-2xl">{t("longWaits")}</h2>
+                <h2 className="mb-3 border-s-4 ps-2 text-lg font-semibold 2xl:text-2xl" style={ACCENT}>
+                  {t("longWaits")}
+                </h2>
                 {data.longWaits.length === 0 ? (
                   <p className={th.muted}>{t("noLongWaits")}</p>
                 ) : (
@@ -432,7 +513,10 @@ function Tile({
   th: Theme;
 }) {
   return (
-    <div className={cn("rounded-xl border p-3 2xl:p-5", tone === "bad" ? th.badBox : tone === "warn" ? th.warnBox : th.card)}>
+    <div
+      className={cn("rounded-xl border p-3 2xl:p-5", tone === "bad" ? th.badBox : tone === "warn" ? th.warnBox : th.card)}
+      style={!tone || tone === "ok" ? { borderTopWidth: 3, borderTopColor: "var(--wb-primary)" } : undefined}
+    >
       <div className={cn("text-xs font-medium 2xl:text-lg", th.muted)}>{label}</div>
       <div className={cn("tabular mt-1 text-3xl leading-none font-bold 2xl:text-6xl", tone && tone !== "ok" && th[tone])}>
         {value}
@@ -496,9 +580,13 @@ function DeskCard({
   const t = useTranslations("wallboard");
   const ts = useTranslations("agentStatus");
   const tt = useTranslations("ticketStatus");
-  const { agent, ticket } = desk;
-  const sla = ticket ? reasonById.get(ticket.reasonId)?.slaMinutes : undefined;
-  const tone: Level = ticket && sla ? level(ticket.minutes, sla) : "ok";
+  const { agent } = desk;
+  const order: Level[] = ["ok", "warn", "bad"];
+  const tone: Level = desk.tickets.reduce<Level>((worst, tk) => {
+    const limit = reasonById.get(tk.reasonId)?.slaMinutes;
+    const l = limit ? level(tk.minutes, limit) : "ok";
+    return order.indexOf(l) > order.indexOf(worst) ? l : worst;
+  }, "ok");
   if (!agent) {
     return (
       <div className={cn("flex min-h-28 items-center justify-between rounded-xl border-2 border-dashed p-4", th.empty)}>
@@ -520,21 +608,27 @@ function DeskCard({
         </div>
         <span className="tabular text-3xl font-bold 2xl:text-5xl">{desk.number}</span>
       </div>
-      <div className={cn("mt-3 border-t pt-3", th.divider)}>
-        {ticket ? (
-          <div className="flex items-baseline justify-between gap-2">
-            <div>
-              <span className="tabular text-2xl font-bold 2xl:text-4xl" dir="ltr">
-                {ticket.displayNumber}
-              </span>
-              <span className={cn("ms-2 text-xs 2xl:text-lg", th.muted)}>
-                {tt.has(ticket.status) ? tt(ticket.status) : ticket.status}
-              </span>
-            </div>
-            <span className={cn("tabular text-lg font-semibold 2xl:text-3xl", tone !== "ok" && th[tone])}>
-              {t("minutes", { min: Math.round(ticket.minutes) })}
-            </span>
-          </div>
+      <div className={cn("mt-3 space-y-2 border-t pt-3", th.divider)}>
+        {desk.tickets.length ? (
+          desk.tickets.map((tk) => {
+            const tkSla = reasonById.get(tk.reasonId)?.slaMinutes;
+            const tkTone: Level = tkSla ? level(tk.minutes, tkSla) : "ok";
+            return (
+              <div key={tk.displayNumber} className="flex items-baseline justify-between gap-2">
+                <div>
+                  <span className="tabular text-2xl font-bold 2xl:text-4xl" dir="ltr">
+                    {tk.displayNumber}
+                  </span>
+                  <span className={cn("ms-2 text-xs 2xl:text-lg", th.muted)}>
+                    {tt.has(tk.status) ? tt(tk.status) : tk.status}
+                  </span>
+                </div>
+                <span className={cn("tabular text-lg font-semibold 2xl:text-3xl", tkTone !== "ok" && th[tkTone])}>
+                  {t("minutes", { min: Math.round(tk.minutes) })}
+                </span>
+              </div>
+            );
+          })
         ) : (
           <span className={cn("text-sm 2xl:text-xl", th.muted)}>{t("noTicket")}</span>
         )}

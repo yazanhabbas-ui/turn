@@ -29,7 +29,7 @@ self.addEventListener("fetch", (event) => {
   if (
     url.pathname.startsWith("/_next/static/") ||
     url.pathname.startsWith("/icons/") ||
-    /\.(woff2?|png|svg|mp3|wav)$/.test(url.pathname)
+    /\.(woff2?|ttf|png|svg|mp3|wav)$/.test(url.pathname)
   ) {
     event.respondWith(
       caches.open(STATIC).then(async (cache) => {

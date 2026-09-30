@@ -64,7 +64,7 @@ export async function displayState(display: DisplayRow) {
     .where(
       and(
         eq(tickets.branchId, display.branchId),
-        eq(tickets.serviceDay, bctx.serviceDay),
+        or(eq(tickets.serviceDay, bctx.serviceDay), inArray(tickets.status, ["CALLED", "SERVING"])),
         sql`${tickets.calledAt} is not null`,
         sql`${tickets.deskId} is not null`,
       ),
@@ -72,16 +72,21 @@ export async function displayState(display: DisplayRow) {
     .orderBy(desc(tickets.calledAt))
     .limit(RECENT_CALLS + 10);
 
-  const byDesk = new Map(active.filter((t) => t.deskId).map((t) => [t.deskId!, t]));
+  // An agent may have several visitors at once: every ticket at a desk is shown on it.
+  const byDesk = new Map<string, typeof active>();
+  for (const t of active) if (t.deskId) byDesk.set(t.deskId, [...(byDesk.get(t.deskId) ?? []), t]);
   const deskList = shownDesks.map((d) => {
-    const t = byDesk.get(d.id);
+    const here = byDesk.get(d.id) ?? [];
+    const t = here[0];
     return {
       id: d.id,
       number: d.number,
       name: d.name,
       zone: d.zone,
-      status: t ? (t.status === "CALLED" ? "called" : "serving") : "free",
+      status: here.length ? (here.some((x) => x.status === "CALLED") ? "called" : "serving") : "free",
       displayNumber: t?.displayNumber ?? null,
+      /** Further visitors at the same desk (agents that serve several at once). */
+      otherNumbers: here.slice(1).map((x) => x.displayNumber),
       ticketId: t?.id ?? null,
     };
   });

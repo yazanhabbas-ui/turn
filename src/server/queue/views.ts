@@ -320,7 +320,7 @@ export async function agentWorkspace(actor: Actor) {
         breakTypeId: profile.breakTypeId,
         currentDeskId: profile.currentDeskId,
         defaultDeskId: profile.defaultDeskId,
-        maxConcurrent: profile.maxConcurrent,
+        maxConcurrent: self?.maxConcurrent ?? 1,
         servedToday: today?.served ?? 0,
       },
       branch: { id: bctx.branch.id, name: bctx.branch.name, timezone: bctx.branch.timezone },

@@ -25,7 +25,8 @@ export const agentProfiles = pgTable(
     currentDeskId: uuid("current_desk_id").references(() => desks.id),
     defaultDeskId: uuid("default_desk_id").references(() => desks.id),
     /** Maximum tickets in CALLED/SERVING (and pre-assigned WAITING for push mode) at once. */
-    maxConcurrent: integer("max_concurrent").notNull().default(1),
+    /** Visitors this agent can have at once; null = the organization default (Settings → Agents). */
+    maxConcurrent: integer("max_concurrent"),
     /** Relative weight for the weighted auto-assign strategy. */
     weight: integer("weight").notNull().default(1),
     /** Last time the agent finished a ticket or became available; used by "longest idle". */

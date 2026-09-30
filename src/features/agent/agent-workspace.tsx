@@ -2,7 +2,7 @@
 
 import { ArrowLeftRight, Bell, CheckCircle2, Coffee, PauseCircle, Phone, Play, UserRoundX } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ErrorState, LoadingRows } from "@/components/admin/form";
 import { useErrorMessage } from "@/components/admin/use-api";
@@ -49,6 +49,9 @@ export function AgentWorkspaceView() {
   const [completeFor, setCompleteFor] = useState<Ticket | null>(null);
   const [transferFor, setTransferFor] = useState<Ticket | null>(null);
   const [breakPicker, setBreakPicker] = useState(false);
+  // With several visitors at once, the agent works on one at a time; this is the one in focus.
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const knownActive = useRef<string[]>([]);
 
   const refresh = useCallback(() => void ws.refetch(), [ws]);
 
@@ -112,7 +115,20 @@ export function AgentWorkspaceView() {
   }, [ws.data, refresh, message, t]);
 
   const data = ws.data;
-  const current = data?.active[0] ?? null;
+  const active = data?.active ?? [];
+  const current = active.find((x) => x.id === focusId) ?? active[0] ?? null;
+  const maxVisitors = data?.profile.maxConcurrent ?? 1;
+  const canCallAnother = !!current && active.length < maxVisitors;
+
+  // A newly called visitor takes focus; when the focused one is finished, the first remaining takes over.
+  const activeKey = active.map((x) => x.id).join(",");
+  useEffect(() => {
+    const ids = activeKey ? activeKey.split(",") : [];
+    const fresh = ids.filter((id) => !knownActive.current.includes(id));
+    knownActive.current = ids;
+    if (fresh.length) setFocusId(fresh[fresh.length - 1]);
+    else if (focusId && !ids.includes(focusId)) setFocusId(ids[0] ?? null);
+  }, [activeKey, focusId]);
 
   const primary = useCallback(() => {
     if (busy || !data) return;
@@ -199,6 +215,35 @@ export function AgentWorkspaceView() {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
         {/* Current visitor */}
         <section className="bg-card flex min-h-[26rem] flex-col rounded-2xl border p-5 shadow-sm" aria-label={t("current")}>
+          {maxVisitors > 1 && (
+            <div
+              className="mb-4 flex flex-wrap items-center gap-2"
+              role="tablist"
+              aria-label={t("visitorsNow", { count: active.length, max: maxVisitors })}
+            >
+              {active.map((x) => (
+                <button
+                  key={x.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={current?.id === x.id}
+                  onClick={() => setFocusId(x.id)}
+                  className={cn(
+                    "tabular flex h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold",
+                    current?.id === x.id ? "border-brand bg-brand/10 text-brand" : "hover:bg-muted",
+                  )}
+                >
+                  <span dir="ltr">{x.displayNumber}</span>
+                  <span className="text-muted-foreground text-xs font-normal">
+                    {t(x.status === "CALLED" ? "tabCalled" : "tabServing")}
+                  </span>
+                </button>
+              ))}
+              <span className="text-muted-foreground ms-auto text-xs">
+                {t("visitorsNow", { count: active.length, max: maxVisitors })}
+              </span>
+            </div>
+          )}
           {current ? (
             <CurrentTicket ticket={current} reason={reasonOf(current.reasonId)} />
           ) : (
@@ -236,6 +281,17 @@ export function AgentWorkspaceView() {
                 </>
               )}
             </Button>
+            {canCallAnother && (
+              <Button variant="outline" className="h-12 w-full text-base" disabled={busy} onClick={() => void callNext()}>
+                <Bell aria-hidden />
+                {busy ? t("calling") : t("callAnother")}
+              </Button>
+            )}
+            {hint && current && (
+              <p role="status" className="text-muted-foreground text-center text-sm">
+                {hint}
+              </p>
+            )}
             {current && (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {current.status === "CALLED" && (

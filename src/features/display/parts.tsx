@@ -72,7 +72,11 @@ export function Header({ state, lang, t, connection, soundOn, clockOffset }: Lay
     <header className="flex items-center gap-6 px-[3vw] py-[1.6vh]">
       {branding.logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- a local logo of unknown size on a kiosk
-        <img src={branding.logoUrl} alt="" className="h-[7vh] max-w-[16vw] object-contain" />
+        <img
+          src={branding.logoUrl}
+          alt=""
+          className="h-[7vh] max-w-[16vw] rounded-[1vh] bg-white/95 object-contain px-[0.8vh] py-[0.5vh]"
+        />
       ) : (
         <span className="bg-brand grid size-[7vh] place-items-center rounded-2xl text-white">
           <Building2 className="size-[4vh]" aria-hidden />
@@ -199,6 +203,11 @@ export function DeskList({ state, lang, t, call, flashing }: Pick<LayoutProps, "
                 dir="ltr"
               >
                 {num(d.displayNumber, state)}
+                {d.otherNumbers.length > 0 && (
+                  <span className="ms-3 text-[3.4vh] font-bold text-neutral-400">
+                    {d.otherNumbers.map((n) => num(n, state)).join(" · ")}
+                  </span>
+                )}
               </span>
             ) : (
               <span className="text-[2.4vh] text-neutral-600">{t("free")}</span>

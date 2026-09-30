@@ -29,6 +29,13 @@
       "when": 1790703278656,
       "tag": "0003_report_schedules_options",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790759115142,
+      "tag": "0004_agent_max_concurrent_optional",
+      "breakpoints": true
     }
   ]
 }

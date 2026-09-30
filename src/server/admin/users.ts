@@ -30,7 +30,7 @@ export const grantInput = z.object({ roleId: uuid, branchId: uuid.nullable() });
 export const agentInput = z.object({
   branchId: uuid,
   defaultDeskId: uuid.nullable().optional(),
-  maxConcurrent: z.number().int().min(1).max(20).default(1),
+  maxConcurrent: z.number().int().min(1).max(20).nullable().default(null),
   weight: z.number().int().min(1).max(100).default(1),
 });
 

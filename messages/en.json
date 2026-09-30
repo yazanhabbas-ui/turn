@@ -402,7 +402,9 @@
     "activate": "Activate",
     "done": "Done",
     "filterRole": "Any role",
-    "filterStatus": "Any status"
+    "filterStatus": "Any status",
+    "maxConcurrentHint": "Leave empty to use the organization setting. Only applies when serving several visitors at once is enabled (Settings → Agents).",
+    "organizationDefault": "Organization setting"
   },
   "invites": {
     "title": "Invitations",
@@ -560,7 +562,9 @@
       "breaks": "Break types",
       "reception": "Reception",
       "reports": "Reports",
-      "alerts": "Alerts"
+      "alerts": "Alerts",
+      "agents": "Agents",
+      "wallboard": "Wallboard"
     },
     "companyName": "Company name",
     "logoUrl": "Logo URL",
@@ -649,7 +653,25 @@
     "noShowWindowMinutesHint": "The period used to count no-shows.",
     "notifyEmails": "Email recipients",
     "notifyEmailsHint": "One address per line (up to 20). Supervisors also get an email; in-app alerts always appear.",
-    "notifyEmailsInvalid": "Check the email addresses (one per line, up to 20)."
+    "notifyEmailsInvalid": "Check the email addresses (one per line, up to 20).",
+    "agentsIntro": "Control how many visitors an agent can serve at the same time.",
+    "multipleVisitors": "Allow an agent to serve several visitors at once",
+    "multipleVisitorsHint": "Off: every agent serves one visitor at a time. On: an agent can call another visitor before finishing the first and switches between them on their screen.",
+    "visitorsPerAgent": "Visitors per agent (default)",
+    "visitorsPerAgentHint": "Used for agents without their own number in their profile (Users → agent profile).",
+    "wallboardIntro": "How the live operations screen looks. The logo, colours and font come from Branding.",
+    "wallboardTheme": "Look",
+    "wallboardThemeDark": "Dark",
+    "wallboardThemeLight": "Light",
+    "wallboardThemeBrand": "Dark, tinted with the brand colour",
+    "wallboardTextScale": "Text size (%)",
+    "wallboardTextScaleHint": "Enlarge text for screens viewed from far away (100 = normal).",
+    "wallboardTitle": "Wallboard title (optional)",
+    "wallboardShowLogo": "Show the logo",
+    "wallboardShowCompanyName": "Show the company name",
+    "wallboardShowBranch": "Show the branch name",
+    "wallboardShowClock": "Show the clock and date",
+    "wallboardBrandHint": "To change the logo, main colour or font, use the Branding tab."
   },
   "audit": {
     "title": "Audit log",
@@ -987,7 +1009,11 @@
     "waitedFor": "Waited",
     "notAgentTitle": "You are not set up to serve visitors",
     "notAgentBody": "Your role allows the agent workspace, but your account has no agent profile yet. In Admin → Users, open your user and tick “Serves visitors” to choose the branch, desk and capacity.",
-    "notAgentAction": "Open users"
+    "notAgentAction": "Open users",
+    "callAnother": "Call another visitor",
+    "visitorsNow": "{count} of {max} visitors",
+    "tabCalled": "Called",
+    "tabServing": "Serving"
   },
   "visitorStatus": {
     "title": "Your turn",

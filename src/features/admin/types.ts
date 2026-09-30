@@ -2,7 +2,7 @@
 export type L = Record<string, string>;
 
 export type Grant = { roleId: string; branchId: string | null };
-export type AgentProfile = { branchId: string; defaultDeskId?: string | null; maxConcurrent: number; weight: number };
+export type AgentProfile = { branchId: string; defaultDeskId?: string | null; maxConcurrent: number | null; weight: number };
 
 export type UserRow = {
   id: string;

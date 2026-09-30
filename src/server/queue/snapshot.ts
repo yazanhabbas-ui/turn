@@ -40,6 +40,7 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
   if (!branch) throw new Error(`branch ${branchId} not found`);
   const org = branch.organizationId;
   const ticketing = await getSetting(org, "ticketing", branchId, tx);
+  const work = await getSetting(org, "agentWork", branchId, tx);
   const day = serviceDay(now, branch.timezone, ticketing.dailyResetTime);
 
   const [ticketRows, profileRows, reasonRows, priorityRows, ruleRows, todayStats] = await Promise.all([
@@ -110,7 +111,8 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
   const agents: EngineAgent[] = profileRows.map((p) => ({
     id: p.userId,
     status: p.status,
-    maxConcurrent: p.maxConcurrent,
+    // One visitor at a time unless the organization allows several; then the agent's own limit or the default.
+    maxConcurrent: work.multipleVisitors ? (p.maxConcurrent ?? work.visitorsPerAgent) : 1,
     weight: p.weight,
     idleSince: p.lastIdleSince?.getTime() ?? p.statusChangedAt.getTime(),
     lastAssignedAt: stats.get(p.userId)?.last_at ? new Date(stats.get(p.userId)!.last_at!).getTime() : null,

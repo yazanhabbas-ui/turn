@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRouter } from "@/i18n/navigation";
-import type { SettingKey, SettingValue } from "@/server/settings/registry";
+import { BRAND_FONTS, type SettingKey, type SettingValue } from "@/server/settings/registry";
 import type { BreakType, L, Priority, RoleRow } from "../types";
 import { LOOKUPS, useLookups, useText } from "../use-lookups";
 
@@ -99,6 +99,8 @@ export function SettingsPage() {
     "regional",
     "ticketing",
     "reception",
+    "agents",
+    "wallboard",
     "reports",
     "alerts",
     "security",
@@ -130,6 +132,12 @@ export function SettingsPage() {
         </TabsContent>
         <TabsContent value="reception" className="mt-4">
           <ReceptionForm initial={s.reception} />
+        </TabsContent>
+        <TabsContent value="agents" className="mt-4">
+          <AgentWorkForm initial={s.agentWork} />
+        </TabsContent>
+        <TabsContent value="wallboard" className="mt-4">
+          <WallboardForm initial={s.wallboard} />
         </TabsContent>
         <TabsContent value="reports" className="mt-4">
           <ReportsForm initial={s.reports} />
@@ -191,7 +199,7 @@ function BrandingForm({ initial }: { initial: SettingValue<"branding"> }) {
             </Field>
             <Field label={t("font")} htmlFor="br-font">
               <NativeSelect id="br-font" value={v.font} onChange={(e) => set({ font: e.target.value as typeof v.font })}>
-                {(["IBM Plex Sans Arabic", "Cairo", "Tajawal"] as const).map((f) => (
+                {BRAND_FONTS.map((f) => (
                   <option key={f} value={f} style={{ fontFamily: f }}>
                     {f}
                   </option>
@@ -567,6 +575,81 @@ function AlertsForm({ initial }: { initial: SettingValue<"alerts"> }) {
             />
           </div>
           <EmailsField value={v.notifyEmails} onChange={(notifyEmails) => set({ notifyEmails })} />
+        </>
+      )}
+    </SettingForm>
+  );
+}
+
+function AgentWorkForm({ initial }: { initial: SettingValue<"agentWork"> }) {
+  const t = useTranslations("settings");
+  return (
+    <SettingForm k="agentWork" initial={initial}>
+      {(v, set) => (
+        <>
+          <p className="text-muted-foreground text-sm">{t("agentsIntro")}</p>
+          <Check
+            label={t("multipleVisitors")}
+            hint={t("multipleVisitorsHint")}
+            checked={v.multipleVisitors}
+            onChange={(multipleVisitors) => set({ multipleVisitors })}
+          />
+          <Field label={t("visitorsPerAgent")} htmlFor="aw-per" hint={t("visitorsPerAgentHint")} className="max-w-48">
+            <Input
+              id="aw-per"
+              type="number"
+              min={1}
+              max={20}
+              disabled={!v.multipleVisitors}
+              value={v.visitorsPerAgent}
+              onChange={(e) => set({ visitorsPerAgent: Number(e.target.value) })}
+            />
+          </Field>
+        </>
+      )}
+    </SettingForm>
+  );
+}
+
+function WallboardForm({ initial }: { initial: SettingValue<"wallboard"> }) {
+  const t = useTranslations("settings");
+  return (
+    <SettingForm k="wallboard" initial={initial}>
+      {(v, set) => (
+        <>
+          <p className="text-muted-foreground text-sm">{t("wallboardIntro")}</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={t("wallboardTheme")} htmlFor="wb-theme">
+              <NativeSelect id="wb-theme" value={v.theme} onChange={(e) => set({ theme: e.target.value as typeof v.theme })}>
+                <option value="dark">{t("wallboardThemeDark")}</option>
+                <option value="light">{t("wallboardThemeLight")}</option>
+                <option value="brand">{t("wallboardThemeBrand")}</option>
+              </NativeSelect>
+            </Field>
+            <Field label={t("wallboardTextScale")} htmlFor="wb-scale" hint={t("wallboardTextScaleHint")}>
+              <Input
+                id="wb-scale"
+                type="number"
+                min={80}
+                max={160}
+                step={5}
+                value={v.textScale}
+                onChange={(e) => set({ textScale: Number(e.target.value) })}
+              />
+            </Field>
+          </div>
+          <LocalizedInput id="wb-title" label={t("wallboardTitle")} value={v.title} onChange={(title) => set({ title })} />
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Check label={t("wallboardShowLogo")} checked={v.showLogo} onChange={(showLogo) => set({ showLogo })} />
+            <Check
+              label={t("wallboardShowCompanyName")}
+              checked={v.showCompanyName}
+              onChange={(showCompanyName) => set({ showCompanyName })}
+            />
+            <Check label={t("wallboardShowBranch")} checked={v.showBranch} onChange={(showBranch) => set({ showBranch })} />
+            <Check label={t("wallboardShowClock")} checked={v.showClock} onChange={(showClock) => set({ showClock })} />
+          </div>
+          <p className="text-muted-foreground text-sm">{t("wallboardBrandHint")}</p>
         </>
       )}
     </SettingForm>

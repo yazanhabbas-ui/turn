@@ -3,6 +3,9 @@ import { DEFAULT_PASSWORD_POLICY } from "@/domain/auth/password-policy";
 
 const localized = z.record(z.string(), z.string());
 
+/** Fonts the interface, tickets and screens can use. "FF Hekaya Light" is bundled in public/fonts (see globals.css). */
+export const BRAND_FONTS = ["IBM Plex Sans Arabic", "Cairo", "Tajawal", "FF Hekaya Light"] as const;
+
 /**
  * Every configurable setting: key → schema with defaults. Values live in the `settings` table
  * (organization-wide, optionally overridden per branch) and are edited from Admin → Settings.
@@ -14,7 +17,7 @@ export const SETTINGS = {
       logoUrl: z.string().nullable().default(null),
       primaryColor: z.string().default("#0f766e"),
       accentColor: z.string().default("#b45309"),
-      font: z.enum(["IBM Plex Sans Arabic", "Cairo", "Tajawal"]).default("IBM Plex Sans Arabic"),
+      font: z.enum(BRAND_FONTS).default("IBM Plex Sans Arabic"),
       welcomeText: localized.default({ ar: "نرحب بكم، تفضلوا بالانتظار", en: "Welcome, please have a seat" }),
       ticketFooter: localized.default({ ar: "شكراً لزيارتكم", en: "Thank you for your visit" }),
     })
@@ -74,6 +77,30 @@ export const SETTINGS = {
     .object({
       enabled: z.boolean().default(true),
       notifyTurnsAway: z.number().int().min(1).max(10).default(2),
+    })
+    .prefault({}),
+  /** The live operations screen (wallboard): look and content. Colours, logo and font come from Branding. */
+  wallboard: z
+    .object({
+      /** dark = classic; light; brand = dark tinted with the primary brand colour. */
+      theme: z.enum(["dark", "light", "brand"]).default("dark"),
+      /** Optional own title (empty = the standard title). */
+      title: localized.default({}),
+      showLogo: z.boolean().default(true),
+      showCompanyName: z.boolean().default(true),
+      showBranch: z.boolean().default(true),
+      showClock: z.boolean().default(true),
+      /** Text and tile size for big screens, in percent. */
+      textScale: z.number().int().min(80).max(160).default(100),
+    })
+    .prefault({}),
+  /** Whether an agent can have several visitors at the same time. */
+  agentWork: z
+    .object({
+      /** Off = every agent serves one visitor at a time. */
+      multipleVisitors: z.boolean().default(false),
+      /** Visitors at once for agents without their own limit (Admin → Users → agent profile). */
+      visitorsPerAgent: z.number().int().min(1).max(20).default(2),
     })
     .prefault({}),
   /** How fast the reception desk is: what happens when a reason is tapped and after a ticket is issued. */

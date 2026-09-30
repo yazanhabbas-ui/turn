@@ -250,6 +250,13 @@ Each entry records a choice, its reasons, and how to revisit it. Newest entries 
 - **Licence caveat:** the six Microsoft clips were generated with the unofficial Edge read-aloud service, which is fine for evaluation but is not a licensed production route. Before shipping to customers, regenerate them with an Azure Speech key (same voice names) or record your own clips using the same file names. The Piper voice's dataset licence is also unconfirmed (see D34).
 - Custom packs can still be added by hand under "Audio packs" in the same tab.
 
+## D36: Several visitors per agent, wallboard branding, logo and font
+
+- **Several visitors at once** is an organization setting (Admin → Settings → Agents), off by default. When off, every agent serves one visitor at a time. When on, an agent's limit is their own number (Users → agent profile; empty = the organization default, default 2). The distribution engine already counted an agent's called and serving tickets against a limit, so the rule is applied where agents are loaded (`snapshot.ts`); nothing else changes. The agent screen shows the visitors as tabs ("2 of 3 visitors"), a new call takes focus, a "Call another visitor" button appears while there is room, and Enter/actions work on the visitor in focus. Display screens list every ticket of a desk, and the wallboard shows all of an agent's visitors on the desk card. `agent_profiles.max_concurrent` became nullable for this (migration 0004; existing 1s became "organization default").
+- **Wallboard branding** (`wallboard` setting, Admin → Settings → Wallboard): theme dark, light or dark tinted with the brand colour, an optional own title, show/hide logo, company name, branch and clock, and a text size of 80-160% for far-away screens. The logo, primary/accent colours and font always come from Branding, so one change re-brands the whole product. The logo sits on a light plate on dark screens because most logos are drawn for a light background.
+- **Logo:** the supplied 15499 x 5947 px PNG (700 KB, ~370 MB decoded) was resized to 1200 px (`public/branding/yallago-logo.png`, 43 KB) and 400 px; huge images can crash a TV browser. The original stays in `assets/`.
+- **Font:** "FF Hekaya Light" is bundled (`public/fonts`, declared in globals.css) and selectable under Branding → Font. It covers Arabic letters and digits, Latin and punctuation, but it is a single Light weight (bold text is synthesized by the browser). Confirm your licence covers web embedding on customer sites; the readme in the font folder contains no licence text.
+
 ## Milestones
 
 1. **Foundation** (done): repo, Docker, schema, auth + 2FA, RBAC, i18n/RTL, seed, health, CI.

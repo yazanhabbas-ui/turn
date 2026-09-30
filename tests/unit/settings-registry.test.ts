@@ -18,6 +18,14 @@ describe("settings registry", () => {
     expect(parseSetting("reception", { afterIssue: "nope" }).afterIssue).toBe("print");
   });
 
+  it("agents serve one visitor by default; the wallboard defaults are safe", () => {
+    expect(defaultSetting("agentWork")).toMatchObject({ multipleVisitors: false, visitorsPerAgent: 2 });
+    expect(defaultSetting("wallboard")).toMatchObject({ theme: "dark", showLogo: true, textScale: 100 });
+    expect(parseSetting("wallboard", { textScale: 500 }).textScale).toBe(100);
+    expect(defaultSetting("branding").font).toBe("IBM Plex Sans Arabic");
+    expect(parseSetting("branding", { font: "FF Hekaya Light" }).font).toBe("FF Hekaya Light");
+  });
+
   it("keeps stored values and adds fields introduced later", () => {
     const s = parseSetting("branding", { primaryColor: "#123456" });
     expect(s.primaryColor).toBe("#123456");

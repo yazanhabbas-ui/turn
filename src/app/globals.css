@@ -2,6 +2,15 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Bundled brand font (Light only; bold text is synthesized by the browser). */
+@font-face {
+  font-family: "FF Hekaya Light";
+  src: url("/fonts/FF-Hekaya-Light.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
