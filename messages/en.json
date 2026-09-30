@@ -25,7 +25,9 @@
     "notFoundBody": "The page you are looking for does not exist or was moved.",
     "goHome": "Go to home",
     "forbidden": "Access denied",
-    "forbiddenBody": "Your role does not include access to this page. Ask an administrator if you need it."
+    "forbiddenBody": "Your role does not include access to this page. Ask an administrator if you need it.",
+    "errorBody": "Something went wrong while showing this page. Reloading usually fixes it, especially after the application was updated.",
+    "reload": "Reload page"
   },
   "auth": {
     "signIn": "Sign in",

@@ -4,7 +4,7 @@
  * - Pages: network-first, falling back to the last cached copy so a short outage shows the page shell.
  * - API, realtime and anything else: never cached; the server is the single source of truth.
  */
-const VERSION = "dor-v1";
+const VERSION = "dor-v2";
 const STATIC = `${VERSION}-static`;
 const PAGES = `${VERSION}-pages`;
 

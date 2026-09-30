@@ -169,7 +169,8 @@ export function Wallboard({ canAck }: { canAck: boolean }) {
   const [fullscreen, setFullscreen] = useState(false);
   const [branchId, setBranchId] = useState<string | null>(null);
   const [flash, setFlash] = useState(false);
-  const [tick, setTick] = useState(() => Date.now());
+  // 0 until mounted: the server render must not depend on the current time (it would differ from the browser).
+  const [tick, setTick] = useState(0);
   const name = useCallback((v: L | null | undefined) => pickText(v, locale, ""), [locale]);
 
   useEffect(() => {
@@ -213,6 +214,7 @@ export function Wallboard({ canAck }: { canAck: boolean }) {
 
   // One-second heartbeat for the "updated Ns ago" indicator and relative alert times.
   useEffect(() => {
+    setTick(Date.now());
     const i = setInterval(() => setTick(Date.now()), 1000);
     return () => clearInterval(i);
   }, []);
@@ -268,7 +270,7 @@ export function Wallboard({ canAck }: { canAck: boolean }) {
   });
 
   const reasonById = useMemo(() => new Map((data?.reasons ?? []).map((r) => [r.id, r])), [data]);
-  const secondsAgo = Math.max(0, Math.round((tick - live.dataUpdatedAt) / 1000));
+  const secondsAgo = tick && live.dataUpdatedAt ? Math.max(0, Math.round((tick - live.dataUpdatedAt) / 1000)) : 0;
   const branchList = branches.data?.meta?.branches ?? [];
   const waitingReasons = (data?.reasons ?? []).filter((r) => r.waiting > 0);
   const maxWaiting = Math.max(1, ...waitingReasons.map((r) => r.waiting));
