@@ -1,14 +1,16 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { announcements, branches, displays, messageTemplates, ttsAudioPacks } from "@/db/schema";
 import { DISPLAY_LAYOUTS, displayConfigSchema, parseDisplayConfig } from "@/domain/display/config";
 import { localizedText, uuid } from "@/domain/validation";
 import { audit } from "../audit";
+import { installBundledVoices } from "../display/bundled-voices";
 import { issuePairingCode } from "../display/device";
+import { getSetting, putSetting } from "../settings/service";
 import { AppError } from "../http/errors";
 import { io } from "../realtime";
-import { auditMeta, orgOf, requirePermission, type Actor } from "./actor";
+import { auditMeta, orgOf, requireOrgWide, requirePermission, type Actor } from "./actor";
 
 const ONLINE_WINDOW_MS = 60_000;
 
@@ -395,8 +397,50 @@ export async function saveAudioPack(actor: Actor, id: string | null, input: z.in
     entityId,
     after: { ...input, manifest: `${Object.keys(input.manifest).length} clips` },
   });
+  if (input.isActive) await deactivateOtherPacks(org, entityId!, input.locale);
   refreshScreens(org);
   return { id: entityId! };
+}
+
+/** A screen speaks with one pack per language, so activating a pack switches the others of that language off. */
+async function deactivateOtherPacks(org: string, keepId: string, locale: string) {
+  await db()
+    .update(ttsAudioPacks)
+    .set({ isActive: false })
+    .where(and(eq(ttsAudioPacks.organizationId, org), eq(ttsAudioPacks.locale, locale), ne(ttsAudioPacks.id, keepId)));
+}
+
+/** Makes a pack the voice of its language and switches announcements to pre-recorded clips. */
+export async function activateAudioPack(actor: Actor, id: string) {
+  requirePermission(actor, "templates.manage");
+  requireOrgWide(actor, "settings.manage");
+  const org = orgOf(actor);
+  const [p] = await db()
+    .select()
+    .from(ttsAudioPacks)
+    .where(and(eq(ttsAudioPacks.id, id), eq(ttsAudioPacks.organizationId, org)));
+  if (!p) throw new AppError("not_found");
+  await db().update(ttsAudioPacks).set({ isActive: true, updatedAt: new Date() }).where(eq(ttsAudioPacks.id, id));
+  await deactivateOtherPacks(org, id, p.locale);
+  const voice = await getSetting(org, "voice");
+  if (voice.provider !== "pack") await putSetting(org, "voice", { ...voice, provider: "pack" }, { userId: actor.auth.user.id });
+  await audit({
+    ...auditMeta(actor),
+    action: "audio_pack.activated",
+    entityType: "audio_pack",
+    entityId: id,
+    after: { name: p.name },
+  });
+  refreshScreens(org);
+  return { ok: true };
+}
+
+/** Adds the voices that ship with the project (public/audio/ar) to this organization. */
+export async function addBundledVoices(actor: Actor) {
+  requirePermission(actor, "templates.manage");
+  const result = await installBundledVoices(orgOf(actor));
+  await audit({ ...auditMeta(actor), action: "audio_pack.bundled_installed", entityType: "audio_pack", after: result });
+  return result;
 }
 
 export async function deleteAudioPack(actor: Actor, id: string) {

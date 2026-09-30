@@ -49,3 +49,4 @@ next-env.d.ts
 # bundled local database (npm run local)
 /.local
 /.next-prod/
+voice-samples/

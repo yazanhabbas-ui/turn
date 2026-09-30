@@ -5,6 +5,9 @@ import { auditLogs, branches, displays, desks, visitReasons } from "@/db/schema"
 import { zonedToUtc } from "@/domain/schedule/time";
 import type { Actor } from "@/server/admin/actor";
 import {
+  activateAudioPack,
+  addBundledVoices,
+  listAudioPacks,
   announcementInput,
   audioPackInput,
   createDisplay,
@@ -247,5 +250,29 @@ describe.runIf(available)("display screens (database)", () => {
         isActive: true,
       }).success,
     ).toBe(false);
+  });
+
+  it("bundled Arabic voices can be added and switched from the admin, one active at a time", async () => {
+    const screen = await pairedScreen();
+    const first = await addBundledVoices(admin);
+    expect(first.total).toBeGreaterThanOrEqual(6);
+    expect(first.added).toBe(first.total);
+    expect((await addBundledVoices(admin)).added).toBe(0); // idempotent
+
+    const packs = await listAudioPacks(admin);
+    expect(packs.length).toBe(first.total);
+    expect(packs.every((p) => !p.isActive && p.clips >= 60)).toBe(true);
+
+    await expectCode(activateAudioPack(reception, packs[0].id), "forbidden");
+    await activateAudioPack(admin, packs[0].id);
+    await activateAudioPack(admin, packs[1].id);
+    const after = await listAudioPacks(admin);
+    expect(after.filter((p) => p.isActive).map((p) => p.id)).toEqual([packs[1].id]);
+
+    // The screen now announces with that voice: provider switched to pre-recorded clips.
+    const state = await displayState(screen.display);
+    expect(state.voice.settings.provider).toBe("pack");
+    expect(state.voice.packs.ar["ar.digit.1"]).toBe(packs[1].manifest["ar.digit.1"]);
+    expect(state.voice.packs.ar["ar.letter.أ"]).toBeTruthy();
   });
 });

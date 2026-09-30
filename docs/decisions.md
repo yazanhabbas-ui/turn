@@ -244,6 +244,12 @@ Each entry records a choice, its reasons, and how to revisit it. Newest entries 
 - The pack speaks a ticket as "رقم" + letter + each digit + the desk phrase + the desk digits (for example A-012 at desk 1: "number, A, one, two, please go to desk, one"). Other phrase wording only applies to the browser voice.
 - **Licence:** the voice model's dataset licence is listed as "see URL" (github.com/AliMokhammad/arabicttstrain). Confirm it allows commercial redistribution before shipping this pack to customers, or record your own clips into the same file names.
 
+## D35: Choosing the Arabic voice in the admin panel
+
+- Seven Arabic voices ship as pre-recorded packs in `public/audio/ar/<id>/` (66 clips each, listed in `catalog.json`): Microsoft neural voices Hamed (Saudi), Hamdan (Emirati), Fahed (Kuwaiti), Rami (Lebanese), Ismael (Algerian), Jamal (Moroccan), and the offline Piper voice Kareem (Jordanian). Admin → Screens → Voice → "Arabic announcement voice" lists them with a preview button (it plays a sample ticket from the pack's own clips) and a "Use this voice" button. Choosing one activates its pack (one active pack per language), switches the provider to pre-recorded clips, and reaches every paired screen at once. "Browser voice" switches back to the screen device's own voice. "Add the bundled voices" (or `npm run voice:install-arabic`) registers them for an organization.
+- **Licence caveat:** the six Microsoft clips were generated with the unofficial Edge read-aloud service, which is fine for evaluation but is not a licensed production route. Before shipping to customers, regenerate them with an Azure Speech key (same voice names) or record your own clips using the same file names. The Piper voice's dataset licence is also unconfirmed (see D34).
+- Custom packs can still be added by hand under "Audio packs" in the same tab.
+
 ## Milestones
 
 1. **Foundation** (done): repo, Docker, schema, auth + 2FA, RBAC, i18n/RTL, seed, health, CI.

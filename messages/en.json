@@ -1141,7 +1141,18 @@
         "json": "This is not valid JSON.",
         "shape": "The manifest must be a JSON object.",
         "value": "Every value must be a path starting with / or a data:audio/ URI."
-      }
+      },
+      "arabicTitle": "Arabic announcement voice",
+      "arabicHint": "Choose who speaks the Arabic announcements on the screens. The change reaches every paired screen at once. Press Preview to hear a sample: number A 12 to desk 3.",
+      "browserVoice": "Browser voice (the screen device)",
+      "browserVoiceHint": "Uses the speech voice installed on the screen itself. Does not work if the device has no Arabic voice.",
+      "stop": "Stop",
+      "useVoice": "Use this voice",
+      "inUse": "In use",
+      "addBundled": "Add the bundled voices",
+      "bundledAdded": "Bundled voices added",
+      "noBundled": "No voices yet. Press \"Add the bundled voices\".",
+      "bundledNote": "The bundled voices are pre-recorded and work without internet."
     }
   },
   "wallboard": {

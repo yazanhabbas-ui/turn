@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { ErrorState, LoadingRows } from "@/components/admin/form";
 import { useApiQuery } from "@/components/admin/use-api";
 import type { SettingKey, SettingValue } from "@/server/settings/registry";
+import { ArabicVoice } from "./arabic-voice";
 import { AudioPacks } from "./audio-packs";
 import { VoicePhrases } from "./voice-phrases";
 import { VoiceSettingsForm } from "./voice-settings";
@@ -21,6 +22,12 @@ export function VoiceTab({ canSettings, canTemplates }: { canSettings: boolean; 
 
   return (
     <div className="space-y-8">
+      {voice && canTemplates && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">{t("voice.arabicTitle")}</h2>
+          <ArabicVoice voice={voice} canSettings={canSettings} />
+        </section>
+      )}
       {voice && (
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">{t("voice.settingsTitle")}</h2>

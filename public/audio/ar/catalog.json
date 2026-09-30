@@ -1,0 +1,9 @@
+[
+  { "id": "ar-sa-hamed", "name": { "ar": "حامد — سعودي", "en": "Hamed — Saudi" }, "gender": "male", "engine": "Microsoft neural" },
+  { "id": "ar-ae-hamdan", "name": { "ar": "حمدان — إماراتي", "en": "Hamdan — Emirati" }, "gender": "male", "engine": "Microsoft neural" },
+  { "id": "ar-kw-fahed", "name": { "ar": "فهد — كويتي", "en": "Fahed — Kuwaiti" }, "gender": "male", "engine": "Microsoft neural" },
+  { "id": "ar-lb-rami", "name": { "ar": "رامي — لبناني", "en": "Rami — Lebanese" }, "gender": "male", "engine": "Microsoft neural" },
+  { "id": "ar-dz-ismael", "name": { "ar": "إسماعيل — جزائري", "en": "Ismael — Algerian" }, "gender": "male", "engine": "Microsoft neural" },
+  { "id": "ar-ma-jamal", "name": { "ar": "جمال — مغربي", "en": "Jamal — Moroccan" }, "gender": "male", "engine": "Microsoft neural" },
+  { "id": "piper-kareem", "name": { "ar": "كريم — أردني (دون اتصال)", "en": "Kareem — Jordanian (offline engine)" }, "gender": "male", "engine": "Piper" }
+]

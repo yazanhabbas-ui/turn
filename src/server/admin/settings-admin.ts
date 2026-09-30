@@ -1,4 +1,5 @@
 import { and, desc, eq, gte, lt, lte, type SQL } from "drizzle-orm";
+import { io } from "../realtime";
 import { db } from "@/db/client";
 import { auditLogs, users } from "@/db/schema";
 import { audit } from "../audit";
@@ -25,6 +26,11 @@ export async function updateSetting(actor: Actor, key: string, raw: unknown) {
   const value = SETTINGS[key].parse(raw);
   const before = await getSetting(orgOf(actor), key);
   await putSetting(orgOf(actor), key, value as never, { userId: actor.auth.user.id });
+  // Screens read voice and regional settings from their state, so tell them to refetch.
+  if (key === "voice" || key === "regional" || key === "branding")
+    io()
+      ?.to(`displays:${orgOf(actor)}`)
+      .emit("display.refresh", {});
   await audit({ ...auditMeta(actor), action: "setting.updated", entityType: "setting", entityId: key, before, after: value });
   return value;
 }
