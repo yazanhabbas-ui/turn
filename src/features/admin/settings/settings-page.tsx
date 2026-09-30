@@ -87,7 +87,7 @@ export function SettingsPage({ organization = true }: { organization?: boolean }
       case "breaks":
         return <BreaksSection items={l.breakTypes} />;
       case "wallboard":
-        return <WallboardSection initial={s.wallboard} />;
+        return <WallboardSection initial={s.wallboard} displayTheme={s.displayTheme} branding={s.branding} />;
       case "reports":
         return <ReportsSection initial={s.reports} />;
       case "alerts":

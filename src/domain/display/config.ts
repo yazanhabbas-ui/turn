@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DISPLAY_THEME_CHOICES } from "../branding/surface-theme";
 
 export const DISPLAY_LAYOUTS = ["classic", "single", "multi"] as const;
 export type DisplayLayout = (typeof DISPLAY_LAYOUTS)[number];
@@ -21,6 +22,8 @@ export const displayConfigSchema = z.object({
   showSlides: z.boolean().default(true),
   showWaiting: z.boolean().default(true),
   showClock: z.boolean().default(true),
+  /** Look of the screen; "default" follows the `displayTheme` setting (organization or branch). */
+  theme: z.enum(DISPLAY_THEME_CHOICES).default("default"),
   voice: z
     .object({
       enabled: z.boolean().optional(),

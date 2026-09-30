@@ -60,6 +60,21 @@
   --color-sla-ok: var(--sla-ok);
   --color-sla-warn: var(--sla-warn);
   --color-sla-breach: var(--sla-breach);
+  --color-dsp-bg: var(--dsp-bg);
+  --color-dsp-surface: var(--dsp-surface);
+  --color-dsp-line: var(--dsp-line);
+  --color-dsp-text: var(--dsp-text);
+  --color-dsp-strong: var(--dsp-strong);
+  --color-dsp-soft: var(--dsp-soft);
+  --color-dsp-muted: var(--dsp-muted);
+  --color-dsp-subtle: var(--dsp-subtle);
+  --color-dsp-accent: var(--dsp-accent);
+  --color-dsp-hot: var(--dsp-hot);
+  --color-dsp-hot-line: var(--dsp-hot-line);
+  --color-dsp-hot-bg: var(--dsp-hot-bg);
+  --color-dsp-called: var(--dsp-called);
+  --color-dsp-ok: var(--dsp-ok);
+  --color-dsp-warn: var(--dsp-warn);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -267,10 +282,10 @@
 @keyframes dor-flash {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgb(251 191 36 / 0);
+    box-shadow: 0 0 0 0 transparent;
   }
   50% {
-    box-shadow: 0 0 0 1.2vh rgb(251 191 36 / 0.35);
+    box-shadow: 0 0 0 1.2vh var(--dsp-ring);
   }
 }
 @keyframes dor-pop {
@@ -309,6 +324,69 @@
   to {
     transform: translateX(50%);
   }
+}
+/*
+ * Display themes: the screen root carries data-theme="dark|light|brand" and --dsp-primary / --dsp-accent (the brand
+ * colours). Every colour on the display comes from these tokens; text pairs are at least WCAG AA (4.5:1) on their surface.
+ */
+.dor-display {
+  /* The brand accent is an arbitrary colour (white is possible): pull it toward the text colour so it always reads. */
+  --dsp-accent: color-mix(in srgb, var(--dsp-accent-brand, #b45309) 40%, var(--dsp-strong));
+  background-color: var(--dsp-bg);
+  color: var(--dsp-text);
+  color-scheme: dark;
+}
+.dor-display[data-theme="dark"] {
+  --dsp-bg: #0a0a0a;
+  --dsp-surface: #171717;
+  --dsp-line: #262626;
+  --dsp-text: #fafafa;
+  --dsp-strong: #ffffff;
+  --dsp-soft: #d4d4d4;
+  --dsp-muted: #a3a3a3;
+  --dsp-subtle: #8f8f8f;
+  --dsp-hot: #fcd34d;
+  --dsp-hot-line: #fbbf24;
+  --dsp-hot-bg: rgb(251 191 36 / 0.1);
+  --dsp-called: rgb(245 158 11 / 0.6);
+  --dsp-ok: #34d399;
+  --dsp-warn: #fbbf24;
+  --dsp-ring: rgb(251 191 36 / 0.35);
+}
+.dor-display[data-theme="brand"] {
+  --dsp-bg: color-mix(in srgb, var(--dsp-primary, #0f766e) 22%, #04060c);
+  --dsp-surface: color-mix(in srgb, var(--dsp-primary, #0f766e) 30%, #0a0f1c);
+  --dsp-line: color-mix(in srgb, var(--dsp-primary, #0f766e) 50%, #1e293b);
+  --dsp-text: #f8fafc;
+  --dsp-strong: #ffffff;
+  --dsp-soft: #e2e8f0;
+  --dsp-muted: #cbd5e1;
+  --dsp-subtle: #b4c0d0;
+  --dsp-hot: #fcd34d;
+  --dsp-hot-line: #fbbf24;
+  --dsp-hot-bg: rgb(251 191 36 / 0.14);
+  --dsp-called: rgb(251 191 36 / 0.7);
+  --dsp-ok: #6ee7b7;
+  --dsp-warn: #fcd34d;
+  --dsp-ring: rgb(251 191 36 / 0.4);
+}
+.dor-display[data-theme="light"] {
+  --dsp-bg: #f4f4f5;
+  --dsp-surface: #ffffff;
+  --dsp-line: #d4d4d8;
+  --dsp-text: #171717;
+  --dsp-strong: #0a0a0a;
+  --dsp-soft: #404040;
+  --dsp-muted: #52525b;
+  --dsp-subtle: #5f5f66;
+  --dsp-hot: #92400e;
+  --dsp-hot-line: #d97706;
+  --dsp-hot-bg: #fef3c7;
+  --dsp-called: #d97706;
+  --dsp-ok: #047857;
+  --dsp-warn: #b45309;
+  --dsp-ring: rgb(217 119 6 / 0.35);
+  color-scheme: light;
 }
 .dor-flash {
   animation: dor-flash 1.2s ease-in-out infinite;

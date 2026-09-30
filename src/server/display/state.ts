@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { announcements, branches, desks, messageTemplates, ttsAudioPacks, tickets, visitReasons } from "@/db/schema";
+import { resolveSurfaceTheme } from "@/domain/branding/surface-theme";
 import { parseDisplayConfig } from "@/domain/display/config";
 import { now as clockNow } from "../clock";
 import { getSetting } from "../settings/service";
@@ -20,10 +21,11 @@ export async function displayState(display: DisplayRow) {
   const now = clockNow();
 
   const [branch] = await db().select().from(branches).where(eq(branches.id, display.branchId));
-  const [branding, regional, voice, bctx] = await Promise.all([
+  const [branding, regional, voice, displayTheme, bctx] = await Promise.all([
     getSetting(org, "branding", display.branchId),
     getSetting(org, "regional", display.branchId),
     getSetting(org, "voice", display.branchId),
+    getSetting(org, "displayTheme", display.branchId),
     db().transaction((tx) => loadBranchContext(tx, display.branchId, now)),
   ]);
 
@@ -159,11 +161,19 @@ export async function displayState(display: DisplayRow) {
 
   return {
     now: new Date(now).toISOString(),
-    display: { id: display.id, name: display.name, layout: display.layout, config },
+    display: {
+      id: display.id,
+      name: display.name,
+      layout: display.layout,
+      config,
+      /** The look in effect: the screen's own choice, or the organization / branch default. */
+      theme: resolveSurfaceTheme(config.theme, displayTheme.theme),
+    },
     branch: { id: branch.id, name: branch.name, timezone: branch.timezone },
     branding: {
       companyName: branding.companyName,
       logoUrl: branding.logoUrl,
+      logoDarkUrl: branding.logoDarkUrl,
       primaryColor: branding.primaryColor,
       accentColor: branding.accentColor,
       font: branding.font,

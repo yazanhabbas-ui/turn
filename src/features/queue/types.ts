@@ -101,7 +101,7 @@ export type ReceptionContext = {
   regional: { digitsTicket: "latn" | "arab"; digitsScreen: "latn" | "arab" };
   /** Wording of the estimated wait (label, range, disclaimer, "next" text). */
   waitDisplay: WaitDisplay;
-  print: { template: L | null; footer: L; companyName: L; logoUrl: string | null };
+  print: { template: L | null; footer: L; companyName: L; logoUrl: string | null; logoDarkUrl: string | null };
   canReassign: boolean;
   canCancel: boolean;
   canEdit: boolean;

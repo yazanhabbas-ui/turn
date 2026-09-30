@@ -96,6 +96,7 @@ export async function liveView(actor: Actor, branchId?: string) {
     branding: {
       companyName: branding.companyName,
       logoUrl: branding.logoUrl,
+      logoDarkUrl: branding.logoDarkUrl,
       primaryColor: branding.primaryColor,
       accentColor: branding.accentColor,
     },

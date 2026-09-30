@@ -263,6 +263,7 @@ export async function receptionContext(actor: Actor, requestedBranchId?: string 
       footer: branding.ticketFooter,
       companyName: branding.companyName,
       logoUrl: branding.logoUrl,
+      logoDarkUrl: branding.logoDarkUrl,
     },
     canReassign: can(actor.auth.grants, "tickets.reassign", branch.id),
     canCancel: can(actor.auth.grants, "tickets.cancel", branch.id),

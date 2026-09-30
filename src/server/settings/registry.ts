@@ -15,6 +15,8 @@ export const SETTINGS = {
     .object({
       companyName: localized.default({ ar: "دور", en: "Dor" }),
       logoUrl: z.string().nullable().default(null),
+      /** Logo for dark and brand-coloured backgrounds (display, wallboard); empty = use `logoUrl`. */
+      logoDarkUrl: z.string().nullable().default(null),
       primaryColor: z.string().default("#0f766e"),
       accentColor: z.string().default("#b45309"),
       font: z.enum(BRAND_FONTS).default("IBM Plex Sans Arabic"),
@@ -97,6 +99,12 @@ export const SETTINGS = {
       showClock: z.boolean().default(true),
       /** Text and tile size for big screens, in percent. */
       textScale: z.number().int().min(80).max(160).default(100),
+    })
+    .prefault({}),
+  /** The look of the waiting-room screens that do not choose their own: dark, light or brand (dark tinted with the primary colour). */
+  displayTheme: z
+    .object({
+      theme: z.enum(["dark", "light", "brand"]).default("dark"),
     })
     .prefault({}),
   /**
@@ -262,4 +270,11 @@ export function defaultSetting<K extends SettingKey>(key: K): SettingValue<K> {
 }
 
 /** Settings a branch (and so a city admin) may override for their own branches. Everything else is organization-wide. */
-export const BRANCH_OVERRIDABLE: readonly SettingKey[] = ["wifi", "reception", "alerts", "wallboard", "waitEstimate"];
+export const BRANCH_OVERRIDABLE: readonly SettingKey[] = [
+  "wifi",
+  "reception",
+  "alerts",
+  "wallboard",
+  "displayTheme",
+  "waitEstimate",
+];

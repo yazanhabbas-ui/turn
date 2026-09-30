@@ -3,17 +3,21 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Field } from "@/components/admin/form";
-import { api, useApiMutation } from "@/components/admin/use-api";
+import { api, useApiMutation, useApiQuery } from "@/components/admin/use-api";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import type { SettingKey, SettingValue } from "@/server/settings/registry";
+import { ThemePicker } from "../theme-picker";
 import type { Branch } from "../types";
 import { useText } from "../use-lookups";
 import { Check } from "./check";
 import { DEFAULT_CONFIG, type Display, type DisplayConfig, type Lang, type Layout, type Pairing } from "./types";
 
 const DISPLAYS = "/api/v1/admin/displays";
+const SETTINGS = "/api/v1/admin/settings";
+type AllSettings = { [K in SettingKey]: SettingValue<K> };
 const LAYOUTS: Layout[] = ["classic", "single", "multi"];
 const LANGS: Lang[] = ["ar", "en"];
 
@@ -48,6 +52,8 @@ export function DisplayDialog({
   const tu = useTranslations("ui");
   const tc = useTranslations("common");
   const text = useText();
+  // Colours and the default look for the theme previews; without settings rights the previews use built-in values.
+  const settings = useApiQuery<AllSettings>(open ? SETTINGS : null);
   const [f, setF] = useState<Form>(() => toForm(null, ""));
 
   useEffect(() => {
@@ -135,6 +141,15 @@ export function DisplayDialog({
               ))}
             </div>
           </fieldset>
+          <ThemePicker
+            withDefault
+            legend={t("config.theme")}
+            value={f.config.theme}
+            onChange={(theme) => setConfig({ theme })}
+            primary={settings.data?.branding.primaryColor ?? "#0f766e"}
+            accent={settings.data?.branding.accentColor ?? "#b45309"}
+            defaultTheme={settings.data?.displayTheme.theme ?? "dark"}
+          />
           {display && (
             <>
               <fieldset className="space-y-3 rounded-lg border p-3">

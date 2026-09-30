@@ -71,6 +71,7 @@ export const SECTIONS: SectionDef[] = [
     fields: [
       { key: "companyName", anchor: "br-name" },
       { key: "logoUrl", anchor: "br-logo" },
+      { key: "logoDarkUrl", anchor: "br-logo-dark" },
       { key: "primaryColor", anchor: "br-primary" },
       { key: "accentColor", anchor: "br-accent" },
       { key: "font", anchor: "br-font" },
@@ -222,6 +223,7 @@ export const SECTIONS: SectionDef[] = [
     scope: "organization",
     keywords: ["tv", "dashboard", "screen", "شاشة", "لوحة"],
     fields: [
+      { key: "displayTheme", anchor: "dt-theme" },
       { key: "wallboardTheme", anchor: "wb-theme" },
       { key: "wallboardTextScale", anchor: "wb-scale" },
       { key: "wallboardTitle", anchor: "wb-title-ar" },

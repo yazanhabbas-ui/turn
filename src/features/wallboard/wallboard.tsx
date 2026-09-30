@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApiMutation } from "@/components/admin/use-api";
 import { Button } from "@/components/ui/button";
 import { pickText } from "@/i18n/locales";
+import { brandBackground, logoForTheme } from "@/domain/branding/surface-theme";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ConnectionPill } from "@/features/queue/bits";
@@ -16,7 +17,7 @@ type L = Record<string, string>;
 type Live = {
   now: string;
   branch: { id: string; name: L; timezone: string };
-  branding: { companyName: L; logoUrl: string | null; primaryColor: string; accentColor: string };
+  branding: { companyName: L; logoUrl: string | null; logoDarkUrl?: string | null; primaryColor: string; accentColor: string };
   wallboard: {
     theme: "dark" | "light" | "brand";
     title: L;
@@ -304,14 +305,18 @@ export function Wallboard({ canAck }: { canAck: boolean }) {
           "--wb-primary": brand?.primaryColor ?? "#0f766e",
           "--wb-accent": brand?.accentColor ?? "#b45309",
           zoom: (wb?.textScale ?? 100) / 100,
-          ...(theme === "brand" ? { backgroundColor: "color-mix(in srgb, var(--wb-primary) 22%, #04060c)" } : {}),
+          ...(theme === "brand" ? { backgroundColor: brandBackground("--wb-primary") } : {}),
         } as React.CSSProperties
       }
     >
       <header className="mb-4 flex flex-wrap items-center gap-3">
-        {wb?.showLogo !== false && brand?.logoUrl && (
+        {wb?.showLogo !== false && brand && logoForTheme(theme, brand) && (
           // eslint-disable-next-line @next/next/no-img-element -- the organization's own logo, size unknown
-          <img src={brand.logoUrl} alt="" className="h-10 max-w-[14rem] object-contain md:h-14 2xl:h-20" />
+          <img
+            src={logoForTheme(theme, brand) ?? undefined}
+            alt=""
+            className="h-10 max-w-[14rem] object-contain md:h-14 2xl:h-20"
+          />
         )}
         <div className="min-w-0">
           {wb?.showCompanyName !== false && brand && (

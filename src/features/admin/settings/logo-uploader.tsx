@@ -18,11 +18,20 @@ const MAX_BYTES = 5 * 1024 * 1024;
 const TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 const REASONS = ["too_large", "unsupported_type", "animated", "empty", "missing", "invalid_form"];
 
+export type LogoVariant = "light" | "dark";
+
 const CHECKERBOARD =
   "bg-[length:16px_16px] bg-[position:0_0,8px_8px] bg-[image:linear-gradient(45deg,#d4d4d8_25%,transparent_25%,transparent_75%,#d4d4d8_75%),linear-gradient(45deg,#d4d4d8_25%,#fff_25%,#fff_75%,#d4d4d8_75%)]";
+/** Dark checkerboard: a white logo stays visible on it. */
+const CHECKERBOARD_DARK =
+  "bg-[length:16px_16px] bg-[position:0_0,8px_8px] bg-[image:linear-gradient(45deg,#262626_25%,transparent_25%,transparent_75%,#262626_75%),linear-gradient(45deg,#262626_25%,#0a0a0a_25%,#0a0a0a_75%,#262626_75%)]";
 
 /** POST with upload progress (fetch cannot report it). Resolves with the parsed JSON or rejects with an ApiError. */
-function upload(file: File, onProgress: (pct: number) => void): Promise<{ version: number; logoUrl: string }> {
+function upload(
+  file: File,
+  variant: LogoVariant,
+  onProgress: (pct: number) => void,
+): Promise<{ version: number; logoUrl: string }> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", ENDPOINT);
@@ -41,6 +50,7 @@ function upload(file: File, onProgress: (pct: number) => void): Promise<{ versio
     };
     const body = new FormData();
     body.append("file", file);
+    body.append("variant", variant);
     xhr.send(body);
   });
 }
@@ -53,10 +63,13 @@ function upload(file: File, onProgress: (pct: number) => void): Promise<{ versio
  */
 export function LogoUploader({
   value,
+  variant = "light",
   onChange,
   onUploaded,
 }: {
   value: string | null;
+  /** light = the main logo (light backgrounds); dark = the optional logo for dark and brand-coloured screens. */
+  variant?: LogoVariant;
   onChange?: (url: string | null) => void;
   onUploaded?: (url: string | null) => void;
 }) {
@@ -89,7 +102,7 @@ export function LogoUploader({
     setBusy(true);
     setProgress(0);
     try {
-      const res = await upload(file, setProgress);
+      const res = await upload(file, variant, setProgress);
       toast.success(t("saved"));
       done(res.logoUrl);
     } catch (err) {
@@ -104,7 +117,10 @@ export function LogoUploader({
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(ENDPOINT, { method: "DELETE", credentials: "same-origin" });
+      const res = await fetch(variant === "dark" ? `${ENDPOINT}?variant=dark` : ENDPOINT, {
+        method: "DELETE",
+        credentials: "same-origin",
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new ApiError(res.status, data?.error?.code ?? "server_error", data?.error?.details);
@@ -118,21 +134,30 @@ export function LogoUploader({
     }
   }
 
+  const dark = variant === "dark";
   return (
     <div className="space-y-3">
-      <div className="text-sm font-medium">{t("title")}</div>
+      <div className="text-sm font-medium">{dark ? t("titleDark") : t("titleLight")}</div>
+      {dark && <p className="text-muted-foreground text-xs">{t("darkHint")}</p>}
 
       {value && (
         <div className="space-y-2">
-          <div className={cn("grid h-28 place-items-center overflow-hidden rounded-lg border p-3", CHECKERBOARD)}>
+          <div
+            className={cn(
+              "grid h-28 place-items-center overflow-hidden rounded-lg border p-3",
+              dark ? CHECKERBOARD_DARK : CHECKERBOARD,
+            )}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={value} alt={t("preview")} className="max-h-20 max-w-full object-contain" />
+            <img src={value} alt={dark ? t("previewDark") : t("preview")} className="max-h-20 max-w-full object-contain" />
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="grid h-16 place-items-center overflow-hidden rounded-lg border bg-white p-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={value} alt="" className="max-h-10 max-w-full object-contain" />
-            </div>
+          <div className={cn("grid gap-2", !dark && "grid-cols-2")}>
+            {!dark && (
+              <div className="grid h-16 place-items-center overflow-hidden rounded-lg border bg-white p-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={value} alt="" className="max-h-10 max-w-full object-contain" />
+              </div>
+            )}
             <div className="grid h-16 place-items-center overflow-hidden rounded-lg border bg-neutral-900 p-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={value} alt="" className="max-h-10 max-w-full object-contain" />
@@ -184,8 +209,8 @@ export function LogoUploader({
               {value && (
                 <ConfirmButton
                   label={t("remove")}
-                  title={t("removeTitle")}
-                  description={t("removeBody")}
+                  title={dark ? t("removeTitleDark") : t("removeTitle")}
+                  description={dark ? t("removeBodyDark") : t("removeBody")}
                   confirmLabel={t("remove")}
                   variant="destructive"
                   disabled={busy}
@@ -211,7 +236,7 @@ export function LogoUploader({
           <div className="mt-2 space-y-1">
             <Input
               dir="ltr"
-              aria-label={t("linkLabel")}
+              aria-label={dark ? t("linkLabelDark") : t("linkLabel")}
               placeholder="https://"
               value={value ?? ""}
               onChange={(e) => onChange(e.target.value || null)}

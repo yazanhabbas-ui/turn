@@ -5,7 +5,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { db, pool } from "@/db/client";
 import { auditLogs, brandAssets } from "@/db/schema";
 import type { Actor } from "@/server/admin/actor";
-import { LOGO_MAX_BYTES, loadLogo, removeLogo, setLogo } from "@/server/admin/logo";
+import { LOGO_MAX_BYTES, loadLogo, parseLogoVariant, removeLogo, setLogo } from "@/server/admin/logo";
 import { AppError } from "@/server/http/errors";
 import { getSetting } from "@/server/settings/service";
 import { actorFor, resetDemo } from "./fixtures";
@@ -112,5 +112,64 @@ describe.runIf(available)("uploaded logo (database)", () => {
     expect(await loadLogo(admin.auth.user.organizationId)).toBeNull();
     expect((await getSetting(admin.auth.user.organizationId, "branding")).logoUrl).toBeNull();
     expect(await db().select().from(brandAssets).where(eq(brandAssets.kind, "logo"))).toHaveLength(0);
+  });
+
+  describe("dark-background variant", () => {
+    it("is stored beside the main logo and sets branding.logoDarkUrl only", async () => {
+      const org = admin.auth.user.organizationId;
+      const light = await setLogo(admin, await transparent());
+      const dark = await setLogo(admin, await transparent(200, 80), "dark");
+      expect(dark).toMatchObject({ version: 1, variant: "dark", logoUrl: "/api/v1/public/branding/logo?variant=dark&v=1" });
+      const branding = await getSetting(org, "branding");
+      expect(branding.logoUrl).toBe(light.logoUrl);
+      expect(branding.logoDarkUrl).toBe(dark.logoUrl);
+      const stored = await loadLogo(org, "dark");
+      expect(await sharp(stored!.data).metadata()).toMatchObject({ width: 200, height: 80, hasAlpha: true });
+      expect((await loadLogo(org, "light"))!.etag).not.toBe(stored!.etag);
+      expect((await db().select().from(brandAssets)).map((r) => r.kind).sort()).toEqual(["logo", "logo_dark"]);
+      expect((await setLogo(admin, await transparent(), "dark")).version).toBe(2);
+    });
+
+    it("removes only the dark variant", async () => {
+      const org = admin.auth.user.organizationId;
+      await setLogo(admin, await transparent());
+      await setLogo(admin, await transparent(), "dark");
+      await removeLogo(admin, "dark");
+      expect(await loadLogo(org, "dark")).toBeNull();
+      expect(await loadLogo(org, "light")).not.toBeNull();
+      const branding = await getSetting(org, "branding");
+      expect(branding.logoDarkUrl).toBeNull();
+      expect(branding.logoUrl).toBe("/api/v1/public/branding/logo?v=1");
+    });
+
+    it("is only for settings.manage across the organization", async () => {
+      const png = await transparent();
+      await expectCode(setLogo(cityAdmin, png, "dark"), "forbidden");
+      await expectCode(setLogo(agent, png, "dark"), "forbidden");
+      await expectCode(removeLogo(cityAdmin, "dark"), "forbidden");
+    });
+
+    it("keeps the transparency of a white logo and stores the 15499x5948 original small", async () => {
+      const file = await readFile("assets/whitelogo.png").catch(() => null);
+      if (!file) return;
+      await setLogo(admin, file, "dark");
+      const stored = await loadLogo(admin.auth.user.organizationId, "dark");
+      expect(stored!.data.length).toBeLessThan(700 * 1024);
+      const meta = await sharp(stored!.data).metadata();
+      expect(meta.width).toBeLessThanOrEqual(1200);
+      expect(meta.hasAlpha).toBe(true);
+      const { data, info } = await sharp(stored!.data).raw().toBuffer({ resolveWithObject: true });
+      expect(data[info.channels - 1]).toBe(0); // the corner is still transparent, not flattened
+    }, 60_000);
+  });
+});
+
+describe("logo variant parameter", () => {
+  it("defaults to the main logo and refuses unknown values", () => {
+    expect(parseLogoVariant(null)).toBe("light");
+    expect(parseLogoVariant("")).toBe("light");
+    expect(parseLogoVariant("light")).toBe("light");
+    expect(parseLogoVariant("dark")).toBe("dark");
+    expect(() => parseLogoVariant("blue")).toThrow(AppError);
   });
 });

@@ -1,3 +1,4 @@
+import type { DisplayThemeChoice } from "@/domain/branding/surface-theme";
 import type { L } from "../types";
 
 export type Layout = "classic" | "single" | "multi";
@@ -12,6 +13,7 @@ export type DisplayConfig = {
   showSlides: boolean;
   showWaiting: boolean;
   showClock: boolean;
+  theme: DisplayThemeChoice;
   voice: DisplayVoice;
 };
 
@@ -66,5 +68,6 @@ export const DEFAULT_CONFIG: DisplayConfig = {
   showSlides: true,
   showWaiting: true,
   showClock: true,
+  theme: "default",
   voice: {},
 };

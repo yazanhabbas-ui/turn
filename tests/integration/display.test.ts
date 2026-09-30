@@ -57,6 +57,7 @@ describe.runIf(available)("display screens (database)", () => {
       showSlides: true,
       showWaiting: true,
       showClock: true,
+      theme: "default" as const,
       voice: {},
     },
     ...over,
@@ -80,6 +81,15 @@ describe.runIf(available)("display screens (database)", () => {
   afterEach(() => setClock(null));
   afterAll(async () => {
     await pool().end();
+  });
+
+  it("resolves the screen theme: its own choice, else the displayTheme setting (dark by default)", async () => {
+    const a = await pairedScreen();
+    expect((await displayState(a.display)).display.theme).toBe("dark");
+    await updateSetting(admin, "displayTheme", { theme: "brand" });
+    expect((await displayState(await authenticateDevice(a.token))).display.theme).toBe("brand");
+    await updateDisplay(admin, a.id, input({ config: { ...input().config, theme: "light" } }));
+    expect((await displayState(await authenticateDevice(a.token))).display.theme).toBe("light");
   });
 
   it("pairs with a single-use code and exchanges it for a device token stored only as a hash", async () => {

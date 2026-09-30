@@ -4,6 +4,7 @@ import { Maximize2, Minimize2, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { planAnnouncement } from "@/domain/display/plan";
 import { dirOf } from "@/i18n/locales";
+import { cn } from "@/lib/utils";
 import { ScreenLayout } from "./layouts";
 import { Pairing } from "./pairing";
 import { makeT, type Dicts } from "./text";
@@ -170,12 +171,21 @@ function Screen({
   }, [unlocked]);
 
   const soundOn = unlocked && !!state?.voice.settings.enabled;
+  // Until the first state arrives (or from an older cached state) the screen keeps the classic dark look.
+  const theme = state?.display.theme ?? "dark";
 
   return (
     <div
       dir={dirOf(lang)}
       lang={lang}
-      className={`dark min-h-dvh bg-neutral-950 text-neutral-50 ${cursorHidden ? "cursor-none" : ""}`}
+      data-theme={theme}
+      className={cn("dor-display min-h-dvh", theme !== "light" && "dark", cursorHidden && "cursor-none")}
+      style={
+        {
+          "--dsp-primary": state?.branding.primaryColor,
+          "--dsp-accent-brand": state?.branding.accentColor,
+        } as React.CSSProperties
+      }
       onDoubleClick={kiosk.toggle}
     >
       {state ? (
@@ -190,7 +200,7 @@ function Screen({
           soundOn={soundOn}
         />
       ) : (
-        <div className="grid h-dvh place-items-center text-4xl text-neutral-400">{t("loading")}</div>
+        <div className="text-dsp-muted grid h-dvh place-items-center text-4xl">{t("loading")}</div>
       )}
 
       {!cursorHidden && (
@@ -198,7 +208,7 @@ function Screen({
           type="button"
           onClick={kiosk.toggle}
           aria-label={kiosk.fullscreen ? t("exitFullscreen") : t("fullscreen")}
-          className="fixed end-4 bottom-4 z-20 rounded-full bg-neutral-800/80 p-3 text-neutral-300 hover:bg-neutral-700"
+          className="bg-dsp-line/80 text-dsp-soft hover:bg-dsp-line fixed end-4 bottom-4 z-20 rounded-full p-3"
         >
           {kiosk.fullscreen ? <Minimize2 className="size-6" /> : <Maximize2 className="size-6" />}
         </button>
@@ -208,7 +218,7 @@ function Screen({
         <div
           role="button"
           tabIndex={0}
-          className="fixed inset-0 z-30 grid cursor-pointer place-items-center bg-black/85 text-center"
+          className="fixed inset-0 z-30 grid cursor-pointer place-items-center bg-black/85 text-center text-white"
         >
           <span>
             <Volume2 className="mx-auto size-28 text-amber-300" aria-hidden />

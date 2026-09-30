@@ -88,6 +88,17 @@ export function BrandingSection({ initial }: { initial: Branding }) {
               />
             </div>
           </SettingCard>
+          <SettingCard>
+            {/* Optional logo for dark and brand-coloured screens (waiting-room display, wallboard). */}
+            <div id="br-logo-dark">
+              <LogoUploader
+                variant="dark"
+                value={v.logoDarkUrl}
+                onChange={(logoDarkUrl) => set({ logoDarkUrl })}
+                onUploaded={(logoDarkUrl) => set({ logoDarkUrl })}
+              />
+            </div>
+          </SettingCard>
           <SettingCard title={t("cards.appearance")} columns={3}>
             <Field label={t("primaryColor")} htmlFor="br-primary">
               <Input

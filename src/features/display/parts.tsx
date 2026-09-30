@@ -2,6 +2,7 @@
 
 import { Building2, Volume2, VolumeX, Wifi, WifiOff } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { logoForTheme } from "@/domain/branding/surface-theme";
 import { applyDigits, toWesternDigits } from "@/domain/i18n/digits";
 import { pickText } from "@/i18n/locales";
 import { cn } from "@/lib/utils";
@@ -68,11 +69,12 @@ export const num = (n: number | string, state: DisplayState) => applyDigits(Stri
 export function Header({ state, lang, t, connection, soundOn, clockOffset }: LayoutProps) {
   const clock = useClock(state, lang, clockOffset);
   const { branding, display } = state;
+  const logo = logoForTheme(display.theme ?? "dark", branding);
   return (
     <header className="flex items-center gap-6 px-[3vw] py-[1.6vh]">
-      {branding.logoUrl ? (
+      {logo ? (
         // eslint-disable-next-line @next/next/no-img-element -- a local logo of unknown size on a kiosk
-        <img src={branding.logoUrl} alt="" className="h-[7vh] max-w-[16vw] object-contain" />
+        <img src={logo} alt="" className="h-[7vh] max-w-[16vw] object-contain" />
       ) : (
         <span className="bg-brand grid size-[7vh] place-items-center rounded-2xl text-white">
           <Building2 className="size-[4vh]" aria-hidden />
@@ -80,14 +82,14 @@ export function Header({ state, lang, t, connection, soundOn, clockOffset }: Lay
       )}
       <div className="min-w-0 flex-1">
         <h1 className="truncate text-[3.2vh] leading-tight font-bold">{pickText(branding.companyName, lang)}</h1>
-        <p className="truncate text-[2vh] text-neutral-400">{pickText(state.branch.name, lang)}</p>
+        <p className="text-dsp-muted truncate text-[2vh]">{pickText(state.branch.name, lang)}</p>
       </div>
       {display.config.showClock && (
         <div className="text-end">
           <div className="text-[5vh] leading-none font-bold tabular-nums" dir="ltr">
             {clock.time}
           </div>
-          <div className="mt-1 text-[1.9vh] text-neutral-400">
+          <div className="text-dsp-muted mt-1 text-[1.9vh]">
             <bdi>{clock.date}</bdi>
             {clock.hijri && <bdi className="ms-4">{clock.hijri}</bdi>}
           </div>
@@ -100,11 +102,11 @@ export function Header({ state, lang, t, connection, soundOn, clockOffset }: Lay
 
 function StatusDots({ t, connection, soundOn }: Pick<LayoutProps, "t" | "connection" | "soundOn">) {
   return (
-    <div className="flex flex-col items-center gap-1 text-neutral-500">
+    <div className="text-dsp-subtle flex flex-col items-center gap-1">
       {connection === "connected" ? (
         <Wifi className="size-[2.6vh]" aria-label={t("connected")} />
       ) : (
-        <span className="flex items-center gap-1 text-[1.6vh] text-amber-400">
+        <span className="text-dsp-warn flex items-center gap-1 text-[1.6vh]">
           <WifiOff className="size-[2.6vh]" aria-hidden />
           {connection === "offline" ? t("offline") : t("reconnecting")}
         </span>
@@ -112,7 +114,7 @@ function StatusDots({ t, connection, soundOn }: Pick<LayoutProps, "t" | "connect
       {soundOn ? (
         <Volume2 className="size-[2.6vh]" aria-label={t("soundOn")} />
       ) : (
-        <VolumeX className="size-[2.6vh] text-amber-400" aria-label={t("soundOff")} />
+        <VolumeX className="text-dsp-warn size-[2.6vh]" aria-label={t("soundOff")} />
       )}
     </div>
   );
@@ -134,11 +136,11 @@ export function NowServing({
     <section
       aria-live="polite"
       className={cn(
-        "flex h-full flex-col items-center justify-center rounded-[2vh] border-2 border-neutral-800 bg-neutral-900 p-[2vh] text-center transition-colors",
-        flashing && "dor-flash border-amber-400 bg-amber-400/10",
+        "border-dsp-line bg-dsp-surface flex h-full flex-col items-center justify-center rounded-[2vh] border-2 p-[2vh] text-center transition-colors",
+        flashing && "dor-flash border-dsp-hot-line bg-dsp-hot-bg",
       )}
     >
-      <p className="text-[3vh] font-medium text-neutral-400">{t("nowServing")}</p>
+      <p className="text-dsp-muted text-[3vh] font-medium">{t("nowServing")}</p>
       {number ? (
         <>
           <p
@@ -146,20 +148,20 @@ export function NowServing({
             className={cn(
               "leading-none font-black tabular-nums",
               size === "xl" ? "my-[3vh] text-[min(34vh,26vw)]" : "my-[1vh] text-[min(14vh,10vw)]",
-              flashing ? "dor-pop text-amber-300" : "text-white",
+              flashing ? "dor-pop text-dsp-hot" : "text-dsp-strong",
             )}
             dir="ltr"
           >
             {num(number, state)}
           </p>
           {desk && (
-            <p className={cn("font-bold text-neutral-100", size === "xl" ? "text-[9vh]" : "text-[5vh]")}>
-              {t("desk")} <span className="text-brand-accent tabular-nums">{num(desk, state)}</span>
+            <p className={cn("text-dsp-text font-bold", size === "xl" ? "text-[9vh]" : "text-[5vh]")}>
+              {t("desk")} <span className="text-dsp-accent tabular-nums">{num(desk, state)}</span>
             </p>
           )}
         </>
       ) : (
-        <p className="my-[4vh] text-[4vh] text-neutral-500">{pickText(state.branding.welcomeText, lang)}</p>
+        <p className="text-dsp-subtle my-[4vh] text-[4vh]">{pickText(state.branding.welcomeText, lang)}</p>
       )}
     </section>
   );
@@ -179,34 +181,34 @@ export function DeskList({ state, lang, t, call, flashing }: Pick<LayoutProps, "
           <li
             key={d.id}
             className={cn(
-              "flex items-center gap-[2vw] rounded-[1.4vh] border border-neutral-800 bg-neutral-900 px-[2vw]",
-              d.status === "called" && "border-amber-500/60",
-              hot && "dor-flash border-amber-400 bg-amber-400/10",
+              "border-dsp-line bg-dsp-surface flex items-center gap-[2vw] rounded-[1.4vh] border px-[2vw]",
+              d.status === "called" && "border-dsp-called",
+              hot && "dor-flash border-dsp-hot-line bg-dsp-hot-bg",
             )}
           >
-            <span className="min-w-[10vw] text-[3.4vh] font-semibold text-neutral-300">
-              {t("desk")} <span className="text-white tabular-nums">{num(d.number, state)}</span>
+            <span className="text-dsp-soft min-w-[10vw] text-[3.4vh] font-semibold">
+              {t("desk")} <span className="text-dsp-strong tabular-nums">{num(d.number, state)}</span>
             </span>
-            <span className="min-w-0 flex-1 truncate text-[2vh] text-neutral-500">
+            <span className="text-dsp-subtle min-w-0 flex-1 truncate text-[2vh]">
               {digitsOf(pickText(d.name, lang)) === digitsOf(d.number) ? "" : pickText(d.name, lang)}
             </span>
             {d.displayNumber ? (
               <span
                 className={cn(
                   "text-[6vh] leading-none font-black tabular-nums",
-                  d.status === "called" ? "text-amber-300" : "text-emerald-400",
+                  d.status === "called" ? "text-dsp-hot" : "text-dsp-ok",
                 )}
                 dir="ltr"
               >
                 {num(d.displayNumber, state)}
                 {d.otherNumbers.length > 0 && (
-                  <span className="ms-3 text-[3.4vh] font-bold text-neutral-400">
+                  <span className="text-dsp-muted ms-3 text-[3.4vh] font-bold">
                     {d.otherNumbers.map((n) => num(n, state)).join(" · ")}
                   </span>
                 )}
               </span>
             ) : (
-              <span className="text-[2.4vh] text-neutral-600">{t("free")}</span>
+              <span className="text-dsp-subtle text-[2.4vh]">{t("free")}</span>
             )}
           </li>
         );
@@ -225,16 +227,16 @@ export function RecentCalls({
   if (!items.length) return null;
   return (
     <section className={className}>
-      <h2 className="mb-[1vh] text-[2.4vh] font-medium text-neutral-400">{t("recent")}</h2>
+      <h2 className="text-dsp-muted mb-[1vh] text-[2.4vh] font-medium">{t("recent")}</h2>
       <ul className="flex flex-wrap gap-[1.2vh]">
         {items.map((r) => (
           <li
             key={`${r.ticketId}-${r.calledAt}`}
-            className="rounded-[1.2vh] bg-neutral-900 px-[1.6vw] py-[1vh] text-[3vh] font-bold tabular-nums"
+            className="bg-dsp-surface rounded-[1.2vh] px-[1.6vw] py-[1vh] text-[3vh] font-bold tabular-nums"
           >
             <span dir="ltr">{num(r.displayNumber, state)}</span>
             {r.deskNumber && (
-              <span className="ms-3 text-[2.2vh] font-medium text-neutral-400">
+              <span className="text-dsp-muted ms-3 text-[2.2vh] font-medium">
                 {t("desk")} {num(r.deskNumber, state)}
               </span>
             )}
@@ -256,17 +258,17 @@ export function WaitingBoard({
   if (!state.display.config.showWaiting) return null;
   return (
     <section className={className}>
-      <h2 className="mb-[1vh] flex items-baseline justify-between text-[2.4vh] font-medium text-neutral-400">
+      <h2 className="text-dsp-muted mb-[1vh] flex items-baseline justify-between text-[2.4vh] font-medium">
         <span>{t("waiting")}</span>
-        <span className="text-[3vh] font-bold text-white tabular-nums">{num(state.waitingTotal, state)}</span>
+        <span className="text-dsp-strong text-[3vh] font-bold tabular-nums">{num(state.waitingTotal, state)}</span>
       </h2>
       <ul className="grid gap-[1vh]">
         {state.reasons.slice(0, rows).map((r) => (
-          <li key={r.id} className="flex items-center gap-3 rounded-[1.2vh] bg-neutral-900 px-[1.4vw] py-[1vh]">
+          <li key={r.id} className="bg-dsp-surface flex items-center gap-3 rounded-[1.2vh] px-[1.4vw] py-[1vh]">
             <span className="size-[2.4vh] shrink-0 rounded-full" style={{ backgroundColor: r.color }} aria-hidden />
             <span className="min-w-0 flex-1 truncate text-[2.4vh]">{pickText(r.name, lang)}</span>
             <span className="text-[3vh] font-bold tabular-nums">{num(r.waiting, state)}</span>
-            <span className="w-[9vw] text-end text-[1.9vh] text-neutral-400">
+            <span className="text-dsp-muted w-[9vw] text-end text-[1.9vh]">
               {r.waiting > 0 ? t("minutes", { count: num(r.estimatedWaitMinutes, state) }) : t("noWait")}
             </span>
           </li>
@@ -284,7 +286,7 @@ export function Ticker({ state, lang }: Pick<LayoutProps, "state" | "lang">) {
   const seconds = Math.max(20, Math.round(text.length * 0.28));
   const rtl = lang === "ar";
   return (
-    <footer className="overflow-hidden border-t border-neutral-800 bg-neutral-900 py-[1.4vh]" dir={rtl ? "rtl" : "ltr"}>
+    <footer className="border-dsp-line bg-dsp-surface overflow-hidden border-t py-[1.4vh]" dir={rtl ? "rtl" : "ltr"}>
       <div
         className="flex w-max gap-[8vw] text-[3vh] whitespace-nowrap"
         style={{ animation: `${rtl ? "dor-marquee-rtl" : "dor-marquee-ltr"} ${seconds}s linear infinite` }}
@@ -309,7 +311,7 @@ export function Slides({ state, lang, className }: Pick<LayoutProps, "state" | "
   }, [index, count, current?.durationSeconds]);
 
   return (
-    <section className={cn("relative overflow-hidden rounded-[2vh] border border-neutral-800 bg-neutral-900", className)}>
+    <section className={cn("border-dsp-line bg-dsp-surface relative overflow-hidden rounded-[2vh] border", className)}>
       {current ? (
         <div key={current.id} className="dor-fade absolute inset-0 grid place-items-center">
           {current.mediaUrl && (
@@ -320,7 +322,7 @@ export function Slides({ state, lang, className }: Pick<LayoutProps, "state" | "
             <p
               className={cn(
                 "relative z-10 max-w-[90%] text-center text-[4.4vh] leading-snug font-bold",
-                current.mediaUrl && "rounded-[1.4vh] bg-black/60 px-[2vw] py-[1.6vh]",
+                current.mediaUrl && "rounded-[1.4vh] bg-black/60 px-[2vw] py-[1.6vh] text-white",
               )}
             >
               {pickText(current.body, lang)}
@@ -328,7 +330,7 @@ export function Slides({ state, lang, className }: Pick<LayoutProps, "state" | "
           )}
         </div>
       ) : (
-        <p className="grid h-full place-items-center px-[2vw] text-center text-[4vh] font-semibold text-neutral-400">
+        <p className="text-dsp-muted grid h-full place-items-center px-[2vw] text-center text-[4vh] font-semibold">
           {pickText(state.branding.welcomeText, lang)}
         </p>
       )}

@@ -6,9 +6,48 @@ import { NativeSelect } from "@/components/ui/native-select";
 import type { SettingValue } from "@/server/settings/registry";
 import { SettingCard } from "../setting-card";
 import { Check, Field, NumField } from "../setting-field";
+import { ThemePicker } from "../../theme-picker";
 import { SettingForm } from "../setting-form";
 
-export function WallboardSection({ initial }: { initial: SettingValue<"wallboard"> }) {
+function ScreensLook({ initial, branding }: { initial: SettingValue<"displayTheme">; branding: SettingValue<"branding"> }) {
+  const t = useTranslations("settings");
+  return (
+    <SettingForm k="displayTheme" initial={initial}>
+      {(v, set) => (
+        <SettingCard title={t("cards.displayLook")} description={t("displayThemeHint")}>
+          <div id="dt-theme">
+            <ThemePicker
+              legend={t("displayTheme")}
+              value={v.theme}
+              onChange={(theme) => theme !== "default" && set({ theme })}
+              primary={branding.primaryColor}
+              accent={branding.accentColor}
+            />
+          </div>
+        </SettingCard>
+      )}
+    </SettingForm>
+  );
+}
+
+export function WallboardSection({
+  initial,
+  displayTheme,
+  branding,
+}: {
+  initial: SettingValue<"wallboard">;
+  displayTheme: SettingValue<"displayTheme">;
+  branding: SettingValue<"branding">;
+}) {
+  return (
+    <div className="space-y-4">
+      <ScreensLook initial={displayTheme} branding={branding} />
+      <WallboardForm initial={initial} />
+    </div>
+  );
+}
+
+function WallboardForm({ initial }: { initial: SettingValue<"wallboard"> }) {
   const t = useTranslations("settings");
   return (
     <SettingForm k="wallboard" initial={initial}>

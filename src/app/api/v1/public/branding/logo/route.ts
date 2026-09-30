@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { getDefaultOrganizationId } from "@/server/branding";
 import { AppError } from "@/server/http/errors";
 import { route } from "@/server/http/route";
-import { loadLogo } from "@/server/admin/logo";
+import { loadLogo, parseLogoVariant } from "@/server/admin/logo";
 
-/** The uploaded logo. Public (login page, tickets, screens); with `?v=<version>` it is cached for a year. */
+/** The uploaded logo (`?variant=dark` for the dark-background one). Public (login page, tickets, screens); with `?v=<version>` it is cached for a year. */
 export const GET = route({ auth: "public" }, async ({ req }) => {
   const orgId = await getDefaultOrganizationId();
-  const img = orgId ? await loadLogo(orgId) : null;
+  const img = orgId ? await loadLogo(orgId, parseLogoVariant(req.nextUrl.searchParams.get("variant"))) : null;
   if (!img) throw new AppError("not_found");
   const headers = {
     ETag: img.etag,
