@@ -25,7 +25,16 @@ export type Ticket = {
   notes: string | null;
   intake: Record<string, string>;
   publicToken: string;
-  visitor: { name: string | null; phone: string | null; company: string | null; visitCount: number; returning: boolean } | null;
+  visitor: {
+    id: string;
+    name: string | null;
+    phone: string | null;
+    company: string | null;
+    /** Completed visits before this one. */
+    visitCount: number;
+    lastVisitAt: string | null;
+    returning: boolean;
+  } | null;
   appointmentId: string | null;
 };
 
@@ -124,4 +133,41 @@ export type AgentWorkspace = {
   onHold: Ticket[];
   queues: { reasonId: string; waiting: number; oldestWaitMinutes: number; primary: boolean }[];
   agents: { id: string; displayName: L; status: string; reasons: string[] }[];
+  shift: {
+    id: string;
+    name: L;
+    startsAt: string;
+    endsAt: string;
+    onShift: boolean;
+    endsInMinutes: number;
+    startsInMinutes: number;
+  } | null;
+  shiftMode: "off" | "guide" | "strict";
+  breaks: {
+    enabled: boolean;
+    limit: number | null;
+    /** Colleagues of the branch on a break now. */
+    onBreak: number;
+    request: { status: "waiting" | "offered"; position: number; offerExpiresAt: string | null } | null;
+  };
+  /** Up to 5 previous visits (latest first) per visitor id. */
+  visitHistory: Record<string, VisitHistoryItem[]>;
+};
+
+export type VisitHistoryItem = {
+  displayNumber: string;
+  reasonId: string;
+  arrivedAt: string;
+  status: string;
+  outcome: string | null;
+  agentName: L | null;
+};
+
+export type BreakEvent = {
+  kind: "queued" | "available" | "expired" | "cancelled";
+  onBreak?: number;
+  limit?: number;
+  position?: number;
+  expiresAt?: string;
+  holdMinutes?: number;
 };

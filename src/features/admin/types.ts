@@ -12,7 +12,14 @@ export type City = {
   updatedAt?: string;
   branchCount: number;
 };
-export type AgentProfile = { branchId: string; defaultDeskId?: string | null; maxConcurrent: number | null; weight: number };
+export type Shift = { id: string; code: string; name: L; startsAt: string; endsAt: string; sortOrder: number };
+export type AgentProfile = {
+  branchId: string;
+  defaultDeskId?: string | null;
+  maxConcurrent: number | null;
+  weight: number;
+  shiftId?: string | null;
+};
 
 export type UserRow = {
   id: string;
@@ -114,4 +121,5 @@ export type Lookups = {
   groups: Group[];
   priorities: Priority[];
   breakTypes: BreakType[];
+  shifts: Shift[];
 };

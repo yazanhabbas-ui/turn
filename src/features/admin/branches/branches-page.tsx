@@ -281,7 +281,7 @@ function BranchDialog({
     code: "",
     name: {} as L,
     address: {} as L,
-    timezone: "Asia/Riyadh",
+    timezone: "Asia/Damascus",
     weekend: [5, 6],
     isDefault: false,
   };
@@ -301,7 +301,7 @@ function BranchDialog({
           code: "",
           name: {},
           address: {},
-          timezone: "Asia/Riyadh",
+          timezone: "Asia/Damascus",
           weekend: [5, 6],
           isDefault: false,
         };

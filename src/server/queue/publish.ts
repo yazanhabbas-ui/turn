@@ -20,6 +20,18 @@ export type QueueEvent =
       recall: boolean;
     }
   | { type: "agent.updated"; branchId: string; agentId: string; status: string }
+  | {
+      type: "break.update";
+      branchId: string;
+      agentId: string;
+      /** queued = the break limit is reached and the agent is in line; available = a place is theirs for a while. */
+      kind: "queued" | "available" | "expired" | "cancelled";
+      onBreak?: number;
+      limit?: number;
+      position?: number;
+      expiresAt?: string;
+      holdMinutes?: number;
+    }
   | { type: "alert.raised"; branchId: string; alertType: string; payload: Record<string, unknown> };
 
 export function publish(events: QueueEvent[]) {
@@ -31,6 +43,11 @@ export function publish(events: QueueEvent[]) {
     if (e.type === "queue.updated") {
       if (seen.has(e.branchId)) continue;
       seen.add(e.branchId);
+    }
+    // Break-line news is for the agent it concerns.
+    if (e.type === "break.update") {
+      hub.to(`user:${e.agentId}`).emit(e.type, e);
+      continue;
     }
     hub.to(`branch:${e.branchId}`).emit(e.type, e);
     // Waiting-room screens only get what they render: queue changes and calls (never agent status or alerts).

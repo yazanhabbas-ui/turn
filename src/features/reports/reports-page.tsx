@@ -20,6 +20,7 @@ import {
   parseFilters,
   toQuery,
   type OverviewResponse,
+  type ReportMeta,
   type ReportFilterState,
 } from "./filters";
 import {
@@ -32,13 +33,14 @@ import {
   HourChart,
   PeakHeatmap,
   QueueLengthChart,
+  RepeatDistributionChart,
   ReasonMixChart,
   ReasonWeeklyChart,
   ThroughputChart,
   WeekdayChart,
 } from "./report-charts";
 import { ReportFilters } from "./report-filters";
-import { AgentsTable, ReasonsTable } from "./report-tables";
+import { AgentsTable, ReasonsTable, RepeatVisitorsTable, ShiftsTable } from "./report-tables";
 import { SchedulesPanel } from "./schedules-panel";
 import { useReportFormat } from "./use-report-format";
 
@@ -125,7 +127,12 @@ export function ReportsPage({ canExport, canSchedule }: { canExport: boolean; ca
         ) : data.summary.visitors === 0 ? (
           <EmptyState title={t("empty")} />
         ) : (
-          <ReportBody data={data} multiBranch={(meta?.branches.length ?? 0) > 1 && !filters.branchId} />
+          <ReportBody
+            data={data}
+            reasons={meta?.reasons ?? []}
+            timeZone={report.data?.timezone ?? tz ?? "UTC"}
+            multiBranch={(meta?.branches.length ?? 0) > 1 && !filters.branchId}
+          />
         )}
 
         <ForecastCard query={forecast} />
@@ -211,7 +218,17 @@ function Tile({
   );
 }
 
-function ReportBody({ data, multiBranch }: { data: ReportData; multiBranch: boolean }) {
+function ReportBody({
+  data,
+  reasons,
+  timeZone,
+  multiBranch,
+}: {
+  data: ReportData;
+  reasons: ReportMeta["reasons"];
+  timeZone: string;
+  multiBranch: boolean;
+}) {
   const t = useTranslations("reports");
   const f = useReportFormat();
   const s = data.summary;
@@ -290,6 +307,12 @@ function ReportBody({ data, multiBranch }: { data: ReportData; multiBranch: bool
         </div>
       </Section>
 
+      {data.byShift.length > 0 && (
+        <Section title={t("sections.shifts")} description={t("shifts.hint")}>
+          <ShiftsTable shifts={data.byShift} />
+        </Section>
+      )}
+
       <Section title={t("sections.peak")} description={t("charts.peakHint")}>
         <PeakHeatmap data={data.heatmap} />
       </Section>
@@ -313,7 +336,7 @@ function ReportBody({ data, multiBranch }: { data: ReportData; multiBranch: bool
           <p className="text-muted-foreground text-sm">{t("agents.empty")}</p>
         ) : (
           <div className="space-y-6">
-            <AgentsTable agents={data.agents} />
+            <AgentsTable agents={data.agents} shifts={data.byShift} />
             <ChartBlock title={t("charts.servedPerAgent")} description={t("charts.servedPerAgentHint")}>
               <AgentServedChart data={data.agents} />
             </ChartBlock>
@@ -324,7 +347,51 @@ function ReportBody({ data, multiBranch }: { data: ReportData; multiBranch: bool
       <Section title={t("sections.reasons")}>
         <ReasonsTable reasons={data.byReason} />
       </Section>
+
+      <RepeatSection data={data.repeat} reasons={reasons} timeZone={timeZone} />
     </>
+  );
+}
+
+function RepeatSection({
+  data,
+  reasons,
+  timeZone,
+}: {
+  data: ReportData["repeat"];
+  reasons: ReportMeta["reasons"];
+  timeZone: string;
+}) {
+  const t = useTranslations("reports.repeat");
+  const f = useReportFormat();
+  return (
+    <Section title={t("title")} description={t("hint")}>
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+          <Tile label={t("kpi.unique")} value={f.num(data.uniqueVisitors)} />
+          <Tile label={t("kpi.repeat")} value={f.num(data.repeatVisitors)} />
+          <Tile label={t("kpi.rate")} value={f.pct(data.repeatRatePct)} />
+          <Tile label={t("kpi.avgVisits")} value={f.num(data.avgVisits, 2)} />
+          <Tile label={t("kpi.anonymous")} value={f.num(data.anonymousTickets)} hint={t("kpi.anonymousHint")} />
+        </div>
+        {data.uniqueVisitors > 0 && (
+          <ChartBlock title={t("distribution")}>
+            <RepeatDistributionChart data={data.distribution} />
+          </ChartBlock>
+        )}
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold">{t("returning")}</h3>
+          {data.top.length === 0 ? (
+            <p className="text-muted-foreground mt-2 text-sm">{t("empty")}</p>
+          ) : (
+            <div className="mt-2 space-y-2">
+              <RepeatVisitorsTable visitors={data.top} reasons={reasons} timeZone={timeZone} />
+              {data.top.length >= 100 && <p className="text-muted-foreground text-xs">{t("truncated", { n: f.num(100) })}</p>}
+            </div>
+          )}
+        </div>
+      </div>
+    </Section>
   );
 }
 

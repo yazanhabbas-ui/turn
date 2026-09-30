@@ -29,7 +29,7 @@ async function expectCode(p: Promise<unknown>, code: string, reason?: string) {
 }
 
 /** Tuesday 29 Sep 2026, 10:00 Riyadh — inside office hours. */
-const TUESDAY_10AM = zonedToUtc("2026-09-29", "10:00", "Asia/Riyadh");
+const TUESDAY_10AM = zonedToUtc("2026-09-29", "10:00", "Asia/Damascus");
 
 describe.runIf(available)("queue engine (database)", () => {
   let reception: Actor;
@@ -112,7 +112,7 @@ describe.runIf(available)("queue engine (database)", () => {
   });
 
   it("tickets can be issued at any time of day", async () => {
-    setClock(zonedToUtc("2026-10-02", "23:30", "Asia/Riyadh")); // Friday night
+    setClock(zonedToUtc("2026-10-02", "23:30", "Asia/Damascus")); // Friday night
     expect((await issue("general")).ticket.status).toBe("WAITING");
   });
 
@@ -284,7 +284,7 @@ describe.runIf(available)("queue engine (database)", () => {
   });
 
   it("calling is never blocked by the time of day (there are no service pauses)", async () => {
-    setClock(zonedToUtc("2026-09-29", "12:10", "Asia/Riyadh"));
+    setClock(zonedToUtc("2026-09-29", "12:10", "Asia/Damascus"));
     await issue("general");
     await available_(khalid);
     expect((await callNext(khalid)).ticket).not.toBeNull();

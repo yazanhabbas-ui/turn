@@ -29,7 +29,12 @@ export const SETTINGS = {
       digitsTicket: z.enum(["latn", "arab"]).default("latn"),
       digitsVoice: z.enum(["latn", "arab"]).default("latn"),
       timeFormat: z.enum(["12h", "24h"]).default("12h"),
-      showHijri: z.boolean().default(true),
+      showHijri: z.boolean().default(false),
+      /** Country calling code (no plus) used to complete local numbers such as 0944 123 456 → +963 944 123 456. */
+      phoneCountryCode: z
+        .string()
+        .regex(/^\d{1,4}$/)
+        .default("963"),
     })
     .prefault({}),
   ticketing: z
@@ -113,8 +118,31 @@ export const SETTINGS = {
     .object({
       /** Off = every agent serves one visitor at a time. */
       multipleVisitors: z.boolean().default(false),
+      /**
+       * How shifts are used: off = ignored; guide = shown, used in reports, and agents outside their shift get no
+       * automatic assignments; strict = an agent cannot become available outside their shift and is signed out
+       * after it ends.
+       */
+      shiftMode: z.enum(["off", "guide", "strict"]).default("guide"),
+      /** In strict mode: minutes after the shift end before an idle agent is signed out. */
+      shiftEndGraceMinutes: z.number().int().min(0).max(120).default(10),
       /** Visitors at once for agents without their own limit (Admin → Users → agent profile). */
       visitorsPerAgent: z.number().int().min(1).max(20).default(2),
+    })
+    .prefault({}),
+  /** Limits on agents being on a break at the same time. */
+  breaks: z
+    .object({
+      enabled: z.boolean().default(true),
+      /** The most agents of a branch that may be on a break at once: a number, or a share of the agents signed in. */
+      maxOnBreak: z
+        .object({
+          mode: z.enum(["count", "percent"]).default("count"),
+          value: z.number().int().min(1).max(100).default(2),
+        })
+        .prefault({}),
+      /** When a place frees up, the next agent in line has this many minutes to take it. */
+      holdMinutes: z.number().int().min(1).max(30).default(3),
     })
     .prefault({}),
   /** How fast the reception desk is: what happens when a reason is tapped and after a ticket is issued. */

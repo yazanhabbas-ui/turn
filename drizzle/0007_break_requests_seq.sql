@@ -1,0 +1,1 @@
+ALTER TABLE "break_requests" ADD COLUMN "seq" bigserial NOT NULL;

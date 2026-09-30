@@ -78,6 +78,10 @@ describe("undo", () => {
     const { normalizePhone } = await import("@/domain/tickets/phone");
     expect(normalizePhone("٠٥٠ ١٢٣ ٤٥٦٧")).toBe("0501234567");
     expect(normalizePhone("00966-50-123-4567")).toBe("+966501234567");
+    // A local number is completed with the configured country code, so both spellings are the same visitor.
+    expect(normalizePhone("0944 123 456", "963")).toBe("+963944123456");
+    expect(normalizePhone("+963944123456", "963")).toBe("+963944123456");
+    expect(normalizePhone("00963944123456", "963")).toBe("+963944123456");
     expect(normalizePhone("abc")).toBeNull();
   });
 });

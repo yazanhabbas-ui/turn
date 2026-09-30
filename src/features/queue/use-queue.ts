@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { api } from "@/lib/api";
+import type { BreakEvent } from "./types";
 
 /**
  * One Socket.IO connection per browser tab, shared by every hook. It reconnects on its own (with back-off) and
@@ -31,7 +32,13 @@ export type ConnectionState = "connected" | "connecting" | "offline";
 /** Subscribes to a branch's events. Returns the connection state for the status pill and polling fallback. */
 export function useBranchEvents(
   branchId: string | null | undefined,
-  handlers: { onQueue?: () => void; onCalled?: (e: CalledEvent) => void; onAgent?: () => void; onAlert?: () => void },
+  handlers: {
+    onQueue?: () => void;
+    onCalled?: (e: CalledEvent) => void;
+    onAgent?: () => void;
+    onAlert?: () => void;
+    onBreak?: (e: BreakEvent) => void;
+  },
 ): ConnectionState {
   const [state, setState] = useState<ConnectionState>("connecting");
   const ref = useRef(handlers);
@@ -52,6 +59,7 @@ export function useBranchEvents(
     const onCalled = (e: CalledEvent) => ref.current.onCalled?.(e);
     const onAgent = () => ref.current.onAgent?.();
     const onAlert = () => ref.current.onAlert?.();
+    const onBreak = (e: BreakEvent) => ref.current.onBreak?.(e);
     s.on("connect", onConnect);
     s.on("disconnect", onDisconnect);
     s.on("connect_error", onDisconnect);
@@ -59,6 +67,7 @@ export function useBranchEvents(
     s.on("ticket.called", onCalled);
     s.on("agent.updated", onAgent);
     s.on("alert.raised", onAlert);
+    s.on("break.update", onBreak);
     if (s.connected) onConnect();
     return () => {
       s.emit("unsubscribe", { branchId });
@@ -69,6 +78,7 @@ export function useBranchEvents(
       s.off("ticket.called", onCalled);
       s.off("agent.updated", onAgent);
       s.off("alert.raised", onAlert);
+      s.off("break.update", onBreak);
     };
   }, [branchId]);
 
@@ -92,7 +102,7 @@ export function useLiveQuery<T>(
   key: unknown[],
   path: string | null,
   branchId: string | null | undefined,
-  opts: { onAlert?: () => void } = {},
+  opts: { onAlert?: () => void; onBreak?: (e: BreakEvent) => void } = {},
 ) {
   const qc = useQueryClient();
   const refetch = useDebounced(() => qc.invalidateQueries({ queryKey: key }));
@@ -103,6 +113,10 @@ export function useLiveQuery<T>(
     onAlert: () => {
       refetch();
       opts.onAlert?.();
+    },
+    onBreak: (e) => {
+      refetch();
+      opts.onBreak?.(e);
     },
   });
   const query = useQuery<T>({

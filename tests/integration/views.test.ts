@@ -32,7 +32,7 @@ describe.runIf(available)("queue views (database)", () => {
     });
 
   beforeEach(async () => {
-    setClock(zonedToUtc("2026-09-29", "10:00", "Asia/Riyadh"));
+    setClock(zonedToUtc("2026-09-29", "10:00", "Asia/Damascus"));
     await resetDemo();
     reception = await actorFor("reception@dor.local");
     khalid = await actorFor("khalid@dor.local");
@@ -96,7 +96,7 @@ describe.runIf(available)("queue views (database)", () => {
         branchId,
         reasonId: reason.account_manager,
         code: "K7Q2PM",
-        scheduledAt: new Date(zonedToUtc("2026-09-29", "10:30", "Asia/Riyadh")),
+        scheduledAt: new Date(zonedToUtc("2026-09-29", "10:30", "Asia/Damascus")),
       })
       .returning();
     const found = await lookupAppointment(reception, branchId, " k7q2pm ");

@@ -18,6 +18,7 @@ import { useRouter } from "@/i18n/navigation";
 import { BRAND_FONTS, type SettingKey, type SettingValue } from "@/server/settings/registry";
 import type { BreakType, L, Priority, RoleRow } from "../types";
 import { LOOKUPS, useLookups, useText } from "../use-lookups";
+import { ShiftsManager } from "./shifts-breaks";
 
 type AllSettings = { [K in SettingKey]: SettingValue<K> };
 const SETTINGS = "/api/v1/admin/settings";
@@ -111,6 +112,7 @@ export function SettingsPage({ organization = true }: { organization?: boolean }
           "reception",
           "wifi",
           "agents",
+          "breakLimit",
           "wallboard",
           "reports",
           "alerts",
@@ -150,7 +152,13 @@ export function SettingsPage({ organization = true }: { organization?: boolean }
           <WifiTab defaults={s.wifi} branches={lookups.data.branches} organization={organization} />
         </TabsContent>
         <TabsContent value="agents" className="mt-4">
-          <AgentWorkForm initial={s.agentWork} />
+          <div className="space-y-6">
+            <AgentWorkForm initial={s.agentWork} />
+            <ShiftsManager items={lookups.data.shifts} />
+          </div>
+        </TabsContent>
+        <TabsContent value="breakLimit" className="mt-4">
+          <BreakLimitForm initial={s.breaks} />
         </TabsContent>
         <TabsContent value="wallboard" className="mt-4">
           <WallboardForm initial={s.wallboard} />
@@ -302,6 +310,22 @@ function RegionalForm({ initial }: { initial: SettingValue<"regional"> }) {
               </NativeSelect>
             </Field>
           </div>
+          <Field label={t("phoneCountryCode")} htmlFor="rg-cc" hint={t("phoneCountryCodeHint")} className="max-w-48">
+            <div className="flex items-center gap-1.5" dir="ltr">
+              <span className="text-muted-foreground font-medium" aria-hidden>
+                +
+              </span>
+              <Input
+                id="rg-cc"
+                inputMode="numeric"
+                maxLength={4}
+                pattern="[0-9]{1,4}"
+                required
+                value={v.phoneCountryCode}
+                onChange={(e) => set({ phoneCountryCode: e.target.value.replace(/\D/g, "").slice(0, 4) })}
+              />
+            </div>
+          </Field>
           <Check label={t("showHijri")} checked={v.showHijri} onChange={(showHijri) => set({ showHijri })} />
         </>
       )}
@@ -731,8 +755,102 @@ function AgentWorkForm({ initial }: { initial: SettingValue<"agentWork"> }) {
               onChange={(e) => set({ visitorsPerAgent: Number(e.target.value) })}
             />
           </Field>
+          <fieldset className="space-y-2 border-t pt-4">
+            <legend className="text-sm font-semibold">{t("shiftMode")}</legend>
+            <p className="text-muted-foreground text-xs">{t("shiftModeHint")}</p>
+            <div className="space-y-2" role="radiogroup" aria-label={t("shiftMode")}>
+              {(["off", "guide", "strict"] as const).map((m) => (
+                <label key={m} className="flex items-start gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="aw-shift-mode"
+                    className="accent-brand mt-0.5 size-4"
+                    checked={v.shiftMode === m}
+                    onChange={() => set({ shiftMode: m })}
+                  />
+                  <span>
+                    {t(`shiftMode_${m}`)}
+                    <span className="text-muted-foreground block text-xs">{t(`shiftMode_${m}_hint`)}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <Field label={t("shiftEndGrace")} htmlFor="aw-grace" hint={t("shiftEndGraceHint")} className="max-w-48">
+            <Input
+              id="aw-grace"
+              type="number"
+              min={0}
+              max={120}
+              disabled={v.shiftMode !== "strict"}
+              value={v.shiftEndGraceMinutes}
+              onChange={(e) => set({ shiftEndGraceMinutes: Number(e.target.value) })}
+            />
+          </Field>
         </>
       )}
+    </SettingForm>
+  );
+}
+
+/** How many agents of a branch may be on a break at once, and how long the next in line has to take a freed place. */
+function BreakLimitForm({ initial }: { initial: SettingValue<"breaks"> }) {
+  const t = useTranslations("settings");
+  return (
+    <SettingForm k="breaks" initial={initial}>
+      {(v, set) => {
+        const setMax = (patch: Partial<typeof v.maxOnBreak>) => set({ maxOnBreak: { ...v.maxOnBreak, ...patch } });
+        const example = 3;
+        const max =
+          v.maxOnBreak.mode === "count" ? v.maxOnBreak.value : Math.max(1, Math.floor((example * v.maxOnBreak.value) / 100));
+        return (
+          <>
+            <p className="text-muted-foreground text-sm">{t("breakLimitIntro")}</p>
+            <Check
+              label={t("breakLimitEnabled")}
+              hint={t("breakLimitEnabledHint")}
+              checked={v.enabled}
+              onChange={(enabled) => set({ enabled })}
+            />
+            <fieldset className="space-y-2" disabled={!v.enabled}>
+              <legend className="mb-1.5 text-sm font-medium">{t("maxOnBreak")}</legend>
+              <div className="grid max-w-md gap-3 sm:grid-cols-2">
+                <Input
+                  aria-label={t("maxOnBreak")}
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={v.maxOnBreak.value}
+                  onChange={(e) => setMax({ value: Number(e.target.value) })}
+                />
+                <NativeSelect
+                  aria-label={t("maxOnBreakMode")}
+                  value={v.maxOnBreak.mode}
+                  onChange={(e) => setMax({ mode: e.target.value as "count" | "percent" })}
+                >
+                  <option value="count">{t("maxOnBreakCount")}</option>
+                  <option value="percent">{t("maxOnBreakPercent")}</option>
+                </NativeSelect>
+              </div>
+              <p className="text-muted-foreground text-xs" aria-live="polite">
+                {t("maxOnBreakPreview", { agents: example, max })}
+              </p>
+            </fieldset>
+            <Field label={t("holdMinutes")} htmlFor="bl-hold" hint={t("holdMinutesHint")} className="max-w-48">
+              <Input
+                id="bl-hold"
+                type="number"
+                min={1}
+                max={30}
+                disabled={!v.enabled}
+                value={v.holdMinutes}
+                onChange={(e) => set({ holdMinutes: Number(e.target.value) })}
+              />
+            </Field>
+            <p className="bg-muted/40 rounded-lg border border-dashed p-3 text-sm">{t("breakLimitExplainer")}</p>
+          </>
+        );
+      }}
     </SettingForm>
   );
 }

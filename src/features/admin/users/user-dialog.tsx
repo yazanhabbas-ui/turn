@@ -86,7 +86,7 @@ export function UserDialog({
         phone: body.phone || null,
         locale: body.locale || null,
         grants: body.grants.filter((g) => g.roleId).map((g) => ({ ...g, cityId: g.cityId ?? null })),
-        agent: body.agent,
+        agent: body.agent ? { ...body.agent, shiftId: body.agent.shiftId ?? null } : null,
         groupIds: body.groupIds,
         ...(user ? {} : { password: body.password || undefined }),
       };
@@ -274,6 +274,7 @@ export function UserDialog({
                             maxConcurrent: null,
                             weight: 1,
                             defaultDeskId: null,
+                            shiftId: null,
                           }
                         : null,
                     )
@@ -307,6 +308,20 @@ export function UserDialog({
                       {deskOptions.map((d) => (
                         <option key={d.id} value={d.id}>
                           {text(d.name)}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </Field>
+                  <Field label={t("shift")} htmlFor="a-shift" hint={t("shiftHint")}>
+                    <NativeSelect
+                      id="a-shift"
+                      value={form.agent.shiftId ?? ""}
+                      onChange={(e) => set("agent", { ...form.agent!, shiftId: e.target.value || null })}
+                    >
+                      <option value="">{t("noShift")}</option>
+                      {lookups.shifts.map((sh) => (
+                        <option key={sh.id} value={sh.id}>
+                          {text(sh.name)} ({sh.startsAt}–{sh.endsAt})
                         </option>
                       ))}
                     </NativeSelect>

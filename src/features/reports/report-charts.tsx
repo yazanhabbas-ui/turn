@@ -516,3 +516,37 @@ export function ForecastHoursChart({ data }: { data: Forecast["tomorrow"]["hours
   }, [data, f, t]);
   return <EChart option={option} height={280} ariaLabel={t("forecastHours")} />;
 }
+
+/* ─────────────── Repeat visits ─────────────── */
+
+export function RepeatDistributionChart({ data }: { data: ReportData["repeat"]["distribution"] }) {
+  const t = useTranslations("reports.repeat");
+  const f = useReportFormat();
+  const option = useMemo(() => {
+    const by = new Map(data.map((d) => [d.visits, d.visitors]));
+    const buckets = [1, 2, 3, 4, 5];
+    return {
+      ...baseOption(th),
+      color: [th.series[0]],
+      grid,
+      legend: noLegend,
+      tooltip: axisTooltip((_, v) => f.num(v)),
+      xAxis: categoryAxis(
+        buckets.map((n) => (n === 5 ? t("fivePlus", { n: f.num(5) }) : f.num(n))),
+        t("visitsAxis"),
+      ),
+      yAxis: valueAxis(t("visitorsAxis")),
+      series: [
+        {
+          name: t("visitorsAxis"),
+          type: "bar",
+          data: buckets.map((n) => by.get(n) ?? 0),
+          barMaxWidth: 48,
+          itemStyle: { borderRadius: [3, 3, 0, 0] },
+          label: { show: true, position: "top", color: th.textSecondary, formatter: (p: { value: number }) => f.num(p.value) },
+        },
+      ],
+    };
+  }, [data, f, t]);
+  return <EChart option={option} height={260} ariaLabel={t("distribution")} />;
+}

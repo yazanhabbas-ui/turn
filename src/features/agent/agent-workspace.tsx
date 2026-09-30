@@ -1,7 +1,7 @@
 "use client";
 
-import { ArrowLeftRight, Bell, CheckCircle2, Coffee, PauseCircle, Phone, Play, UserRoundX } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { ArrowLeftRight, Bell, CheckCircle2, Clock, Coffee, PauseCircle, Phone, Play, UserRoundX } from "lucide-react";
+import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ErrorState, LoadingRows } from "@/components/admin/form";
@@ -17,8 +17,8 @@ import { pickText } from "@/i18n/locales";
 import { Link } from "@/i18n/navigation";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { ConnectionPill, Elapsed, SlaTimer, StatusBadge } from "../queue/bits";
-import type { AgentWorkspace, Ticket } from "../queue/types";
+import { ConnectionPill, Elapsed, formatElapsed, SlaTimer, StatusBadge } from "../queue/bits";
+import type { AgentWorkspace, BreakEvent, Ticket, VisitHistoryItem } from "../queue/types";
 import { useLiveQuery } from "../queue/use-queue";
 
 type Status = AgentWorkspace["profile"]["status"];
@@ -31,6 +31,28 @@ const STATUS_COLOR: Record<Status, string> = {
   OFFLINE: "bg-status-cancelled text-white border-status-cancelled",
 };
 
+/** Soft two-note chime (same approach as the wallboard); callers only use it after a user interaction. */
+function chime() {
+  try {
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new Ctx();
+    [660, 880].forEach((f, i) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + i * 0.25);
+      g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + i * 0.25 + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + i * 0.25 + 0.4);
+      o.connect(g).connect(ctx.destination);
+      o.start(ctx.currentTime + i * 0.25);
+      o.stop(ctx.currentTime + i * 0.25 + 0.45);
+    });
+    setTimeout(() => void ctx.close(), 1200);
+  } catch {
+    /* audio is optional */
+  }
+}
+
 function isTyping(e: KeyboardEvent) {
   const el = e.target as HTMLElement | null;
   return !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable);
@@ -42,7 +64,35 @@ export function AgentWorkspaceView() {
   const locale = useLocale();
   const message = useErrorMessage();
   const [branchId, setBranchId] = useState<string | null>(null);
-  const ws = useLiveQuery<AgentWorkspace>(["agent-ws"], "/api/v1/queue/agent", branchId);
+  const interacted = useRef(false);
+  const lastBreakType = useRef<string | null>(null);
+  const [justQueued, setJustQueued] = useState(false);
+  const onBreakEvent = (e: BreakEvent) => {
+    if (e.kind === "queued") {
+      setJustQueued(true);
+      toast.info(t("breakQueuedToast", { position: e.position ?? 0 }));
+    } else if (e.kind === "available") {
+      setJustQueued(false);
+      toast.success(t("breakAvailableToast"), { duration: 10000 });
+      if (interacted.current) chime();
+    } else if (e.kind === "expired") {
+      setJustQueued(false);
+      toast.warning(t("breakExpiredToast"));
+    } else setJustQueued(false);
+  };
+  const ws = useLiveQuery<AgentWorkspace>(["agent-ws"], "/api/v1/queue/agent", branchId, { onBreak: onBreakEvent });
+  // Autoplay policy: only chime once the user has interacted with the page.
+  useEffect(() => {
+    const mark = () => {
+      interacted.current = true;
+    };
+    window.addEventListener("pointerdown", mark);
+    window.addEventListener("keydown", mark);
+    return () => {
+      window.removeEventListener("pointerdown", mark);
+      window.removeEventListener("keydown", mark);
+    };
+  }, []);
   useEffect(() => setBranchId(ws.data?.branch.id ?? null), [ws.data?.branch.id]);
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
@@ -90,13 +140,21 @@ export function AgentWorkspaceView() {
   const setStatus = useCallback(
     async (status: Status, extra: Record<string, unknown> = {}) => {
       try {
-        await api("/api/v1/queue/agent/status", { body: { status, ...extra } });
+        const r = await api<{ status: string; breakQueued: { onBreak: number; limit: number; position: number } | null }>(
+          "/api/v1/queue/agent/status",
+          { body: { status, ...extra } },
+        );
+        setJustQueued(status === "ON_BREAK" && !!r?.breakQueued);
         refresh();
       } catch (err) {
-        toast.error(message(err));
+        if (err instanceof ApiError && err.status === 409 && err.details?.reason === "off_shift") {
+          toast.error(
+            t("shiftStrictBlocked", { time: String(err.details.startsAt ?? ""), min: Number(err.details.startsInMinutes ?? 0) }),
+          );
+        } else toast.error(message(err));
       }
     },
-    [refresh, message],
+    [refresh, message, t],
   );
 
   const callNext = useCallback(async () => {
@@ -163,6 +221,17 @@ export function AgentWorkspaceView() {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
+      <ShiftBanner data={data} />
+      <BreakNotices
+        data={data}
+        prominent={justQueued}
+        onCancel={() => void setStatus(data.profile.status)}
+        onStart={() => {
+          const id = lastBreakType.current ?? (data.breakTypes.length === 1 ? data.breakTypes[0].id : null);
+          if (id || !data.breakTypes.length) void setStatus("ON_BREAK", id ? { breakTypeId: id } : {});
+          else setBreakPicker(true);
+        }}
+      />
       {/* Status bar */}
       <div className="bg-card flex flex-wrap items-center gap-3 rounded-2xl border p-3 shadow-sm">
         <div className="flex flex-wrap gap-1" role="radiogroup" aria-label={t("status")}>
@@ -183,6 +252,11 @@ export function AgentWorkspaceView() {
           ))}
         </div>
         <span className="text-muted-foreground text-xs">{t(`statusHint.${data.profile.status}`)}</span>
+        {data.breaks.enabled && data.breaks.limit != null && (
+          <span className="text-muted-foreground bg-muted/60 rounded-full px-2.5 py-1 text-xs">
+            {t("breakHint", { count: data.breaks.onBreak, limit: data.breaks.limit })}
+          </span>
+        )}
         {data.profile.status === "ON_BREAK" && (
           <span className="bg-status-hold/10 text-status-hold inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm">
             <Coffee className="size-4" aria-hidden />
@@ -245,7 +319,12 @@ export function AgentWorkspaceView() {
             </div>
           )}
           {current ? (
-            <CurrentTicket ticket={current} reason={reasonOf(current.reasonId)} />
+            <CurrentTicket
+              ticket={current}
+              reason={reasonOf(current.reasonId)}
+              history={data.visitHistory}
+              reasons={data.reasons}
+            />
           ) : (
             <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 text-center">
               <Bell className="size-12 opacity-40" aria-hidden />
@@ -378,6 +457,7 @@ export function AgentWorkspaceView() {
                       </span>
                       <span className="text-muted-foreground text-xs">{pickText(reasonOf(x.reasonId)?.name, locale)}</span>
                     </div>
+                    <VisitBadges visitor={x.visitor} />
                     <SlaTimer since={x.arrivedAt} slaMinutes={reasonOf(x.reasonId)?.slaTargetWaitMinutes ?? 15} />
                   </li>
                 ))}
@@ -394,7 +474,10 @@ export function AgentWorkspaceView() {
                     <span className="tabular font-bold" dir="ltr">
                       {x.displayNumber}
                     </span>
-                    <span className="text-muted-foreground flex-1 truncate text-xs">{x.visitor?.name}</span>
+                    <span className="text-muted-foreground flex-1 truncate text-xs">
+                      {x.visitor?.name}
+                      <VisitBadges visitor={x.visitor} />
+                    </span>
                     <Button size="sm" variant="outline" onClick={() => void action(x, { action: "resume" })}>
                       <Play aria-hidden />
                     </Button>
@@ -412,6 +495,7 @@ export function AgentWorkspaceView() {
         onClose={() => setBreakPicker(false)}
         onPick={(id) => {
           setBreakPicker(false);
+          lastBreakType.current = id;
           void setStatus("ON_BREAK", { breakTypeId: id });
         }}
       />
@@ -453,7 +537,202 @@ function NotAnAgent() {
   );
 }
 
-function CurrentTicket({ ticket, reason }: { ticket: Ticket; reason: AgentWorkspace["reasons"][number] | undefined }) {
+function ShiftBanner({ data }: { data: AgentWorkspace }) {
+  const t = useTranslations("agent");
+  const locale = useLocale();
+  const { shift, shiftMode } = data;
+  if (!shift || shiftMode === "off") return null;
+  const times = t("shiftTimes", { start: shift.startsAt, end: shift.endsAt });
+  const name = pickText(shift.name, locale);
+  if (!shift.onShift) {
+    return (
+      <div
+        role="status"
+        className="border-status-called/40 bg-status-called/10 flex flex-wrap items-center gap-3 rounded-2xl border p-3"
+      >
+        <Clock className="text-status-called size-5 shrink-0" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold">{t("shiftOffNotice", { time: shift.startsAt, min: shift.startsInMinutes })}</div>
+          <div className="text-muted-foreground text-sm">{t(shiftMode === "strict" ? "shiftOffStrict" : "shiftOffGuide")}</div>
+        </div>
+        <span className="text-muted-foreground text-xs">
+          {name} · <span dir="ltr">{times}</span>
+        </span>
+      </div>
+    );
+  }
+  const m = shift.endsInMinutes;
+  const tone =
+    m <= 5
+      ? "border-sla-breach/40 bg-sla-breach/10 text-sla-breach"
+      : m <= 15
+        ? "border-sla-warn/40 bg-sla-warn/10 text-sla-warn"
+        : "bg-card text-muted-foreground";
+  return (
+    <div className={cn("flex flex-wrap items-center gap-3 rounded-2xl border px-3 py-2 text-sm", tone)}>
+      <Clock className="size-4 shrink-0" aria-hidden />
+      <span className="text-foreground font-medium">{name}</span>
+      <span dir="ltr">{times}</span>
+      <span className="ms-auto font-semibold">{t("shiftEndsIn", { min: m })}</span>
+    </div>
+  );
+}
+
+function Countdown({ to, className }: { to: string; className?: string }) {
+  const now = useNow({ updateInterval: 1000 });
+  return (
+    <span className={cn("tabular", className)} dir="ltr">
+      {formatElapsed(new Date(to).getTime() - now.getTime())}
+    </span>
+  );
+}
+
+function BreakNotices({
+  data,
+  prominent,
+  onCancel,
+  onStart,
+}: {
+  data: AgentWorkspace;
+  prominent: boolean;
+  onCancel: () => void;
+  onStart: () => void;
+}) {
+  const t = useTranslations("agent");
+  const req = data.breaks.request;
+  if (!req) return null;
+  if (req.status === "offered") {
+    return (
+      <div
+        role="alert"
+        className="border-status-serving/50 bg-status-serving/10 flex flex-wrap items-center gap-3 rounded-2xl border p-4"
+      >
+        <Coffee className="text-status-serving size-6 shrink-0" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <div className="text-lg font-semibold">{t("breakAvailableTitle")}</div>
+          <div className="text-muted-foreground text-sm">
+            {t("breakAvailableBody")}{" "}
+            {req.offerExpiresAt && <Countdown to={req.offerExpiresAt} className="text-foreground font-semibold" />}
+          </div>
+        </div>
+        <Button className="h-11 px-6" onClick={onStart}>
+          <Coffee aria-hidden />
+          {t("breakStart")}
+        </Button>
+        <Button variant="outline" className="h-11" onClick={onCancel}>
+          {t("breakCancel")}
+        </Button>
+      </div>
+    );
+  }
+  if (!prominent) {
+    return (
+      <div role="status" className="bg-muted/60 flex items-center gap-2 self-start rounded-full border px-3 py-1.5 text-sm">
+        <Coffee className="size-4" aria-hidden />
+        {t("breakWaitingPill", { position: req.position })}
+        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={onCancel}>
+          {t("breakCancel")}
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <div role="status" className="bg-card flex flex-wrap items-center gap-3 rounded-2xl border p-4 shadow-sm">
+      <Coffee className="text-status-hold size-6 shrink-0" aria-hidden />
+      <div className="min-w-0 flex-1">
+        <div className="font-semibold">{t("breakQueuedTitle")}</div>
+        <p className="text-muted-foreground text-sm">
+          {t("breakQueuedBody", { count: data.breaks.onBreak, limit: data.breaks.limit ?? 0, position: req.position })}
+        </p>
+      </div>
+      <Button variant="outline" className="h-11" onClick={onCancel}>
+        {t("breakCancel")}
+      </Button>
+    </div>
+  );
+}
+
+/** Returning badge + visit number, for the compact lists. */
+function VisitBadges({ visitor }: { visitor: Ticket["visitor"] }) {
+  const t = useTranslations("agent");
+  const tq = useTranslations("queue");
+  if (!visitor?.returning) return null;
+  return (
+    <span className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
+      <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 font-medium">{tq("returning")}</span>
+      <span className="text-muted-foreground">{t("visitNumber", { n: visitor.visitCount + 1 })}</span>
+    </span>
+  );
+}
+
+function VisitHistory({
+  visitor,
+  history,
+  reasons,
+}: {
+  visitor: NonNullable<Ticket["visitor"]>;
+  history: VisitHistoryItem[];
+  reasons: AgentWorkspace["reasons"];
+}) {
+  const t = useTranslations("agent");
+  const tq = useTranslations("queue");
+  const tts = useTranslations("ticketStatus");
+  const locale = useLocale();
+  const format = useFormatter();
+  return (
+    <div>
+      <h3 className="text-muted-foreground mb-2 text-sm font-medium">{t("visitHistory")}</h3>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="font-semibold">{t("visitNumber", { n: visitor.visitCount + 1 })}</span>
+        {visitor.returning ? (
+          <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 text-xs font-medium">{tq("returning")}</span>
+        ) : (
+          <span className="bg-muted rounded-full px-2 py-0.5 text-xs">{t("visitFirst")}</span>
+        )}
+        {visitor.lastVisitAt && (
+          <span className="text-muted-foreground">
+            {t("visitLast", { date: format.dateTime(new Date(visitor.lastVisitAt), { dateStyle: "medium" }) })}
+          </span>
+        )}
+      </div>
+      {history.length > 0 && (
+        <ul className="mt-2 divide-y rounded-xl border text-sm">
+          {history.map((v, i) => (
+            <li key={i} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 px-3 py-2">
+              <span className="tabular font-semibold" dir="ltr">
+                {v.displayNumber}
+              </span>
+              <span className="text-muted-foreground text-xs">
+                {format.dateTime(new Date(v.arrivedAt), { dateStyle: "medium", timeStyle: "short" })}
+              </span>
+              <span className="flex-1 truncate">{pickText(reasons.find((r) => r.id === v.reasonId)?.name, locale)}</span>
+              <span className="text-muted-foreground text-xs">
+                {v.outcome && t.has(`outcomes.${v.outcome}`)
+                  ? t(`outcomes.${v.outcome}`)
+                  : tts.has(v.status)
+                    ? tts(v.status)
+                    : v.status}
+                {v.agentName && <> · {t("visitServedBy", { name: pickText(v.agentName, locale) })}</>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function CurrentTicket({
+  ticket,
+  reason,
+  history,
+  reasons,
+}: {
+  ticket: Ticket;
+  reason: AgentWorkspace["reasons"][number] | undefined;
+  history: AgentWorkspace["visitHistory"];
+  reasons: AgentWorkspace["reasons"];
+}) {
   const t = useTranslations("agent");
   const tu = useTranslations("ui");
   const tq = useTranslations("queue");
@@ -558,6 +837,8 @@ function CurrentTicket({ ticket, reason }: { ticket: Ticket; reason: AgentWorksp
           <p className="text-muted-foreground text-sm">{t("noVisitorInfo")}</p>
         )}
       </div>
+
+      {ticket.visitor && <VisitHistory visitor={ticket.visitor} history={history[ticket.visitor.id] ?? []} reasons={reasons} />}
     </div>
   );
 }

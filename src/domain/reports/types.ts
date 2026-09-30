@@ -19,6 +19,8 @@ export type TicketFact = {
   transfersOut: string[];
   /** The visitor had at least one earlier ticket. */
   returning: boolean;
+  /** Who the visitor is when reception entered something that identifies them (phone, name…); null = anonymous. */
+  visitorId: string | null;
   /** SLA target of the ticket's reason, in minutes. */
   slaTargetMinutes: number;
 };
@@ -33,6 +35,9 @@ export type ReportInput = {
   branches: Map<string, { name: Record<string, string>; timezone: string }>;
   reasons: Map<string, { name: Record<string, string>; color: string }>;
   agents: Map<string, { name: Record<string, string> }>;
+  /** Agent shifts, and which shift each agent works (for the shift breakdown). */
+  shifts?: { id: string; name: Record<string, string>; startsAt: string; endsAt: string }[];
+  agentShift?: Map<string, string>;
   fromMs: number;
   /** Exclusive end. */
   toMs: number;
@@ -46,6 +51,7 @@ export type Spread = { avg: number; median: number; p90: number; max: number };
 export type AgentReport = {
   agentId: string;
   name: Record<string, string>;
+  shiftId: string | null;
   served: number;
   noShow: number;
   transferOut: number;
@@ -74,6 +80,45 @@ export type ReasonReport = {
   slaPct: number;
 };
 
+/** How often the same identified visitor came in the period (visitors reception recorded with a phone or name). */
+export type RepeatVisitor = {
+  visitorId: string;
+  visits: number;
+  firstAt: number;
+  lastAt: number;
+  /** Average days between consecutive visits. */
+  avgDaysBetween: number;
+  reasonIds: string[];
+  /** Filled in by the report service from the visitor record (null when anonymised or unknown). */
+  name?: string | null;
+  phoneMasked?: string | null;
+  /** The full number, only for people who may see personal data. */
+  phone?: string | null;
+};
+
+export type RepeatReport = {
+  /** Distinct identified visitors and how many tickets belong to them. */
+  uniqueVisitors: number;
+  identifiedTickets: number;
+  /** Tickets with no visitor record (nothing identifying was entered). */
+  anonymousTickets: number;
+  repeatVisitors: number;
+  repeatRatePct: number;
+  avgVisits: number;
+  /** Visitors by number of visits; the last bucket (5) means five or more. */
+  distribution: { visits: number; visitors: number }[];
+  /** Visitors with two or more visits, most visits first (at most 100). */
+  top: RepeatVisitor[];
+};
+
+export type ShiftReport = {
+  shiftId: string | null;
+  name: Record<string, string>;
+  visitors: number;
+  served: number;
+  avgWaitMin: number;
+};
+
 export type ReportData = {
   range: { fromMs: number; toMs: number };
   summary: {
@@ -100,6 +145,9 @@ export type ReportData = {
   byWeekday: { weekday: number; visitors: number }[];
   byBranch: { branchId: string; name: Record<string, string>; visitors: number; served: number; avgWaitMin: number }[];
   byReason: ReasonReport[];
+  /** Visitors by the shift in whose hours they arrived (a last row with shiftId null = outside every shift). */
+  byShift: ShiftReport[];
+  repeat: RepeatReport;
   heatmap: { cells: [weekday: number, hour: number, count: number][]; max: number };
   agents: AgentReport[];
   queueLengthByHour: { hour: number; avg: number; max: number }[];

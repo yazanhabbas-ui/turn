@@ -23,7 +23,7 @@ describe("ticket prefix", () => {
 
 describe("timezones", () => {
   it("validates IANA names", () => {
-    expect(isValidTimezone("Asia/Riyadh")).toBe(true);
+    expect(isValidTimezone("Asia/Damascus")).toBe(true);
     expect(isValidTimezone("Mars/Base")).toBe(false);
   });
 });

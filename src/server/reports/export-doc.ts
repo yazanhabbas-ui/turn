@@ -11,7 +11,18 @@ export type Report = Awaited<ReturnType<typeof buildReport>>;
 export type Cell = string | number | null;
 
 export type ExportTable = {
-  id: "summary" | "byDay" | "byHour" | "byReason" | "byAgent" | "byBranch" | "heatmap";
+  id:
+    | "summary"
+    | "byDay"
+    | "byHour"
+    | "byReason"
+    | "byAgent"
+    | "byBranch"
+    | "byShift"
+    | "repeatSummary"
+    | "repeatDistribution"
+    | "repeatTop"
+    | "heatmap";
   title: string;
   columns: string[];
   /** Column i is text (aligned to the start side) or a number. */
@@ -203,6 +214,59 @@ export function buildExportDoc(report: Report, locale: ExportLocale): ExportDoc 
       rows: data.byBranch.map((b) => [name(b.name), b.visitors, b.served, round1(b.avgWaitMin)]),
     });
   }
+  if (data.byShift.length) {
+    tables.push({
+      id: "byShift",
+      title: t.sections.byShift,
+      columns: [c.shift, c.visitors, c.served, c.avgWait],
+      kinds: ["text", ...nums(3)],
+      rows: data.byShift.map((x) => [x.shiftId ? name(x.name) : t.outsideShifts, x.visitors, x.served, round1(x.avgWaitMin)]),
+    });
+  }
+
+  // Repeat visits: how often the same identified visitor came in the period.
+  const rp = data.repeat;
+  const stamp = (ms: number) => stampInZone(new Date(ms).toISOString(), report.timezone).slice(0, 10);
+  tables.push({
+    id: "repeatSummary",
+    title: t.sections.repeatSummary,
+    columns: [c.metric, c.value],
+    kinds: ["text", "num"],
+    rows: [
+      [t.repeat.uniqueVisitors, rp.uniqueVisitors],
+      [t.repeat.repeatVisitors, rp.repeatVisitors],
+      [t.repeat.repeatRate, round1(rp.repeatRatePct)],
+      [t.repeat.avgVisits, round1(rp.avgVisits)],
+      [t.repeat.identifiedTickets, rp.identifiedTickets],
+      [t.repeat.anonymousTickets, rp.anonymousTickets],
+    ],
+  });
+  tables.push({
+    id: "repeatDistribution",
+    title: t.sections.repeatDistribution,
+    columns: [c.visits, c.visitors],
+    kinds: ["text", "num"],
+    rows: rp.distribution.map((x) => [x.visits >= 5 ? t.fiveOrMore : String(x.visits), x.visitors]),
+  });
+  if (rp.top.length) {
+    const reasonName = (id: string) => name(data.byReason.find((r) => r.reasonId === id)?.name ?? {});
+    tables.push({
+      id: "repeatTop",
+      title: t.sections.repeatTop,
+      columns: [c.visitor, c.phone, c.visits, c.firstVisit, c.lastVisit, c.daysBetween, c.reason],
+      kinds: ["text", "text", "num", "text", "text", "num", "text"],
+      rows: rp.top.map((v) => [
+        v.name ?? t.anonymous,
+        v.phone ?? v.phoneMasked ?? "",
+        v.visits,
+        stamp(v.firstAt),
+        stamp(v.lastAt),
+        round1(v.avgDaysBetween),
+        v.reasonIds.map(reasonName).join("، "),
+      ]),
+    });
+  }
+
   // Heatmap: weekday rows by hour columns.
   const grid = Array.from({ length: 7 }, () => Array<number>(24).fill(0));
   for (const [wd, hr, count] of data.heatmap.cells) grid[wd][hr] += count;

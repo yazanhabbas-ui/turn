@@ -33,6 +33,8 @@ export type EngineAgent = {
   status: AgentStatus;
   maxConcurrent: number;
   weight: number;
+  /** Outside their shift (and shifts are in use): not chosen for automatic assignment. */
+  offShift?: boolean;
   /** Since when the agent has had no active ticket (for "longest idle"). */
   idleSince: number | null;
   /** Last time a ticket was assigned or called (for round robin). */

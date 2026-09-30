@@ -159,7 +159,7 @@ function decide(s: EngineSnapshot, v: View, ticket: EngineTicket, cfg: Distribut
 
   const candidates: AgentCandidate[] = [];
   for (const a of s.agents) {
-    if (!isWorking(a) || !v.hasCapacity(a, "total") || !v.canServe(a, ticket)) continue;
+    if (!isWorking(a) || a.offShift || !v.hasCapacity(a, "total") || !v.canServe(a, ticket)) continue;
     candidates.push({ agent: a, load: v.totalLoad(a.id), proficiency: a.skills.get(ticket.reasonId)?.proficiency ?? 0 });
   }
   const primaries = candidates.filter((c) => c.agent.skills.get(ticket.reasonId)?.isPrimary);

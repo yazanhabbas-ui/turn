@@ -96,14 +96,14 @@ describe.runIf(available)("admin core (database)", () => {
         email: "Fahad@Dor.Local",
         displayName: { ar: "فهد السبيعي", en: "Fahad Al-Subaie" },
         grants: [{ roleId: await roleId("agent"), branchId, cityId: null }],
-        agent: { branchId, maxConcurrent: 2, weight: 3 },
+        agent: { branchId, maxConcurrent: 2, shiftId: null, weight: 3 },
       });
       expect(res.setPasswordLink).toMatch(/\/reset-password\/[a-z0-9]+$/);
       const token = res.setPasswordLink!.split("/").pop()!;
       await expectCode(completePasswordReset(token, "weak", client), "weak_password");
-      await completePasswordReset(token, "Riyadh-Office-77", client);
-      await expectCode(completePasswordReset(token, "Riyadh-Office-77", client), "not_found");
-      const session = await login({ email: "fahad@dor.local", password: "Riyadh-Office-77" }, client);
+      await completePasswordReset(token, "Damascus-Office-77", client);
+      await expectCode(completePasswordReset(token, "Damascus-Office-77", client), "not_found");
+      const session = await login({ email: "fahad@dor.local", password: "Damascus-Office-77" }, client);
       expect(session.totpRequired).toBe(false);
       const [p] = await db().select().from(agentProfiles).where(eq(agentProfiles.userId, res.id));
       expect(p.weight).toBe(3);
@@ -210,18 +210,18 @@ describe.runIf(available)("admin core (database)", () => {
 
   describe("branches and desks", () => {
     it("creating a branch creates a queue for every active reason", async () => {
-      const [{ id: cityId }] = await db().select({ id: cities.id }).from(cities).where(eq(cities.code, "JED"));
+      const [{ id: cityId }] = await db().select({ id: cities.id }).from(cities).where(eq(cities.code, "ALP"));
       const { id } = await createBranch(admin, {
         cityId,
-        code: "JED-02",
+        code: "ALP-02",
         name: { ar: "فرع جدة" },
-        timezone: "Asia/Riyadh",
+        timezone: "Asia/Damascus",
         weekend: [5, 6],
       });
       const active = await db().select().from(visitReasons).where(isNull(visitReasons.archivedAt));
       expect(await db().select().from(queues).where(eq(queues.branchId, id))).toHaveLength(active.length);
       await expectCode(
-        createBranch(admin, { cityId, code: "JED-02", name: { ar: "مكرر" }, timezone: "Asia/Riyadh", weekend: [5] }),
+        createBranch(admin, { cityId, code: "ALP-02", name: { ar: "مكرر" }, timezone: "Asia/Damascus", weekend: [5] }),
         "conflict",
       );
       expect(branchInput.safeParse({ cityId, code: "X", name: { ar: "x" }, timezone: "Mars/Base", weekend: [] }).success).toBe(
@@ -264,7 +264,7 @@ describe.runIf(available)("admin core (database)", () => {
 
     it("adds a reason with an Arabic prefix, creates queues, and assigns agents with proficiency", async () => {
       const { id } = await createReason(admin, base);
-      // One queue per branch (the demo has a Riyadh and a Jeddah branch).
+      // One queue per branch (the demo has a Damascus and a Aleppo branch).
       expect(await db().select().from(queues).where(eq(queues.reasonId, id))).toHaveLength(2);
       const khalid = (await listUsers(admin, { q: "khalid" }))[0];
       await setAssignments(admin, id, [{ userId: khalid.id, proficiency: 5, isPrimary: true }]);

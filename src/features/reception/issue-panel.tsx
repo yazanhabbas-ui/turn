@@ -285,6 +285,10 @@ export function IssuePanel({
           </Button>
         ))}
 
+      {[...required, ...(showOptional ? optional : [])].some((f) => f.key === "phone" || f.key === "name") && (
+        <p className="text-muted-foreground -mt-2 text-xs">{t("phoneHint")}</p>
+      )}
+
       <div className="grid gap-3 sm:grid-cols-2">
         {(manual || ctx.canReassign) && agents.length > 0 && (
           <div className="space-y-1.5">

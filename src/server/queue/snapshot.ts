@@ -7,12 +7,14 @@ import {
   distributionRules,
   priorityLevels,
   reasonAssignments,
+  shifts,
   tickets,
   visitReasons,
 } from "@/db/schema";
 import { resolveConfig, toEngineConfig, type DistributionConfig } from "@/domain/distribution/config";
 import type { AgentSkill, EngineAgent, EngineSnapshot, EngineTicket } from "@/domain/distribution/types";
 import { serviceDay } from "@/domain/schedule/time";
+import { shiftState } from "@/domain/shifts/window";
 import { now as clockNow } from "../clock";
 import { getSetting } from "../settings/service";
 
@@ -23,8 +25,14 @@ export async function lockBranch(tx: Tx, branchId: string) {
 
 export type BranchRow = typeof branches.$inferSelect;
 
+export type AgentShift = { id: string; name: Record<string, string>; startsAt: string; endsAt: string };
+
 export type BranchContext = {
   branch: BranchRow;
+  /** Shift of each agent that has one, and how shifts are used (off | guide | strict). */
+  agentShifts: Map<string, AgentShift>;
+  shiftMode: "off" | "guide" | "strict";
+  shiftEndGraceMinutes: number;
   now: number;
   serviceDay: string;
   snapshot: EngineSnapshot;
@@ -108,6 +116,13 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
   }
 
   const stats = new Map(todayStats.rows.map((r) => [r.agent_id, r]));
+  const shiftRows = await tx.select().from(shifts).where(eq(shifts.organizationId, org));
+  const shiftById = new Map(shiftRows.map((x) => [x.id, x]));
+  const agentShifts = new Map<string, AgentShift>();
+  for (const p of profileRows) {
+    const sh = p.shiftId ? shiftById.get(p.shiftId) : undefined;
+    if (sh) agentShifts.set(p.userId, { id: sh.id, name: sh.name, startsAt: sh.startsAt, endsAt: sh.endsAt });
+  }
   const agents: EngineAgent[] = profileRows.map((p) => ({
     id: p.userId,
     status: p.status,
@@ -118,6 +133,10 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
     lastAssignedAt: stats.get(p.userId)?.last_at ? new Date(stats.get(p.userId)!.last_at!).getTime() : null,
     handledToday: stats.get(p.userId)?.handled ?? 0,
     skills: skills.get(p.userId)!,
+    offShift: (() => {
+      const sh = agentShifts.get(p.userId);
+      return work.shiftMode !== "off" && !!sh && !shiftState(sh, now, branch.timezone).onShift;
+    })(),
   }));
 
   const global = ruleRows.find((r) => r.scope === "global")?.config;
@@ -157,6 +176,9 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
   return {
     branch,
     now,
+    agentShifts,
+    shiftMode: work.shiftMode,
+    shiftEndGraceMinutes: work.shiftEndGraceMinutes,
     serviceDay: day,
     configFor,
     snapshot: {

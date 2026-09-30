@@ -10,6 +10,7 @@ import {
   passwordResetTokens,
   rolePermissions,
   roles,
+  shifts,
   userRoles,
   users,
 } from "@/db/schema";
@@ -35,6 +36,8 @@ export const agentInput = z.object({
   branchId: uuid,
   defaultDeskId: uuid.nullable().optional(),
   maxConcurrent: z.number().int().min(1).max(20).nullable().default(null),
+  /** The agent's shift (morning, evening…); null = none. */
+  shiftId: uuid.nullable().default(null),
   weight: z.number().int().min(1).max(100).default(1),
 });
 
@@ -109,7 +112,13 @@ export async function listUsers(
       createdAt: u.createdAt,
       grants: grants.filter((g) => g.userId === u.id).map((g) => ({ roleId: g.roleId, branchId: g.branchId, cityId: g.cityId })),
       agent: p
-        ? { branchId: p.branchId, defaultDeskId: p.defaultDeskId, maxConcurrent: p.maxConcurrent, weight: p.weight }
+        ? {
+            branchId: p.branchId,
+            defaultDeskId: p.defaultDeskId,
+            maxConcurrent: p.maxConcurrent,
+            shiftId: p.shiftId,
+            weight: p.weight,
+          }
         : null,
       groupIds: members.filter((m) => m.userId === u.id).map((m) => m.groupId),
     };
@@ -271,10 +280,18 @@ async function writeAgentAndGroups(tx: Tx, actor: Actor, userId: string, input: 
           .where(and(eq(desks.id, input.agent.defaultDeskId), isNull(desks.archivedAt)));
         if (!d || d.branchId !== input.agent.branchId) throw new AppError("validation", { field: "agent.defaultDeskId" });
       }
+      if (input.agent.shiftId) {
+        const [sh] = await tx
+          .select({ id: shifts.id })
+          .from(shifts)
+          .where(and(eq(shifts.id, input.agent.shiftId), eq(shifts.organizationId, orgOf(actor)), isNull(shifts.archivedAt)));
+        if (!sh) throw new AppError("validation", { field: "agent.shiftId" });
+      }
       const values = {
         branchId: input.agent.branchId,
         defaultDeskId: input.agent.defaultDeskId ?? null,
         maxConcurrent: input.agent.maxConcurrent,
+        shiftId: input.agent.shiftId,
         weight: input.agent.weight,
       };
       await tx

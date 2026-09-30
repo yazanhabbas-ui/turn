@@ -25,26 +25,26 @@ async function expectCode(p: Promise<unknown>, code: string) {
 
 describe.runIf(available)("cities, super admin and city admins (database)", () => {
   let superAdmin: Actor;
-  let riyadhAdmin: Actor;
-  let jeddahAdmin: Actor;
-  let riyadhCity: string;
-  let jeddahCity: string;
-  let riyadhBranch: string;
-  let jeddahBranch: string;
+  let damascusAdmin: Actor;
+  let aleppoAdmin: Actor;
+  let damascusCity: string;
+  let aleppoCity: string;
+  let damascusBranch: string;
+  let aleppoBranch: string;
   const roleId: Record<string, string> = {};
   const today = new Date().toISOString().slice(0, 10);
 
   beforeEach(async () => {
     await resetDemo();
     superAdmin = await actorFor("admin@dor.local");
-    riyadhAdmin = await actorFor("riyadh.admin@dor.local");
-    jeddahAdmin = await actorFor("jeddah.admin@dor.local");
+    damascusAdmin = await actorFor("damascus.admin@dor.local");
+    aleppoAdmin = await actorFor("aleppo.admin@dor.local");
     const cs = await db().select().from(cities);
-    riyadhCity = cs.find((c) => c.code === "RUH")!.id;
-    jeddahCity = cs.find((c) => c.code === "JED")!.id;
+    damascusCity = cs.find((c) => c.code === "DAM")!.id;
+    aleppoCity = cs.find((c) => c.code === "ALP")!.id;
     const bs = await db().select().from(branches);
-    riyadhBranch = bs.find((b) => b.code === "RUH-01")!.id;
-    jeddahBranch = bs.find((b) => b.code === "JED-01")!.id;
+    damascusBranch = bs.find((b) => b.code === "DAM-01")!.id;
+    aleppoBranch = bs.find((b) => b.code === "ALP-01")!.id;
     for (const r of await db().select().from(roles)) roleId[r.key] = r.id;
   });
   afterAll(async () => {
@@ -56,27 +56,27 @@ describe.runIf(available)("cities, super admin and city admins (database)", () =
     expect(can(sg, "cities.manage")).toBe(true);
     expect(citiesFor(sg, "branches.manage")).toBe("all");
 
-    const rg = riyadhAdmin.auth.grants;
-    expect(can(rg, "branches.manage", riyadhBranch)).toBe(true);
-    expect(can(rg, "branches.manage", jeddahBranch)).toBe(false);
-    expect(canInCity(rg, "branches.manage", riyadhCity)).toBe(true);
-    expect(canInCity(rg, "branches.manage", jeddahCity)).toBe(false);
+    const rg = damascusAdmin.auth.grants;
+    expect(can(rg, "branches.manage", damascusBranch)).toBe(true);
+    expect(can(rg, "branches.manage", aleppoBranch)).toBe(false);
+    expect(canInCity(rg, "branches.manage", damascusCity)).toBe(true);
+    expect(canInCity(rg, "branches.manage", aleppoCity)).toBe(false);
     // Organization-level powers are not part of the city admin role.
     for (const p of ["cities.manage", "settings.manage", "roles.manage", "templates.manage"] as const)
       expect(can(rg, p)).toBe(false);
   });
 
   it("only the super admin manages cities, and a city with branches cannot be archived", async () => {
-    await expectCode(createCity(riyadhAdmin, { code: "DMM", name: { ar: "الدمام", en: "Dammam" } }), "forbidden");
+    await expectCode(createCity(damascusAdmin, { code: "DMM", name: { ar: "الدمام", en: "Dammam" } }), "forbidden");
     const { id } = await createCity(superAdmin, { code: "DMM", name: { ar: "الدمام", en: "Dammam" } });
     await expectCode(createCity(superAdmin, { code: "DMM", name: { ar: "مكرر" } }), "conflict");
     await updateCity(superAdmin, id, { code: "DMM", name: { ar: "الدمام", en: "Dammam East" } });
-    await expectCode(archiveCity(superAdmin, jeddahCity), "conflict");
+    await expectCode(archiveCity(superAdmin, aleppoCity), "conflict");
     await archiveCity(superAdmin, id);
 
-    expect((await listCities(superAdmin)).map((c) => c.code).sort()).toEqual(["JED", "RUH"]);
-    expect((await listCities(riyadhAdmin)).map((c) => c.code)).toEqual(["RUH"]);
-    expect((await listCities(jeddahAdmin)).map((c) => c.code)).toEqual(["JED"]);
+    expect((await listCities(superAdmin)).map((c) => c.code).sort()).toEqual(["ALP", "DAM"]);
+    expect((await listCities(damascusAdmin)).map((c) => c.code)).toEqual(["DAM"]);
+    expect((await listCities(aleppoAdmin)).map((c) => c.code)).toEqual(["ALP"]);
   });
 
   it("a city admin adds branches to their own city only, and sees only their city's branches", async () => {
@@ -84,67 +84,67 @@ describe.runIf(available)("cities, super admin and city admins (database)", () =
       cityId,
       code,
       name: { ar: "فرع جديد" },
-      timezone: "Asia/Riyadh",
+      timezone: "Asia/Damascus",
       weekend: [5, 6],
     });
-    await expectCode(createBranch(riyadhAdmin, input(jeddahCity, "X-1")), "forbidden");
-    const { id } = await createBranch(riyadhAdmin, input(riyadhCity, "RUH-02"));
-    expect((await listBranches(riyadhAdmin)).map((b) => b.id)).not.toContain(jeddahBranch);
-    expect((await listBranches(jeddahAdmin)).map((b) => b.id)).toEqual([jeddahBranch]);
+    await expectCode(createBranch(damascusAdmin, input(aleppoCity, "X-1")), "forbidden");
+    const { id } = await createBranch(damascusAdmin, input(damascusCity, "DAM-02"));
+    expect((await listBranches(damascusAdmin)).map((b) => b.id)).not.toContain(aleppoBranch);
+    expect((await listBranches(aleppoAdmin)).map((b) => b.id)).toEqual([aleppoBranch]);
     // The new branch is covered by the city admin's grant without any change to it.
-    const fresh = await actorFor("riyadh.admin@dor.local");
+    const fresh = await actorFor("damascus.admin@dor.local");
     expect(can(fresh.auth.grants, "branches.manage", id)).toBe(true);
     expect((await listBranches(fresh)).map((b) => b.id)).toContain(id);
     // A city admin cannot move a branch into someone else's city, or make it the organization default.
-    await expectCode(createBranch(riyadhAdmin, input(jeddahCity, "X-2")), "forbidden");
+    await expectCode(createBranch(damascusAdmin, input(aleppoCity, "X-2")), "forbidden");
     const created = (await db().select().from(branches).where(eq(branches.id, id)))[0];
     expect(created.isDefault).toBe(false);
   });
 
   it("a city admin sees and manages only the people of their city", async () => {
-    const riyadhUsers = (await listUsers(riyadhAdmin)).map((u) => u.email);
-    expect(riyadhUsers).toContain("khalid@dor.local");
-    expect(riyadhUsers).toContain("riyadh.admin@dor.local");
-    for (const other of ["faisal@dor.local", "jeddah.admin@dor.local", "admin@dor.local"])
-      expect(riyadhUsers).not.toContain(other);
-    expect((await listUsers(jeddahAdmin)).map((u) => u.email).sort()).toEqual(["faisal@dor.local", "jeddah.admin@dor.local"]);
-    expect((await listUsers(superAdmin)).length).toBeGreaterThan(riyadhUsers.length);
+    const damascusUsers = (await listUsers(damascusAdmin)).map((u) => u.email);
+    expect(damascusUsers).toContain("khalid@dor.local");
+    expect(damascusUsers).toContain("damascus.admin@dor.local");
+    for (const other of ["faisal@dor.local", "aleppo.admin@dor.local", "admin@dor.local"])
+      expect(damascusUsers).not.toContain(other);
+    expect((await listUsers(aleppoAdmin)).map((u) => u.email).sort()).toEqual(["aleppo.admin@dor.local", "faisal@dor.local"]);
+    expect((await listUsers(superAdmin)).length).toBeGreaterThan(damascusUsers.length);
 
     const [faisal] = await db().select().from(users).where(eq(users.email, "faisal@dor.local"));
     const [boss] = await db().select().from(users).where(eq(users.email, "admin@dor.local"));
     for (const target of [faisal.id, boss.id]) {
-      await expectCode(setUserActive(riyadhAdmin, target, false), "forbidden");
-      await expectCode(forceLogout(riyadhAdmin, target), "forbidden");
-      await expectCode(issuePasswordReset(riyadhAdmin, target, { sendEmail: false }), "forbidden");
+      await expectCode(setUserActive(damascusAdmin, target, false), "forbidden");
+      await expectCode(forceLogout(damascusAdmin, target), "forbidden");
+      await expectCode(issuePasswordReset(damascusAdmin, target, { sendEmail: false }), "forbidden");
       await expectCode(
-        updateUser(riyadhAdmin, target, {
+        updateUser(damascusAdmin, target, {
           email: "x@dor.local",
           displayName: { ar: "س" },
-          grants: [{ roleId: roleId.agent, branchId: riyadhBranch, cityId: null }],
+          grants: [{ roleId: roleId.agent, branchId: damascusBranch, cityId: null }],
         }),
         "forbidden",
       );
     }
     // Their own people are fine.
     const [khalid] = await db().select().from(users).where(eq(users.email, "khalid@dor.local"));
-    await setUserActive(riyadhAdmin, khalid.id, false);
-    await setUserActive(riyadhAdmin, khalid.id, true);
+    await setUserActive(damascusAdmin, khalid.id, false);
+    await setUserActive(damascusAdmin, khalid.id, true);
   });
 
   it("a city admin can create people in their city but cannot grant more than they hold or outside their city", async () => {
-    const base = { displayName: { ar: "موظف جديد" }, password: "Riyadh-Office-77" };
-    const { id } = await createUser(riyadhAdmin, {
+    const base = { displayName: { ar: "موظف جديد" }, password: "Damascus-Office-77" };
+    const { id } = await createUser(damascusAdmin, {
       ...base,
       email: "new.agent@dor.local",
-      grants: [{ roleId: roleId.receptionist, branchId: riyadhBranch, cityId: null }],
+      grants: [{ roleId: roleId.receptionist, branchId: damascusBranch, cityId: null }],
     });
-    expect((await listUsers(riyadhAdmin)).map((u) => u.id)).toContain(id);
+    expect((await listUsers(damascusAdmin)).map((u) => u.id)).toContain(id);
 
     // A second city admin for the same city is allowed (a city-scoped grant).
-    await createUser(riyadhAdmin, {
+    await createUser(damascusAdmin, {
       ...base,
       email: "second.admin@dor.local",
-      grants: [{ roleId: roleId.admin, branchId: null, cityId: riyadhCity }],
+      grants: [{ roleId: roleId.admin, branchId: null, cityId: damascusCity }],
     });
 
     const grant = (g: { roleId: string; branchId?: string | null; cityId?: string | null }) => ({
@@ -153,16 +153,16 @@ describe.runIf(available)("cities, super admin and city admins (database)", () =
       ...g,
     });
     const attempts: [string, ReturnType<typeof grant>][] = [
-      ["another city's branch", grant({ roleId: roleId.agent, branchId: jeddahBranch })],
-      ["another city", grant({ roleId: roleId.admin, cityId: jeddahCity })],
+      ["another city's branch", grant({ roleId: roleId.agent, branchId: aleppoBranch })],
+      ["another city", grant({ roleId: roleId.admin, cityId: aleppoCity })],
       ["the whole organization", grant({ roleId: roleId.receptionist })],
-      ["super admin", grant({ roleId: roleId.super_admin, cityId: riyadhCity })],
+      ["super admin", grant({ roleId: roleId.super_admin, cityId: damascusCity })],
     ];
     for (const [label, g] of attempts) {
-      await expectCode(createUser(riyadhAdmin, { ...base, email: `x${label.length}@dor.local`, grants: [g] }), "forbidden");
+      await expectCode(createUser(damascusAdmin, { ...base, email: `x${label.length}@dor.local`, grants: [g] }), "forbidden");
     }
     // Someone limited to a scope must place the new user inside it.
-    await expectCode(createUser(riyadhAdmin, { ...base, email: "nowhere@dor.local", grants: [] }), "validation");
+    await expectCode(createUser(damascusAdmin, { ...base, email: "nowhere@dor.local", grants: [] }), "validation");
     // Only the super admin can create city admins for any city and other super admins.
     await createUser(superAdmin, {
       ...base,
@@ -173,26 +173,29 @@ describe.runIf(available)("cities, super admin and city admins (database)", () =
 
   it("city admins cannot change organization-level things", async () => {
     await expectCode(
-      createRole(riyadhAdmin, { key: "x", name: { ar: "دور" }, permissions: ["tickets.view"] } as never),
+      createRole(damascusAdmin, { key: "x", name: { ar: "دور" }, permissions: ["tickets.view"] } as never),
       "forbidden",
     );
-    await expectCode(updateSetting(riyadhAdmin, "branding", { primaryColor: "#000000" }), "forbidden");
+    await expectCode(updateSetting(damascusAdmin, "branding", { primaryColor: "#000000" }), "forbidden");
     // ...but may set their own branches' Wi-Fi, not another city's.
-    await updateSetting(riyadhAdmin, "wifi", { enabled: true, ssid: "RUH", password: "" }, riyadhBranch);
-    await expectCode(updateSetting(riyadhAdmin, "wifi", { enabled: true, ssid: "JED", password: "" }, jeddahBranch), "forbidden");
-    await expectCode(updateSetting(riyadhAdmin, "wifi", { enabled: true, ssid: "ORG", password: "" }), "forbidden");
+    await updateSetting(damascusAdmin, "wifi", { enabled: true, ssid: "DAM", password: "" }, damascusBranch);
+    await expectCode(
+      updateSetting(damascusAdmin, "wifi", { enabled: true, ssid: "ALP", password: "" }, aleppoBranch),
+      "forbidden",
+    );
+    await expectCode(updateSetting(damascusAdmin, "wifi", { enabled: true, ssid: "ORG", password: "" }), "forbidden");
     await updateSetting(superAdmin, "wifi", { enabled: true, ssid: "ORG", password: "" });
   });
 
   it("screens, announcements and groups are limited to the admin's own branches", async () => {
-    await createDisplay(riyadhAdmin, { name: "RUH TV", branchId: riyadhBranch, layout: "classic", config: {} as never });
+    await createDisplay(damascusAdmin, { name: "DAM TV", branchId: damascusBranch, layout: "classic", config: {} as never });
     await expectCode(
-      createDisplay(riyadhAdmin, { name: "JED TV", branchId: jeddahBranch, layout: "classic", config: {} as never }),
+      createDisplay(damascusAdmin, { name: "ALP TV", branchId: aleppoBranch, layout: "classic", config: {} as never }),
       "forbidden",
     );
-    await createDisplay(jeddahAdmin, { name: "JED TV", branchId: jeddahBranch, layout: "classic", config: {} as never });
-    expect((await listDisplays(riyadhAdmin)).map((d) => d.name)).not.toContain("JED TV");
-    expect((await listDisplays(superAdmin)).map((d) => d.name)).toEqual(expect.arrayContaining(["RUH TV", "JED TV"]));
+    await createDisplay(aleppoAdmin, { name: "ALP TV", branchId: aleppoBranch, layout: "classic", config: {} as never });
+    expect((await listDisplays(damascusAdmin)).map((d) => d.name)).not.toContain("ALP TV");
+    expect((await listDisplays(superAdmin)).map((d) => d.name)).toEqual(expect.arrayContaining(["DAM TV", "ALP TV"]));
 
     const ann = (branchId: string | null) => ({
       kind: "ticker" as const,
@@ -202,27 +205,27 @@ describe.runIf(available)("cities, super admin and city admins (database)", () =
       isActive: true,
       branchId,
     });
-    await expectCode(saveAnnouncement(riyadhAdmin, null, ann(null)), "forbidden");
-    await expectCode(saveAnnouncement(riyadhAdmin, null, ann(jeddahBranch)), "forbidden");
-    await saveAnnouncement(riyadhAdmin, null, ann(riyadhBranch));
-    await saveAnnouncement(jeddahAdmin, null, ann(jeddahBranch));
+    await expectCode(saveAnnouncement(damascusAdmin, null, ann(null)), "forbidden");
+    await expectCode(saveAnnouncement(damascusAdmin, null, ann(aleppoBranch)), "forbidden");
+    await saveAnnouncement(damascusAdmin, null, ann(damascusBranch));
+    await saveAnnouncement(aleppoAdmin, null, ann(aleppoBranch));
     await saveAnnouncement(superAdmin, null, ann(null));
-    expect((await listAnnouncements(riyadhAdmin)).every((a) => a.branchId === riyadhBranch)).toBe(true);
-    expect((await listAnnouncements(superAdmin)).length).toBeGreaterThan((await listAnnouncements(riyadhAdmin)).length);
+    expect((await listAnnouncements(damascusAdmin)).every((a) => a.branchId === damascusBranch)).toBe(true);
+    expect((await listAnnouncements(superAdmin)).length).toBeGreaterThan((await listAnnouncements(damascusAdmin)).length);
 
-    expect((await listGroups(jeddahAdmin)).length).toBe(0);
-    expect((await listGroups(riyadhAdmin)).length).toBeGreaterThan(0);
-    await expectCode(saveGroup(riyadhAdmin, null, { name: { ar: "مجموعة" }, branchId: null, memberIds: [] }), "forbidden");
+    expect((await listGroups(aleppoAdmin)).length).toBe(0);
+    expect((await listGroups(damascusAdmin)).length).toBeGreaterThan(0);
+    await expectCode(saveGroup(damascusAdmin, null, { name: { ar: "مجموعة" }, branchId: null, memberIds: [] }), "forbidden");
     await expectCode(
-      saveGroup(riyadhAdmin, null, { name: { ar: "مجموعة" }, branchId: jeddahBranch, memberIds: [] }),
+      saveGroup(damascusAdmin, null, { name: { ar: "مجموعة" }, branchId: aleppoBranch, memberIds: [] }),
       "forbidden",
     );
   });
 
   it("reports and the audit trail are limited to the admin's cities", async () => {
     const filters = { from: today, to: today };
-    await buildReport(riyadhAdmin, { ...filters, branchId: riyadhBranch });
-    await expectCode(buildReport(riyadhAdmin, { ...filters, branchId: jeddahBranch }), "forbidden");
+    await buildReport(damascusAdmin, { ...filters, branchId: damascusBranch });
+    await expectCode(buildReport(damascusAdmin, { ...filters, branchId: aleppoBranch }), "forbidden");
     const all = await buildReport(superAdmin, filters);
     expect(all.data.byBranch).toBeDefined();
 
@@ -231,19 +234,19 @@ describe.runIf(available)("cities, super admin and city admins (database)", () =
       .values([
         {
           organizationId: (await db().select().from(organizations))[0].id,
-          branchId: jeddahBranch,
-          action: "test.jeddah",
+          branchId: aleppoBranch,
+          action: "test.aleppo",
           entityType: "test",
         },
         {
           organizationId: (await db().select().from(organizations))[0].id,
-          branchId: riyadhBranch,
-          action: "test.riyadh",
+          branchId: damascusBranch,
+          action: "test.damascus",
           entityType: "test",
         },
       ]);
-    const seen = (await listAudit(riyadhAdmin, { entityType: "test" })).items.map((r) => r.action);
-    expect(seen).toEqual(["test.riyadh"]);
+    const seen = (await listAudit(damascusAdmin, { entityType: "test" })).items.map((r) => r.action);
+    expect(seen).toEqual(["test.damascus"]);
     expect((await listAudit(superAdmin, { entityType: "test" })).items.length).toBe(2);
   });
 

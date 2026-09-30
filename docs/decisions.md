@@ -274,7 +274,28 @@ Each entry records a choice, its reasons, and how to revisit it. Newest entries 
 - **Roles.** `super_admin` has every permission organization-wide, including `cities.manage`. `admin` is now the **city admin**: everything except the organization-level permissions (cities, organization settings, role definitions, shared templates and voice packs, API keys, webhooks). On upgrade, people who held the old organization-wide `admin` role are moved to `super_admin` once so nobody loses access.
 - **Scope.** A role grant is organization-wide, for one branch, or for a whole city (`user_roles.city_id`). A city grant is expanded when a session loads into one grant per branch of the city, so branches added later are covered automatically; a city with no branch yet still lets its admin create the first one.
 - **Enforcement** (each covered by `tests/integration/cities.test.ts`): a city admin lists and manages only their city's branches, desks, screens, announcements, groups, distribution overrides, report schedules, alerts, audit entries and people. They cannot manage a person unless all of that person's access lies inside their scope (so never a super admin or someone who also works in another city), cannot grant more than they hold (existing escalation guard) or outside their scope, cannot create organization-wide announcements, invites or groups, cannot change the default branch, roles or organization settings. New users made by a scoped admin must be placed inside the scope.
-- **Demo data:** two cities (Riyadh, Jeddah), a Jeddah branch with two desks and an agent, and accounts `admin@dor.local` (super admin), `riyadh.admin@dor.local` and `jeddah.admin@dor.local` (city admins). Demo staff now hold branch-scoped instead of organization-wide roles.
+- **Demo data:** two cities (now Damascus and Aleppo, see D40), an Aleppo branch with two desks and an agent, and accounts `admin@dor.local` (super admin), `damascus.admin@dor.local` and `aleppo.admin@dor.local` (city admins). Demo staff now hold branch-scoped instead of organization-wide roles.
+
+## D40: Syria defaults
+
+- Defaults now target Syria: branch time zone `Asia/Damascus`, phone country code `963` (setting `regional.phoneCountryCode`, Admin → Settings → Language & calendar), Hijri dates off by default. A local number typed at reception (`0944 123 456`) is completed to `+963944123456`, so local and international spellings of one number are the same visitor. Demo data: cities Damascus and Aleppo, Syrian names, accounts `damascus.admin@dor.local` and `aleppo.admin@dor.local`. Existing installations keep their stored values (a city named "Main city" or a branch on another time zone is changed by hand).
+
+## D41: Agent shifts
+
+- Shifts (`shifts`, organization-wide; defaults Morning 08:00-15:00 and Evening 15:00-22:00) say when an agent works; a shift whose end is not after its start runs past midnight. An agent has at most one (Users → agent profile). This is about staff, not about the service: the queue itself is never closed by time of day (D29, D30).
+- Setting `agentWork.shiftMode`: **off** (ignored), **guide** (default: shown to the agent, used in reports, and an agent outside their shift gets no automatic assignments, but can still work and be called manually), **strict** (an agent cannot go available outside the shift and is signed out `shiftEndGraceMinutes` after it ends). Strict is opt-in and was the compromise between the request for shifts and the rule of no time restrictions.
+- Reports gain a "by shift" table (visitors, served, average wait; tickets outside every shift are grouped separately) and a shift per agent.
+
+## D42: Limit on simultaneous breaks
+
+- Setting `breaks` (Admin → Settings → Breaks; on by default with 2 agents at a time and a 3-minute hold): the most agents of a branch that may be on a break at once, as a fixed number or a percentage of signed-in agents (at least one), and how long an offered place is held (`holdMinutes`).
+- When the limit is reached an agent's status does not change; they join a first-in-first-out line (`break_requests`), are told how many colleagues are on a break and their place, and receive a `break.update` event (only to that agent) when a place is free. The place is held for them for `holdMinutes`; if unused it passes to the next agent and the first goes to the back if they ask again. The line is served by every status change and by the periodic maintenance.
+
+## D43: Repeat visitors and what agents see
+
+- Reception's data is already stored on the ticket and visitor; the agent screen shows all of it (name, phone, company, every configured field) plus the visit number, the last visit and the previous visits of that visitor (date, reason, outcome, agent).
+- A visitor is recognised by the mobile number (hash of the normalised phone). Tickets without a phone or name are "anonymous" and cannot be linked.
+- The report "Repeat visits" counts, for the selected period, unique identified visitors, those who came more than once, the repeat rate, the average visits and a 1..5+ distribution, plus a list of returning visitors (first/last visit, average days between visits, reasons). Names and phone numbers are masked unless the viewer holds the personal-data permission (`visitors.privacy`); exports follow the same rule.
 
 ## Milestones
 

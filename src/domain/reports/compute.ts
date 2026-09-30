@@ -1,5 +1,16 @@
 import { zonedParts } from "../schedule/time";
-import type { AgentReport, Forecast, ReasonReport, ReportData, ReportInput, Spread, TicketFact } from "./types";
+import { minuteInShift } from "../shifts/window";
+import type {
+  AgentReport,
+  Forecast,
+  ReasonReport,
+  RepeatReport,
+  ReportData,
+  ReportInput,
+  ShiftReport,
+  Spread,
+  TicketFact,
+} from "./types";
 
 const MIN = 60_000;
 const round1 = (n: number) => Math.round(n * 10) / 10;
@@ -130,9 +141,44 @@ function weekStartOf(date: string): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** How many times each identified visitor came, who came back most, and how the visits are spread. */
+export function repeatVisitors(facts: TicketFact[]): RepeatReport {
+  const byVisitor = new Map<string, TicketFact[]>();
+  let anonymous = 0;
+  for (const f of facts) {
+    if (!f.visitorId) anonymous++;
+    else byVisitor.set(f.visitorId, [...(byVisitor.get(f.visitorId) ?? []), f]);
+  }
+  const buckets = new Map<number, number>();
+  const rows = [...byVisitor].map(([visitorId, list]) => {
+    const times = list.map((f) => f.arrivedAt).sort((a, b) => a - b);
+    const gaps = times.slice(1).map((t, i) => (t - times[i]) / 86_400_000);
+    buckets.set(Math.min(5, list.length), (buckets.get(Math.min(5, list.length)) ?? 0) + 1);
+    return {
+      visitorId,
+      visits: list.length,
+      firstAt: times[0],
+      lastAt: times[times.length - 1],
+      avgDaysBetween: round1(mean(gaps)),
+      reasonIds: [...new Set(list.map((f) => f.reasonId))],
+    };
+  });
+  const repeaters = rows.filter((r) => r.visits >= 2);
+  return {
+    uniqueVisitors: rows.length,
+    identifiedTickets: facts.length - anonymous,
+    anonymousTickets: anonymous,
+    repeatVisitors: repeaters.length,
+    repeatRatePct: pct(repeaters.length, rows.length),
+    avgVisits: rows.length ? round1((facts.length - anonymous) / rows.length) : 0,
+    distribution: [1, 2, 3, 4, 5].map((visits) => ({ visits, visitors: buckets.get(visits) ?? 0 })),
+    top: repeaters.sort((a, b) => b.visits - a.visits || b.lastAt - a.lastAt).slice(0, 100),
+  };
+}
+
 export function computeReport(input: ReportInput): ReportData {
   const { facts, fromMs, toMs, now } = input;
-  const tzOf = (branchId: string) => input.branches.get(branchId)?.timezone ?? "Asia/Riyadh";
+  const tzOf = (branchId: string) => input.branches.get(branchId)?.timezone ?? "Asia/Damascus";
   const local = new Map<string, ReturnType<typeof zonedParts>>();
   const partsOf = (f: TicketFact) => {
     let p = local.get(f.id);
@@ -174,6 +220,7 @@ export function computeReport(input: ReportInput): ReportData {
     return {
       agentId,
       name: input.agents.get(agentId)?.name ?? {},
+      shiftId: input.agentShift?.get(agentId) ?? null,
       served: doneMine.length,
       noShow: mine.filter((f) => f.status === "NO_SHOW").length,
       transferOut: facts.reduce((n, f) => n + f.transfersOut.filter((a) => a === agentId).length, 0),
@@ -253,6 +300,36 @@ export function computeReport(input: ReportInput): ReportData {
     weeks.set(w, row);
   }
 
+  // By shift: a visitor belongs to the first shift whose hours contain their arrival time.
+  const shiftRows: ShiftReport[] = [];
+  if (input.shifts?.length) {
+    const bucket = new Map<string | null, TicketFact[]>();
+    for (const f of facts) {
+      const minute = partsOf(f).minutes;
+      const sh = input.shifts.find((x) => minuteInShift(x, minute));
+      bucket.set(sh?.id ?? null, [...(bucket.get(sh?.id ?? null) ?? []), f]);
+    }
+    for (const sh of input.shifts) {
+      const list = bucket.get(sh.id) ?? [];
+      shiftRows.push({
+        shiftId: sh.id,
+        name: sh.name,
+        visitors: list.length,
+        served: list.filter((f) => f.status === "COMPLETED").length,
+        avgWaitMin: avgWaitOf(list),
+      });
+    }
+    const outside = bucket.get(null) ?? [];
+    if (outside.length)
+      shiftRows.push({
+        shiftId: null,
+        name: {},
+        visitors: outside.length,
+        served: outside.filter((f) => f.status === "COMPLETED").length,
+        avgWaitMin: avgWaitOf(outside),
+      });
+  }
+
   const workers = agents.filter((a) => a.loginMin > 0 || a.served > 0);
   return {
     range: { fromMs, toMs },
@@ -296,6 +373,8 @@ export function computeReport(input: ReportInput): ReportData {
     byWeekday: weekdayCount.map((visitors, weekday) => ({ weekday, visitors })),
     byBranch,
     byReason,
+    byShift: shiftRows,
+    repeat: repeatVisitors(facts),
     heatmap: { cells, max: cells.reduce((m, c) => Math.max(m, c[2]), 0) },
     agents,
     queueLengthByHour: queueLength(facts, tzOf, fromMs, toMs, now),

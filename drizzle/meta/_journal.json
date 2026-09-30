@@ -43,6 +43,20 @@
       "when": 1790760955540,
       "tag": "0005_cities",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790764934177,
+      "tag": "0006_shifts_breaks",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790766198163,
+      "tag": "0007_break_requests_seq",
+      "breakpoints": true
     }
   ]
 }

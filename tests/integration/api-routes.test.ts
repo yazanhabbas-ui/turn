@@ -102,7 +102,7 @@ describe.runIf(available)("API routes (database)", () => {
 
     const accepted = await call(
       publicInviteRoute.POST as Handler,
-      request(`/api/v1/public/invites/${token}`, { body: { displayName: { ar: "رنا" }, password: "Jeddah-Office-88" } }),
+      request(`/api/v1/public/invites/${token}`, { body: { displayName: { ar: "رنا" }, password: "Aleppo-Office-88" } }),
       { token },
     );
     expect(accepted.status).toBe(200);

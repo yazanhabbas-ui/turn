@@ -42,6 +42,7 @@ export const timezone = z.string().refine(isValidTimezone, { message: "invalid_t
 
 /** Timezones offered first in pickers (the region), followed by all others. */
 export const REGION_TIMEZONES = [
+  "Asia/Damascus",
   "Asia/Riyadh",
   "Asia/Dubai",
   "Asia/Qatar",
@@ -51,7 +52,6 @@ export const REGION_TIMEZONES = [
   "Asia/Baghdad",
   "Asia/Amman",
   "Asia/Beirut",
-  "Asia/Damascus",
   "Asia/Jerusalem",
   "Africa/Cairo",
   "Africa/Casablanca",

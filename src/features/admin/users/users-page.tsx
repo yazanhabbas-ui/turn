@@ -190,6 +190,11 @@ function UsersTable({ lookups, onEdit }: { lookups: Lookups; onEdit: (u: UserRow
                   <TableCell>
                     <div className="flex items-center gap-1.5">
                       <Badge variant={u.isActive ? "outline" : "destructive"}>{u.isActive ? tu("active") : tu("inactive")}</Badge>
+                      {u.agent?.shiftId && (
+                        <Badge variant="secondary" title={t("shift")}>
+                          {text(lookups.shifts.find((sh) => sh.id === u.agent?.shiftId)?.name)}
+                        </Badge>
+                      )}
                       {u.totpEnabled && <ShieldCheck className="text-status-serving size-4" aria-label={t("twoFactor")} />}
                       {u.lockedUntil && new Date(u.lockedUntil) > new Date() && (
                         <Lock className="text-destructive size-4" aria-label={t("locked")} />

@@ -34,13 +34,14 @@ export async function AppShell({
           <Link href="/" className="text-brand flex items-center gap-2 font-bold">
             {branding.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={branding.logoUrl} alt="" className="h-8 w-auto" />
+              <img src={branding.logoUrl} alt={pickText(branding.companyName, locale)} className="h-8 w-auto" />
             ) : (
               <span className="bg-brand grid size-8 place-items-center rounded-lg text-sm text-white">
                 {pickText(branding.companyName, locale).slice(0, 1)}
               </span>
             )}
-            <span className="hidden sm:inline">{pickText(branding.companyName, locale)}</span>
+            {/* With a logo the name is part of the logo: showing it again would repeat it. */}
+            {!branding.logoUrl && <span className="hidden sm:inline">{pickText(branding.companyName, locale)}</span>}
           </Link>
           <nav className="flex items-center gap-1 overflow-x-auto" aria-label={t("chooseArea")}>
             {areas.map((a) => (

@@ -1,9 +1,9 @@
 import { and, asc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { agentStatusLog, branches, tickets, users, visitReasons } from "@/db/schema";
+import { agentProfiles, agentStatusLog, branches, shifts, tickets, users, visitReasons, visitors } from "@/db/schema";
 import { computeForecast, computeReport } from "@/domain/reports/compute";
-import type { StatusEntry, TicketFact } from "@/domain/reports/types";
+import type { RepeatVisitor, StatusEntry, TicketFact } from "@/domain/reports/types";
 import { zonedParts, zonedToUtc } from "@/domain/schedule/time";
 import { isoDate, uuid } from "@/domain/validation";
 import { branchesFor, can } from "@/domain/rbac/permissions";
@@ -87,7 +87,8 @@ function daysBetween(from: string, to: string): number {
 /** The full KPI set for a filter (see src/domain/reports/types.ts). Computed from tickets, ticket_events and the agent status log. */
 export async function buildReport(actor: Actor, f: ReportFilters) {
   const bs = await reportBranches(actor, "reports.view", f.branchId);
-  return buildReportForBranches(orgOf(actor), bs, f);
+  // Full phone numbers of repeat visitors only for people who may see personal data.
+  return buildReportForBranches(orgOf(actor), bs, f, can(actor.auth.grants, "visitors.privacy"));
 }
 
 /**
@@ -106,7 +107,7 @@ export async function buildScheduledReport(organizationId: string, f: ReportFilt
   return buildReportForBranches(organizationId, bs, f);
 }
 
-async function buildReportForBranches(org: string, bs: (typeof branches.$inferSelect)[], f: ReportFilters) {
+async function buildReportForBranches(org: string, bs: (typeof branches.$inferSelect)[], f: ReportFilters, fullPhone = false) {
   const span = daysBetween(f.from, f.to);
   if (span < 1) throw new AppError("validation", { field: "to", reason: "invalid_range" });
   if (span > MAX_DAYS) throw new AppError("validation", { field: "to", reason: "range_too_long", max: MAX_DAYS });
@@ -129,9 +130,10 @@ async function buildReportForBranches(org: string, bs: (typeof branches.$inferSe
     status: TicketFact["status"];
     recall_count: number;
     returning: boolean;
+    visitor_id: string | null;
     transfers: string[] | null;
   }>(sql`
-    select t.id, t.branch_id, t.reason_id, t.serving_agent_id as agent_id, t.arrived_at,
+    select t.id, t.branch_id, t.reason_id, t.visitor_id, t.serving_agent_id as agent_id, t.arrived_at,
       (select min(e.at) from ticket_events e where e.ticket_id = t.id and e.type = 'CALLED') as first_called_at,
       t.started_at, t.finished_at, t.status, t.recall_count,
       (t.visitor_id is not null and exists (
@@ -165,6 +167,7 @@ async function buildReportForBranches(org: string, bs: (typeof branches.$inferSe
     recalls: r.recall_count,
     transfersOut: (r.transfers ?? []).filter(Boolean),
     returning: !!r.returning,
+    visitorId: r.visitor_id,
     slaTargetMinutes: reasons.get(r.reason_id)?.slaTargetWaitMinutes ?? 15,
   }));
 
@@ -214,6 +217,16 @@ async function buildReportForBranches(org: string, bs: (typeof branches.$inferSe
     .where(eq(users.organizationId, org));
   const settings = await getSetting(org, "reports", f.branchId ?? null);
 
+  const shiftRows = await db()
+    .select()
+    .from(shifts)
+    .where(and(eq(shifts.organizationId, org), isNull(shifts.archivedAt)))
+    .orderBy(asc(shifts.sortOrder), asc(shifts.startsAt));
+  const profileShifts = await db()
+    .select({ userId: agentProfiles.userId, shiftId: agentProfiles.shiftId })
+    .from(agentProfiles)
+    .where(eq(agentProfiles.organizationId, org));
+
   const data = computeReport({
     facts,
     statusLog,
@@ -224,7 +237,10 @@ async function buildReportForBranches(org: string, bs: (typeof branches.$inferSe
     toMs,
     now,
     serviceLevel: { minutes: settings.serviceLevelMinutes, targetPct: settings.serviceLevelTargetPct },
+    shifts: shiftRows.map((x) => ({ id: x.id, name: x.name, startsAt: x.startsAt, endsAt: x.endsAt })),
+    agentShift: new Map(profileShifts.filter((p) => p.shiftId).map((p) => [p.userId, p.shiftId!])),
   });
+  await describeRepeatVisitors(data.repeat.top, fullPhone);
   return { filters: f, timezone: tz, generatedAt: new Date(now).toISOString(), data };
 }
 
@@ -282,3 +298,25 @@ export async function buildForecast(actor: Actor, branchId?: string) {
 }
 
 export { can, reportBranches };
+
+/** Adds who the repeat visitors are: the name, and the phone number masked (in full only when permitted). */
+async function describeRepeatVisitors(top: RepeatVisitor[], fullPhone: boolean) {
+  if (!top.length) return;
+  const rows = await db()
+    .select({ id: visitors.id, name: visitors.name, phone: visitors.phone, anonymizedAt: visitors.anonymizedAt })
+    .from(visitors)
+    .where(
+      inArray(
+        visitors.id,
+        top.map((t) => t.visitorId),
+      ),
+    );
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  for (const t of top) {
+    const v = byId.get(t.visitorId);
+    t.name = v && !v.anonymizedAt ? v.name : null;
+    const digits = v && !v.anonymizedAt ? (v.phone ?? "") : "";
+    t.phoneMasked = digits ? `••••${digits.slice(-3)}` : null;
+    t.phone = fullPhone && digits ? digits : null;
+  }
+}

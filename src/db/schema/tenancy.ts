@@ -48,7 +48,7 @@ export const branches = pgTable(
     code: text("code").notNull(),
     name: jsonb("name").$type<LocalizedText>().notNull(),
     address: jsonb("address").$type<LocalizedText>(),
-    timezone: text("timezone").notNull().default("Asia/Riyadh"),
+    timezone: text("timezone").notNull().default("Asia/Damascus"),
     weekend: jsonb("weekend").$type<Weekend>().notNull().default([5, 6]),
     isDefault: boolean("is_default").notNull().default(false),
     archivedAt: archivedAt(),

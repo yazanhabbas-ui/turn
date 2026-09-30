@@ -359,7 +359,9 @@
       "not_pending": "This invitation is no longer pending.",
       "builtin_priority": "The normal priority cannot be archived.",
       "already_enabled": "Already enabled.",
-      "city_has_branches": "This city still has active branches. Archive or move them first."
+      "city_has_branches": "This city still has active branches. Archive or move them first.",
+      "off_shift": "You cannot go available outside your shift.",
+      "shift_in_use": "Agents still use this shift. Move them to another shift first."
     },
     "rate_limited": "Too many requests. Please wait a moment.",
     "weak_password": "The password does not meet the policy.",
@@ -419,7 +421,10 @@
     "scope": "Scope",
     "scopeOrganization": "Whole organization",
     "scopeCity": "City: {name} (all its branches)",
-    "scopeBranch": "Branch: {name}"
+    "scopeBranch": "Branch: {name}",
+    "shift": "Shift",
+    "shiftHint": "When this agent is expected to work.",
+    "noShift": "No fixed shift"
   },
   "invites": {
     "title": "Invitations",
@@ -583,7 +588,8 @@
       "alerts": "Alerts",
       "agents": "Agents",
       "wallboard": "Wallboard",
-      "wifi": "Wi-Fi"
+      "wifi": "Wi-Fi",
+      "breakLimit": "Break limit"
     },
     "companyName": "Company name",
     "logoUrl": "Logo URL",
@@ -705,7 +711,42 @@
     "wifiSsidLabel": "Network name label",
     "wifiPasswordLabel": "Password label",
     "wifiUseDefault": "Use the default for this branch",
-    "wifiInherited": "The branch now uses the default"
+    "wifiInherited": "The branch now uses the default",
+    "shiftMode": "How shifts are used",
+    "shiftModeHint": "A shift is the time of day an agent is expected to work.",
+    "shiftMode_off": "Ignored",
+    "shiftMode_off_hint": "Shifts are only a label. Nothing depends on them.",
+    "shiftMode_guide": "Guide (recommended)",
+    "shiftMode_guide_hint": "Shown and used in reports. Agents outside their shift get no automatic assignments, but can still be called manually.",
+    "shiftMode_strict": "Strict",
+    "shiftMode_strict_hint": "An agent cannot go available outside their shift and is signed out after it ends.",
+    "shiftEndGrace": "Grace after the shift ends (minutes)",
+    "shiftEndGraceHint": "Strict mode only: an agent finishes the current visitor, then is signed out after this long.",
+    "shifts": "Shifts",
+    "shiftsHint": "Organization-wide. A shift whose end is earlier than its start runs past midnight.",
+    "shiftsEmpty": "No shifts yet.",
+    "addShift": "Add shift",
+    "editShift": "Edit shift",
+    "shiftCode": "Code",
+    "shiftCodeHint": "Capital letters, digits, - and _",
+    "shiftStarts": "Starts",
+    "shiftEnds": "Ends",
+    "shiftEndsHint": "If the end is earlier than the start, the shift runs past midnight.",
+    "shiftOvernight": "runs past midnight",
+    "shiftOvernightNote": "This shift ends the next day, after midnight.",
+    "breakLimitIntro": "Limit how many agents of a branch can be on a break at the same time.",
+    "breakLimitEnabled": "Limit simultaneous breaks",
+    "breakLimitEnabledHint": "When off, any number of agents can be on a break at once.",
+    "maxOnBreak": "Most agents on a break at the same time",
+    "maxOnBreakMode": "Unit",
+    "maxOnBreakCount": "agents",
+    "maxOnBreakPercent": "% of agents signed in",
+    "maxOnBreakPreview": "With {agents} agents signed in, up to {max} may be on a break at once.",
+    "holdMinutes": "Time to take a free place (minutes)",
+    "holdMinutesHint": "The next agent in line is notified and has this long to take a free place.",
+    "breakLimitExplainer": "An agent who must wait is told how many colleagues are on a break, and is notified as soon as a place is free.",
+    "phoneCountryCode": "Phone country code",
+    "phoneCountryCodeHint": "Used to complete local numbers such as 0944 123 456."
   },
   "audit": {
     "title": "Audit log",
@@ -974,7 +1015,8 @@
       "invalid_field": "Please check: {field}",
       "range_exhausted": "The ticket numbers for today are used up for this service."
     },
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "phoneHint": "A mobile number lets the system recognise returning visitors and show their history to the agent."
   },
   "agent": {
     "title": "Agent workspace",
@@ -1052,7 +1094,29 @@
     "callAnother": "Call another visitor",
     "visitorsNow": "{count} of {max} visitors",
     "tabCalled": "Called",
-    "tabServing": "Serving"
+    "tabServing": "Serving",
+    "shiftTimes": "{start} – {end}",
+    "shiftEndsIn": "Ends in {min} min",
+    "shiftOffNotice": "Your shift starts at {time} (in {min} min)",
+    "shiftOffGuide": "You will not receive automatic assignments until then.",
+    "shiftOffStrict": "You cannot go available until then.",
+    "shiftStrictBlocked": "You cannot go available before your shift starts at {time} (in {min} min).",
+    "breakHint": "Breaks: {count} of {limit} colleagues on break",
+    "breakQueuedTitle": "You are in the break line",
+    "breakQueuedBody": "{count, plural, one {# colleague is} other {# colleagues are}} on a break (limit {limit}). You are number {position} in line. We'll notify you as soon as a place is free.",
+    "breakQueuedToast": "The break limit is reached. You are number {position} in line.",
+    "breakWaitingPill": "Break line: you are number {position}",
+    "breakCancel": "Cancel",
+    "breakAvailableTitle": "A break place is free for you",
+    "breakAvailableBody": "Take it within",
+    "breakAvailableToast": "A break place is free for you. Take it now.",
+    "breakExpiredToast": "Your break place expired, ask again.",
+    "breakStart": "Start my break",
+    "visitHistory": "Visit history",
+    "visitNumber": "Visit {n}",
+    "visitFirst": "First visit",
+    "visitLast": "Last visit: {date}",
+    "visitServedBy": "served by {name}"
   },
   "visitorStatus": {
     "title": "Your turn",
@@ -1299,7 +1363,11 @@
       "byReason": "By visit reason",
       "byAgent": "By agent",
       "byBranch": "By branch",
-      "heatmap": "Busy times (weekday by hour)"
+      "heatmap": "Busy times (weekday by hour)",
+      "byShift": "By shift",
+      "repeatSummary": "Repeat visits",
+      "repeatDistribution": "Visitors by number of visits",
+      "repeatTop": "Returning visitors"
     },
     "units": {
       "min": "min",
@@ -1331,7 +1399,14 @@
       "availableMin": "Available (min)",
       "servingMin": "Serving (min)",
       "idleMin": "Idle (min)",
-      "utilisation": "Utilisation (%)"
+      "utilisation": "Utilisation (%)",
+      "shift": "Shift",
+      "visits": "Visits",
+      "visitor": "Visitor",
+      "phone": "Mobile",
+      "firstVisit": "First visit",
+      "lastVisit": "Last visit",
+      "daysBetween": "Avg days between visits"
     },
     "metrics": {
       "visitors": "Visitors",
@@ -1357,7 +1432,18 @@
       "returning": "Returning visitors",
       "firstVisit": "First-time visitors",
       "fairness": "Workload fairness index (1 = even)"
-    }
+    },
+    "repeat": {
+      "uniqueVisitors": "Identified visitors (mobile or name)",
+      "repeatVisitors": "Visitors who came more than once",
+      "repeatRate": "Repeat rate (%)",
+      "avgVisits": "Average visits per visitor",
+      "identifiedTickets": "Tickets of identified visitors",
+      "anonymousTickets": "Tickets with no identifying data"
+    },
+    "outsideShifts": "Outside shifts",
+    "fiveOrMore": "5 or more",
+    "anonymous": "Not identified"
   },
   "reports": {
     "title": "Reports",
@@ -1426,7 +1512,9 @@
       "queue": "Queue length and throughput",
       "agents": "Agents",
       "reasons": "Visit reasons",
-      "forecast": "Forecast"
+      "forecast": "Forecast",
+      "repeat": "Repeat visits",
+      "shifts": "By shift"
     },
     "charts": {
       "visitors": "Visitors",
@@ -1472,7 +1560,8 @@
         "servingMin": "Serving",
         "idleMin": "Idle",
         "utilisationPct": "Utilisation"
-      }
+      },
+      "shift": "Shift"
     },
     "reasons": {
       "name": "Visit reason",
@@ -1495,6 +1584,43 @@
     },
     "schedules": {
       "title": "Scheduled reports"
+    },
+    "shifts": {
+      "hint": "Visitors grouped by the agent shift in whose hours they arrived.",
+      "name": "Shift",
+      "outside": "Outside shifts",
+      "visitors": "Visitors",
+      "served": "Served",
+      "avgWaitMin": "Avg wait"
+    },
+    "repeat": {
+      "title": "Repeat visits",
+      "hint": "Visits are counted for the selected date range. Visitors are recognised by the mobile number entered at reception.",
+      "kpi": {
+        "unique": "Identified visitors",
+        "repeat": "Came more than once",
+        "rate": "Repeat rate",
+        "avgVisits": "Avg visits per visitor",
+        "anonymous": "Tickets with no identifying data",
+        "anonymousHint": "No mobile number or name was entered."
+      },
+      "distribution": "Visitors by number of visits",
+      "visitsAxis": "Visits",
+      "visitorsAxis": "Visitors",
+      "fivePlus": "{n}+",
+      "returning": "Returning visitors",
+      "empty": "Nobody came back more than once in this period.",
+      "truncated": "Showing the first {n}.",
+      "notIdentified": "Not identified",
+      "cols": {
+        "name": "Visitor",
+        "mobile": "Mobile",
+        "visits": "Visits",
+        "firstAt": "First visit",
+        "lastAt": "Last visit",
+        "avgDaysBetween": "Avg days between",
+        "reasons": "Reasons"
+      }
     }
   },
   "reportSchedules": {

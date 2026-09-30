@@ -69,7 +69,7 @@ describe.runIf(available)("display screens (database)", () => {
   }
 
   beforeEach(async () => {
-    setClock(zonedToUtc("2026-09-29", "10:00", "Asia/Riyadh"));
+    setClock(zonedToUtc("2026-09-29", "10:00", "Asia/Damascus"));
     await resetDemo();
     admin = await actorFor("admin@dor.local");
     reception = await actorFor("reception@dor.local");
@@ -170,7 +170,7 @@ describe.runIf(available)("display screens (database)", () => {
     expect(state.recent[0].deskNumber).toBe(serving!.number);
     expect(state.waitingTotal).toBe(1);
     expect(state.reasons.find((r) => r.id === reason.general)).toMatchObject({ waiting: 1 });
-    expect(state.branch.timezone).toBe("Asia/Riyadh");
+    expect(state.branch.timezone).toBe("Asia/Damascus");
     expect(state.voice.templates.ticket_called.ar).toContain("{ticket}");
     expect(state.voice.settings).toMatchObject({ enabled: true, repeat: 2, mode: "sequence" });
 

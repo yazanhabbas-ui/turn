@@ -54,7 +54,7 @@ describe.runIf(available)("reports, live view and alerts (database)", () => {
   }
 
   beforeEach(async () => {
-    setClock(zonedToUtc("2026-09-29", "09:00", "Asia/Riyadh"));
+    setClock(zonedToUtc("2026-09-29", "09:00", "Asia/Damascus"));
     await resetDemo();
     admin = await actorFor("admin@dor.local");
     supervisor = await actorFor("supervisor@dor.local");
@@ -80,7 +80,7 @@ describe.runIf(available)("reports, live view and alerts (database)", () => {
     advanceClock(2);
 
     const { data, timezone } = await buildReport(admin, filters);
-    expect(timezone).toBe("Asia/Riyadh");
+    expect(timezone).toBe("Asia/Damascus");
     expect(data.summary).toMatchObject({ visitors: 4, served: 3, noShow: 1, cancelled: 0, stillOpen: 0 });
     expect(data.summary.wait.avg).toBe(3.8); // 2, 6, 4, 3
     expect(data.summary.wait.max).toBe(6);
@@ -144,7 +144,7 @@ describe.runIf(available)("reports, live view and alerts (database)", () => {
 
   it("forecasts from history", async () => {
     await serve("general", 1, 5);
-    setClock(zonedToUtc("2026-09-30", "09:00", "Asia/Riyadh"));
+    setClock(zonedToUtc("2026-09-30", "09:00", "Asia/Damascus"));
     const f = await buildForecast(admin);
     expect(f.days).toHaveLength(7);
     expect(f.tomorrow.hours).toHaveLength(24);

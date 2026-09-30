@@ -21,6 +21,7 @@ import { orderTickets } from "@/domain/distribution/ordering";
 import { nameSkeleton, normalizeArabic } from "@/domain/i18n/arabic-normalize";
 import { formatTicketNumber } from "@/domain/i18n/digits";
 import { nextNumber } from "@/domain/tickets/numbering";
+import { minutesSinceEnd, shiftState } from "@/domain/shifts/window";
 import { normalizePhone } from "@/domain/tickets/phone";
 import {
   EVENT_TYPE,
@@ -37,6 +38,7 @@ import { hashPhone, randomToken } from "../crypto";
 import { AppError } from "../http/errors";
 import { now as clockNow } from "../clock";
 import { getSetting } from "../settings/service";
+import { cancelBreakRequest, offerFreedBreaks, requestBreak } from "./breaks";
 import { publish, type QueueEvent } from "./publish";
 import { loadBranchContext, lockBranch, type BranchContext } from "./snapshot";
 
@@ -194,7 +196,8 @@ export type IssuedTicket = { ticket: TicketView; ahead: number; estimatedWaitMin
 
 async function upsertVisitor(ctx: Ctx, orgId: string, fields: Record<string, string>, language: string) {
   const name = fields.name?.trim() || null;
-  const phone = normalizePhone(fields.phone);
+  const { phoneCountryCode } = await getSetting(orgId, "regional", ctx.bctx.branch.id, ctx.tx);
+  const phone = normalizePhone(fields.phone, phoneCountryCode);
   const company = fields.company?.trim() || null;
   if (!name && !phone && !company) return null;
   const phoneHash = phone ? hashPhone(phone) : null;
@@ -458,9 +461,38 @@ export async function setAgentStatus(actor: QueueActor, input: z.infer<typeof st
     if (!d || d.branchId !== p.branchId || d.archivedAt) throw new AppError("validation", { field: "deskId" });
   }
   return withBranch(p.branchId, actor, async (ctx) => {
-    await setStatusInTx(ctx, agent.auth.user.id, input.status, { breakTypeId: input.breakTypeId, deskId: input.deskId });
+    const userId = agent.auth.user.id;
+    const breaks = breakCtx(ctx, p);
+    // Strict shifts: nobody starts work outside their shift.
+    if ((input.status === "AVAILABLE" || input.status === "BUSY") && ctx.bctx.shiftMode === "strict") {
+      const shift = ctx.bctx.agentShifts.get(userId);
+      const state = shift && shiftState(shift, ctx.bctx.now, ctx.bctx.branch.timezone);
+      if (shift && state && !state.onShift) {
+        throw new AppError("conflict", {
+          reason: "off_shift",
+          startsAt: shift.startsAt,
+          endsAt: shift.endsAt,
+          startsInMinutes: state.startsInMinutes,
+        });
+      }
+    }
+    // A break may be limited: when the limit is reached the agent joins the line instead and is told so.
+    if (input.status === "ON_BREAK") {
+      const decision = await requestBreak(breaks, userId, input.breakTypeId ?? null);
+      if (!decision.granted) {
+        return {
+          status: p.status,
+          breakQueued: { onBreak: decision.onBreak, limit: decision.limit, position: decision.position },
+        };
+      }
+    } else {
+      await cancelBreakRequest(breaks, userId);
+    }
+    await setStatusInTx(ctx, userId, input.status, { breakTypeId: input.breakTypeId, deskId: input.deskId });
+    // Someone leaving a break (or going offline) frees a place for the next agent in line.
+    await offerFreedBreaks(breaks);
     await rebalance(ctx);
-    return { status: input.status };
+    return { status: input.status, breakQueued: null };
   });
 }
 
@@ -866,9 +898,29 @@ export async function maintainBranch(branchId: string, now = clockNow()) {
         await noShow(ctx, t, "timeout");
       }
     }
+    // Break line: expire offers nobody took and hand free places to the next in line.
+    await offerFreedBreaks(breakCtx(ctx, { organizationId: ctx.bctx.branch.organizationId, branchId }));
+    await signOutAfterShift(ctx, now);
     await rebalance(ctx);
     return { ok: true };
   });
+}
+
+/** Strict shifts: an agent whose shift ended (plus a grace period) and who has no visitor is signed out. */
+async function signOutAfterShift(ctx: Ctx, now: number) {
+  const { shiftMode, shiftEndGraceMinutes, agentShifts, branch, snapshot } = ctx.bctx;
+  if (shiftMode !== "strict") return;
+  for (const a of snapshot.agents) {
+    const shift = agentShifts.get(a.id);
+    if (!shift || a.status === "OFFLINE") continue;
+    if (minutesSinceEnd(shift, now, branch.timezone) < Math.max(1, shiftEndGraceMinutes)) continue;
+    const busy = snapshot.tickets.some((x) => x.servingAgentId === a.id && (x.status === "CALLED" || x.status === "SERVING"));
+    if (!busy) await setStatusInTx(ctx, a.id, "OFFLINE");
+  }
+}
+
+function breakCtx(ctx: Ctx, p: { organizationId: string; branchId: string }) {
+  return { tx: ctx.tx, now: ctx.bctx.now, organizationId: p.organizationId, branchId: p.branchId, events: ctx.events };
 }
 
 // ─── Views ───────────────────────────────────────────────────────────────────
@@ -894,7 +946,16 @@ export type TicketView = {
   notes: string | null;
   intake: Record<string, string>;
   publicToken: string;
-  visitor: { name: string | null; phone: string | null; company: string | null; visitCount: number; returning: boolean } | null;
+  visitor: {
+    id: string;
+    name: string | null;
+    phone: string | null;
+    company: string | null;
+    /** Completed visits before this one. */
+    visitCount: number;
+    lastVisitAt: string | null;
+    returning: boolean;
+  } | null;
   appointmentId: string | null;
 };
 
@@ -924,7 +985,15 @@ export function viewOf(t: TicketRow, v: VisitorRow | null | undefined): TicketVi
     intake: t.intake,
     publicToken: t.publicToken,
     visitor: v
-      ? { name: v.name, phone: v.phone, company: v.company, visitCount: v.visitCount, returning: v.visitCount > 0 }
+      ? {
+          id: v.id,
+          name: v.name,
+          phone: v.phone,
+          company: v.company,
+          visitCount: v.visitCount,
+          lastVisitAt: v.lastVisitAt?.toISOString() ?? null,
+          returning: v.visitCount > 0,
+        }
       : null,
     appointmentId: t.appointmentId,
   };

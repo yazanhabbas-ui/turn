@@ -82,6 +82,7 @@ function sampleReport(): Report {
     agents: [
       {
         agentId: "a1",
+        shiftId: null,
         name: { ar: "خالد العتيبي", en: "Khalid Alotaibi" },
         served: 40,
         noShow: 3,
@@ -99,6 +100,7 @@ function sampleReport(): Report {
       },
       {
         agentId: "a2",
+        shiftId: null,
         name: { ar: '=HYPERLINK("http://evil","x")', en: '=HYPERLINK("http://evil","x")' },
         served: 22,
         noShow: 1,
@@ -115,13 +117,45 @@ function sampleReport(): Report {
         utilisationPct: 60,
       },
     ],
+    byShift: [
+      { shiftId: "s1", name: { ar: "صباحي", en: "Morning" }, visitors: 90, served: 80, avgWaitMin: 3.4 },
+      { shiftId: "s2", name: { ar: "مسائي", en: "Evening" }, visitors: 30, served: 24, avgWaitMin: 5.8 },
+    ],
+    repeat: {
+      uniqueVisitors: 60,
+      identifiedTickets: 84,
+      anonymousTickets: 36,
+      repeatVisitors: 15,
+      repeatRatePct: 25,
+      avgVisits: 1.4,
+      distribution: [
+        { visits: 1, visitors: 45 },
+        { visits: 2, visitors: 9 },
+        { visits: 3, visitors: 4 },
+        { visits: 4, visitors: 1 },
+        { visits: 5, visitors: 1 },
+      ],
+      top: [
+        {
+          visitorId: "v1",
+          visits: 5,
+          firstAt: Date.UTC(2026, 8, 1),
+          lastAt: Date.UTC(2026, 8, 20),
+          avgDaysBetween: 4.8,
+          reasonIds: ["r1"],
+          name: '=HYPERLINK("http://x")',
+          phoneMasked: "••••567",
+          phone: null,
+        },
+      ],
+    },
     queueLengthByHour: [],
     backlogByDay: [],
     reasonMixWeekly: [],
   };
   return {
     filters: { from: "2026-09-01", to: "2026-09-09", reasonId: "r2", weekdays: [0, 1, 2], hourFrom: 8, hourTo: 16 },
-    timezone: "Asia/Riyadh",
+    timezone: "Asia/Damascus",
     generatedAt: "2026-09-10T06:05:00.000Z",
     data,
   } as Report;

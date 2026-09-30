@@ -25,7 +25,7 @@ import { actorFor, resetDemo } from "./fixtures";
 import { prepareTestDatabase } from "./helpers";
 
 const available = await prepareTestDatabase();
-const TZ = "Asia/Riyadh";
+const TZ = "Asia/Damascus";
 const at = (date: string, time: string) => zonedToUtc(date, time, TZ);
 
 async function expectCode(p: Promise<unknown>, code: string) {

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, notInArray, or, sql } from "drizzle-orm";
 import { db, type DbOrTx } from "@/db/client";
 import {
   agentProfiles,
@@ -18,9 +18,11 @@ import { estimateWaitMinutes } from "@/domain/distribution/estimate";
 import { orderTickets } from "@/domain/distribution/ordering";
 import { looseNameMatch } from "@/domain/i18n/arabic-normalize";
 import { branchesFor, can } from "@/domain/rbac/permissions";
+import { shiftState } from "@/domain/shifts/window";
 import type { Actor } from "../admin/actor";
 import { AppError } from "../http/errors";
 import { getSetting } from "../settings/service";
+import { breakStatus } from "./breaks";
 import { loadBranchContext, type BranchContext } from "./snapshot";
 import { viewOf, type TicketView, type VisitorRow } from "./tickets";
 
@@ -277,6 +279,10 @@ export async function agentWorkspace(actor: Actor) {
     const bctx = await loadBranchContext(tx, profile.branchId);
     const s = bctx.snapshot;
     const self = s.agents.find((a) => a.id === me);
+    // The agent's shift and where they stand in it; the break limit and their place in the break line.
+    const sh = bctx.agentShifts.get(me);
+    const myShift = sh ? { ...sh, ...shiftState(sh, bctx.now, bctx.branch.timezone) } : null;
+    const breaks = await breakStatus({ tx, now: bctx.now, organizationId: org, branchId: profile.branchId, events: [] }, me);
     const myReasons = [...(self?.skills.keys() ?? [])];
     const [deskRows, breakRows, reasonRows, mineRows, agentUsers] = await Promise.all([
       tx
@@ -321,6 +327,53 @@ export async function agentWorkspace(actor: Actor) {
     const vis = await visitorsFor(tx, mineRows);
     const positions = positionsFor(bctx);
     const views = mineRows.map((t) => viewOf(t, vis.get(t.visitorId ?? "")));
+    // What the agent should know about a returning visitor: their previous visits (latest first).
+    const visitorIds = [...new Set(mineRows.map((t) => t.visitorId).filter((x): x is string => !!x))];
+    const past = visitorIds.length
+      ? await tx
+          .select()
+          .from(tickets)
+          .where(
+            and(
+              inArray(tickets.visitorId, visitorIds),
+              notInArray(
+                tickets.id,
+                mineRows.map((t) => t.id),
+              ),
+            ),
+          )
+          .orderBy(desc(tickets.arrivedAt))
+          .limit(visitorIds.length * 5 + 20)
+      : [];
+    const pastAgents = past.length
+      ? await tx
+          .select({ id: users.id, displayName: users.displayName })
+          .from(users)
+          .where(inArray(users.id, [...new Set(past.map((p) => p.servingAgentId).filter((x): x is string => !!x))]))
+      : [];
+    const visitHistory: Record<
+      string,
+      {
+        displayNumber: string;
+        reasonId: string;
+        arrivedAt: string;
+        status: string;
+        outcome: string | null;
+        agentName: Record<string, string> | null;
+      }[]
+    > = {};
+    for (const p of past) {
+      const list = (visitHistory[p.visitorId!] ??= []);
+      if (list.length >= 5) continue;
+      list.push({
+        displayNumber: p.displayNumber,
+        reasonId: p.reasonId,
+        arrivedAt: p.arrivedAt.toISOString(),
+        status: p.status,
+        outcome: p.outcome,
+        agentName: pastAgents.find((u) => u.id === p.servingAgentId)?.displayName ?? null,
+      });
+    }
     const [today] = await tx
       .select({ served: sql<number>`count(*) filter (where ${tickets.status} = 'COMPLETED')::int` })
       .from(tickets)
@@ -338,6 +391,9 @@ export async function agentWorkspace(actor: Actor) {
         servedToday: today?.served ?? 0,
       },
       branch: { id: bctx.branch.id, name: bctx.branch.name, timezone: bctx.branch.timezone },
+      shift: myShift,
+      shiftMode: bctx.shiftMode,
+      breaks,
       desks: deskRows.map((d) => ({ id: d.id, number: d.number, name: d.name })),
       breakTypes: breakRows.map((b) => ({ id: b.id, name: b.name, maxMinutes: b.maxMinutes })),
       reasons: reasonRows.map((r) => ({
@@ -350,6 +406,7 @@ export async function agentWorkspace(actor: Actor) {
         intakeFields: r.intakeFields,
         serves: myReasons.includes(r.id),
       })),
+      visitHistory,
       active: views.filter((v) => v.status === "CALLED" || v.status === "SERVING"),
       reserved: views.filter((v) => v.status === "WAITING").map((v) => ({ ...v, position: positions.get(v.id) ?? null })),
       onHold: views.filter((v) => v.status === "ON_HOLD"),

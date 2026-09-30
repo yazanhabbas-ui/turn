@@ -3,7 +3,7 @@ import { agentTimes, computeForecast, computeReport, fairnessIndex, percentile }
 import type { ReportInput, TicketFact } from "@/domain/reports/types";
 import { zonedToUtc } from "@/domain/schedule/time";
 
-const TZ = "Asia/Riyadh";
+const TZ = "Asia/Damascus";
 const at = (date: string, hhmm: string) => zonedToUtc(date, hhmm, TZ);
 const MIN = 60_000;
 
@@ -24,6 +24,7 @@ function fact(over: Partial<TicketFact> & { arrive: string; date?: string }): Ti
     recalls: 0,
     transfersOut: [],
     returning: false,
+    visitorId: null,
     slaTargetMinutes: 10,
     ...rest,
   };

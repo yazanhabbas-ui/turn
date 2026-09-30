@@ -21,7 +21,7 @@ describe.runIf(available)("distribution rules & simulation (database)", () => {
   let complaintQueue: string;
 
   beforeEach(async () => {
-    setClock(zonedToUtc("2026-09-29", "10:00", "Asia/Riyadh"));
+    setClock(zonedToUtc("2026-09-29", "10:00", "Asia/Damascus"));
     await resetDemo();
     admin = await actorFor("admin@dor.local");
     reception = await actorFor("reception@dor.local");
