@@ -50,3 +50,4 @@ next-env.d.ts
 /.local
 /.next-prod/
 voice-samples/
+/.next-dev/

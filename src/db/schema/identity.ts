@@ -57,6 +57,22 @@ export const userAvatars = pgTable("user_avatars", {
   updatedAt: updatedAt(),
 });
 
+/** Uploaded brand images (kind `logo`), processed and kept in the database; `version` is the cache key of the public URL. */
+export const brandAssets = pgTable(
+  "brand_assets",
+  {
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    contentType: text("content_type").notNull(),
+    data: bytea("data").notNull(),
+    version: integer("version").notNull().default(1),
+    updatedAt: updatedAt(),
+  },
+  (t) => [primaryKey({ columns: [t.organizationId, t.kind] })],
+);
+
 /** Server-side sessions. `id` is the SHA-256 of the cookie token, so a DB leak cannot be replayed. */
 export const sessions = pgTable(
   "sessions",
