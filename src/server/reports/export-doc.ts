@@ -12,7 +12,7 @@ export type Report = Awaited<ReturnType<typeof buildReport>>;
 export type Cell = string | number | null;
 
 export type ExportTable = {
-  id: ExportSectionId;
+  id: ExportSectionId | (string & {});
   title: string;
   columns: string[];
   /** Column i is text (aligned to the start side) or a number. */
@@ -373,7 +373,7 @@ export function buildExportDoc(
     meta,
     filtersTitle: t.filtersTitle,
     filters,
-    tables: want ? tables.filter((x) => want.has(x.id)) : tables,
+    tables: want ? tables.filter((x) => want.has(x.id as ExportSectionId)) : tables,
     footer: (page, pages) => renderTemplate(t.footer, { page, pages }),
   };
 }

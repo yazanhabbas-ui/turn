@@ -201,6 +201,8 @@ export async function displayState(display: DisplayRow) {
         enabled: config.voice.enabled ?? voice.enabled,
         volume: config.voice.volume ?? voice.volume,
         rate: config.voice.rate ?? voice.rate,
+        callLanguages: config.voice.callLanguages ?? voice.callLanguages,
+        repeat: config.voice.repeat ?? voice.repeat,
       },
       templates: Object.fromEntries(voiceTemplates.map((t) => [t.event, t.body])),
       packs: Object.fromEntries(packs.map((p) => [p.locale, p.manifest])),

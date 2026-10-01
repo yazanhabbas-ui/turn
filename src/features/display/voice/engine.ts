@@ -7,6 +7,10 @@ export type VoiceJob = {
   repeat: number;
   gapMs: number;
   chime: boolean;
+  /** Chime loudness relative to the voice volume (0-1). */
+  chimeVolume?: number;
+  /** Pause between the chime and the first words. */
+  gapChimeMs?: number;
   opts: SpeechOptions;
   /** Providers in order of preference. */
   providers: TtsProvider[];
@@ -50,6 +54,14 @@ export class VoiceEngine {
   private running = false;
   private active: VoiceJob | null = null;
   private ctx: AudioContext | null = null;
+  /** Bumped by clear(): an announcement that started earlier stops at its next step. */
+  private generation = 0;
+  private wakers = new Set<() => void>();
+
+  /** The unlocked audio context (recorded packs are pre-decoded with it). */
+  get context() {
+    return this.ctx;
+  }
 
   constructor(private readonly events: VoiceEvents = {}) {}
 
@@ -94,7 +106,22 @@ export class VoiceEngine {
   /** Stops the current announcement and drops everything queued. */
   clear() {
     this.queue = [];
+    this.generation++;
     this.active?.providers.forEach((p) => p.stop());
+    for (const wake of [...this.wakers]) wake();
+  }
+
+  /** A pause that ends early when the announcement is cleared. */
+  private wait(ms: number) {
+    return new Promise<void>((resolve) => {
+      const done = () => {
+        clearTimeout(timer);
+        this.wakers.delete(done);
+        resolve();
+      };
+      const timer = setTimeout(done, ms);
+      this.wakers.add(done);
+    });
   }
 
   private async run() {
@@ -119,9 +146,16 @@ export class VoiceEngine {
   }
 
   private async play(job: VoiceJob) {
-    if (job.chime && this.ctx?.state === "running") await playChime(this.ctx, job.opts.volume).catch(() => undefined);
-    for (let round = 0; round < job.repeat; round++) {
+    const gen = this.generation;
+    const live = () => gen === this.generation;
+    if (this.ctx) for (const p of job.providers) p.attach?.(this.ctx);
+    if (job.chime && this.ctx?.state === "running") {
+      await playChime(this.ctx, job.opts.volume * (job.chimeVolume ?? 0.6)).catch(() => undefined);
+      if (job.gapChimeMs && live()) await this.wait(job.gapChimeMs);
+    }
+    for (let round = 0; round < job.repeat && live(); round++) {
       for (const step of job.steps) {
+        if (!live()) return;
         const provider = await this.choose(job, step);
         if (!provider) {
           this.events.onUnavailable?.(step);
@@ -130,10 +164,10 @@ export class VoiceEngine {
         try {
           await provider.speak(step, job.opts);
         } catch {
-          this.events.onUnavailable?.(step);
+          if (live()) this.events.onUnavailable?.(step);
         }
       }
-      if (round < job.repeat - 1) await sleep(job.gapMs);
+      if (round < job.repeat - 1 && live()) await this.wait(job.gapMs);
     }
   }
 

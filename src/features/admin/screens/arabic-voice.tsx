@@ -2,53 +2,63 @@
 
 import { Check, Play, Plus, Square } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { EmptyState, ErrorState, LoadingRows } from "@/components/admin/form";
 import { api, useApiMutation, useApiQuery } from "@/components/admin/use-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { packClipKeys } from "@/domain/display/speech";
-import { PackTts } from "@/features/display/voice/providers";
+import type { DigitSystem } from "@/domain/i18n/digits";
 import { cn } from "@/lib/utils";
 import type { SettingValue } from "@/server/settings/registry";
+import { previewTemplates, useVoicePreview } from "./use-voice-preview";
 import { SETTINGS } from "./voice-tab";
 import type { AudioPack } from "./types";
 
 const PACKS = "/api/v1/admin/audio-packs";
 
-/** A sample announcement (ticket A-12 at desk 3) spoken from the pack's own clips, exactly as a screen would. */
-function usePreview() {
+/** A sample announcement (B-014 at desk 3) spoken from the pack's own clips with the settings on the page. */
+function usePackPreview(draft: SettingValue<"voice">, digits: DigitSystem, noVoice: string) {
   const [playing, setPlaying] = useState<string | null>(null);
-  const player = useRef<PackTts | null>(null);
-  useEffect(() => () => player.current?.stop(), []);
-  async function play(pack: AudioPack, rate: number, volume: number) {
-    player.current?.stop();
+  const player = useVoicePreview(noVoice);
+  async function play(pack: AudioPack) {
     setPlaying(pack.id);
-    const tts = new PackTts({ ar: pack.manifest });
-    player.current = tts;
-    try {
-      await tts.speak({ locale: "ar", text: "", keys: packClipKeys("A-012", "3", "ar") }, { rate, volume });
-    } catch {
-      /* a missing clip just ends the preview */
-    } finally {
-      setPlaying((p) => (p === pack.id ? null : p));
-    }
+    await player.play({
+      settings: { ...draft, provider: "pack", chime: false, callLanguages: "ar", repeat: 1 },
+      templates: previewTemplates(undefined),
+      packs: { ar: pack.manifest },
+      digits,
+      displayNumber: "B-014",
+      deskNumber: "3",
+      ticketLanguage: "ar",
+    });
   }
   function stop() {
-    player.current?.stop();
+    player.stop();
     setPlaying(null);
   }
-  return { playing, play, stop };
+  return { playing: player.playing ? playing : null, play, stop };
 }
 
 /**
  * Picks who speaks the Arabic announcements: the screen's own browser voice, or one of the bundled recorded
  * voices. Choosing takes effect on every paired screen immediately.
  */
-export function ArabicVoice({ voice, canSettings }: { voice: SettingValue<"voice">; canSettings: boolean }) {
+export function ArabicVoice({
+  voice,
+  draft,
+  canSettings,
+  digits,
+}: {
+  /** The saved setting (what choosing a voice writes back). */
+  voice: SettingValue<"voice">;
+  /** The values on the page, used for the sample. */
+  draft: SettingValue<"voice">;
+  canSettings: boolean;
+  digits: DigitSystem;
+}) {
   const t = useTranslations("screens.voice");
   const list = useApiQuery<{ items: AudioPack[] }>(PACKS);
-  const preview = usePreview();
+  const preview = usePackPreview(draft, digits, t("noVoiceHere"));
   const invalidate = [[PACKS], [SETTINGS]];
 
   const use = useApiMutation((id: string) => api(`${PACKS}/${id}/activate`, { body: {} }), { invalidate });
@@ -66,7 +76,7 @@ export function ArabicVoice({ voice, canSettings }: { voice: SettingValue<"voice
   const usingPack = voice.provider === "pack";
 
   return (
-    <div className="max-w-3xl space-y-3">
+    <div className="space-y-3">
       <p className="text-muted-foreground text-sm">{t("arabicHint")}</p>
 
       {canSettings && (
@@ -103,7 +113,7 @@ export function ArabicVoice({ voice, canSettings }: { voice: SettingValue<"voice
                     {t("stop")}
                   </Button>
                 ) : (
-                  <Button variant="outline" size="sm" onClick={() => void preview.play(p, voice.rate, voice.volume)}>
+                  <Button variant="outline" size="sm" onClick={() => void preview.play(p)}>
                     <Play aria-hidden />
                     {t("preview")}
                   </Button>

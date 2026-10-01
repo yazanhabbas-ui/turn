@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { DISPLAY_THEME_CHOICES } from "../branding/surface-theme";
+import { CALL_LANGUAGES } from "./speech";
 
 export const DISPLAY_LAYOUTS = ["classic", "single", "multi"] as const;
 export type DisplayLayout = (typeof DISPLAY_LAYOUTS)[number];
@@ -29,6 +30,10 @@ export const displayConfigSchema = z.object({
       enabled: z.boolean().optional(),
       volume: z.number().min(0).max(1).optional(),
       rate: z.number().min(0.5).max(1.5).optional(),
+      /** Which languages this screen announces in (unset = the organization voice setting). */
+      callLanguages: z.enum(CALL_LANGUAGES).optional(),
+      /** How many times this screen repeats a call (unset = the organization voice setting). */
+      repeat: z.number().int().min(1).max(5).optional(),
     })
     .default({}),
 });

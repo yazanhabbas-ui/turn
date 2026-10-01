@@ -9,10 +9,13 @@ import { api, useApiMutation, useApiQuery } from "@/components/admin/use-api";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { arabicDeskWords, arabicTicketWords, type TicketReading } from "@/domain/display/arabic-speech";
 import { announcementText } from "@/domain/display/speech";
+import { renderTemplate } from "@/domain/templates/render";
 import type { DigitSystem } from "@/domain/i18n/digits";
 import type { L } from "../types";
 import type { VoiceTemplate } from "./types";
+import { DEFAULT_PHRASES } from "./use-voice-preview";
 
 const TEMPLATES = "/api/v1/admin/templates";
 const PLACEHOLDERS = ["ticket", "desk", "agent", "reason"] as const;
@@ -20,19 +23,16 @@ const LANGS = [
   { code: "ar", dir: "rtl", speech: "ar-SA" },
   { code: "en", dir: "ltr", speech: "en-US" },
 ] as const;
-/** Starting point when no phrase has been saved yet. */
-const DEFAULT_PHRASES: L = {
-  ar: "على العميل صاحب الرقم {ticket} التوجه إلى المكتب {desk}",
-  en: "Ticket {ticket}, please proceed to desk {desk}",
-};
-const SAMPLE = { ticket: "A-014", desk: "3", agent: "", reason: "" };
+const SAMPLE = { ticket: "B-014", desk: "3", agent: "", reason: "" };
 
 export function VoicePhrases({
   rate,
   volume,
   digits,
   voiceNames,
+  reading,
 }: {
+  reading: TicketReading;
   rate: number;
   volume: number;
   digits: DigitSystem;
@@ -99,7 +99,16 @@ export function VoicePhrases({
         ))}
       </div>
       {LANGS.map(({ code, dir, speech }) => {
-        const preview = announcementText(body[code] ?? "", SAMPLE, digits);
+        // Arabic is spoken with the ticket and desk as words (the recorded voice does the same).
+        const preview =
+          code === "ar"
+            ? renderTemplate(body[code] ?? "", {
+                ticket: arabicTicketWords(SAMPLE.ticket, reading),
+                desk: arabicDeskWords(SAMPLE.desk),
+                agent: "",
+                reason: "",
+              })
+            : announcementText(body[code] ?? "", { ...SAMPLE, reading }, digits);
         return (
           <div key={code} className="space-y-1.5">
             <Label htmlFor={`ph-${code}`}>{code === "ar" ? t("langAr") : t("langEn")}</Label>

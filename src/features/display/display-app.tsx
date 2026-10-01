@@ -2,7 +2,6 @@
 
 import { Maximize2, Minimize2, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { planAnnouncement } from "@/domain/display/plan";
 import { dirOf } from "@/i18n/locales";
 import { cn } from "@/lib/utils";
 import { ScreenLayout } from "./layouts";
@@ -10,8 +9,9 @@ import { Pairing } from "./pairing";
 import { makeT, type Dicts } from "./text";
 import { clearToken, readToken, saveToken, useDisplayState, useKiosk, type CallEvent, type DisplayState } from "./use-display";
 import type { Call } from "./parts";
-import { VoiceEngine, type VoiceJob } from "./voice/engine";
-import { BrowserTts, PackTts, type TtsProvider } from "./voice/providers";
+import { VoiceEngine } from "./voice/engine";
+import { buildVoiceJob } from "./voice/job";
+import { preloadPack } from "./voice/providers";
 
 const FLASH_MS = 12_000;
 
@@ -91,30 +91,18 @@ function Screen({
     const s = stateRef.current;
     const eng = engine.current;
     if (!s || !eng || !s.voice.settings.enabled) return;
-    const v = s.voice.settings;
-    const steps = planAnnouncement({
+    const job = buildVoiceJob({
+      id: `${e.ticketId}:${e.recall ? "r" : "c"}`,
+      settings: s.voice.settings,
       templates: s.voice.templates,
-      event: e.recall && s.voice.templates.ticket_recalled ? "ticket_recalled" : "ticket_called",
-      settings: { mode: v.mode, languages: v.languages },
+      packs: s.voice.packs,
+      digits: s.regional.digitsVoice,
       displayNumber: e.displayNumber,
       deskNumber: e.deskNumber,
       ticketLanguage: e.language,
-      digits: s.regional.digitsVoice,
+      recall: e.recall,
     });
-    if (!steps.length) return;
-    const browser = new BrowserTts();
-    const pack = new PackTts(s.voice.packs);
-    // "cloud" is an extension point (see TtsProvider); until a cloud adapter is registered it behaves like "browser".
-    const providers: TtsProvider[] = v.provider === "pack" ? [pack, browser] : [browser, pack];
-    const job: VoiceJob = {
-      id: `${e.ticketId}:${e.recall ? "r" : "c"}`,
-      steps,
-      repeat: v.repeat,
-      gapMs: v.repeatGapSeconds * 1000,
-      chime: v.chime,
-      providers,
-      opts: { rate: v.rate, volume: v.volume, voiceName: undefined },
-    };
+    if (!job) return;
     eng.enqueue(job);
   }, []);
 
@@ -169,6 +157,16 @@ function Screen({
       window.removeEventListener("keydown", go);
     };
   }, [unlocked]);
+
+  // Decode the recorded voice as soon as the screen has its manifest and the audio context exists, so the first call has no delay.
+  const manifest = state?.voice.settings.provider === "pack" ? state.voice.packs.ar : undefined;
+  const manifestRef = useRef(manifest);
+  manifestRef.current = manifest;
+  const manifestKey = manifest ? `${Object.keys(manifest).length}:${manifest["ar.num.1"] ?? manifest["ar.digit.1"] ?? ""}` : "";
+  useEffect(() => {
+    const ctx = engine.current?.context;
+    if (ctx && manifestRef.current) void preloadPack(ctx, manifestRef.current);
+  }, [manifestKey]);
 
   const soundOn = unlocked && !!state?.voice.settings.enabled;
   // Until the first state arrives (or from an older cached state) the screen keeps the classic dark look.

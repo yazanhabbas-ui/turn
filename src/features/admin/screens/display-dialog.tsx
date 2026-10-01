@@ -12,6 +12,7 @@ import type { SettingKey, SettingValue } from "@/server/settings/registry";
 import { ThemePicker } from "../theme-picker";
 import type { Branch } from "../types";
 import { useText } from "../use-lookups";
+import { CALL_LANGUAGES, type CallLanguages } from "@/domain/display/speech";
 import { Check } from "./check";
 import { DEFAULT_CONFIG, type Display, type DisplayConfig, type Lang, type Layout, type Pairing } from "./types";
 
@@ -247,6 +248,34 @@ export function DisplayDialog({
                       max={1.5}
                       value={f.config.voice.rate ?? ""}
                       onChange={(e) => setVoice({ rate: e.target.value === "" ? undefined : Number(e.target.value) })}
+                    />
+                  </Field>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label={t("config.callLanguages")} htmlFor="d-cl">
+                    <NativeSelect
+                      id="d-cl"
+                      value={f.config.voice.callLanguages ?? "inherit"}
+                      onChange={(e) =>
+                        setVoice({ callLanguages: e.target.value === "inherit" ? undefined : (e.target.value as CallLanguages) })
+                      }
+                    >
+                      <option value="inherit">{t("config.inherit")}</option>
+                      {CALL_LANGUAGES.map((c) => (
+                        <option key={c} value={c}>
+                          {t(`voice.callLanguageOptions.${c}`)}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </Field>
+                  <Field label={t("config.repeat")} htmlFor="d-rep" hint={t("config.repeatHint")}>
+                    <Input
+                      id="d-rep"
+                      type="number"
+                      min={1}
+                      max={5}
+                      value={f.config.voice.repeat ?? ""}
+                      onChange={(e) => setVoice({ repeat: e.target.value === "" ? undefined : Number(e.target.value) })}
                     />
                   </Field>
                 </div>

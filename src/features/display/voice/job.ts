@@ -1,0 +1,78 @@
+import { planAnnouncement, type PlannedStep } from "@/domain/display/plan";
+import type { CallLanguages } from "@/domain/display/speech";
+import type { DigitSystem } from "@/domain/i18n/digits";
+import type { SettingValue } from "@/server/settings/registry";
+import type { VoiceJob } from "./engine";
+import { BrowserTts, PackTts, type TtsProvider } from "./providers";
+
+export type VoiceSettings = SettingValue<"voice">;
+
+/** Everything a screen (or the admin preview) needs to announce one call. */
+export type PlanInput = {
+  settings: VoiceSettings;
+  templates: Record<string, Record<string, string>>;
+  /** Clip manifests by language (the active pack). */
+  packs: Record<string, Record<string, string>>;
+  digits: DigitSystem;
+  displayNumber: string;
+  deskNumber: string | null;
+  /** The language the visitor chose at reception. */
+  ticketLanguage: string;
+  recall?: boolean;
+  /** Preview overrides. */
+  callLanguages?: CallLanguages;
+  repeat?: number;
+};
+
+/** The planned steps for a call, exactly as the screen would speak them. */
+export type CallInput = PlanInput & { id: string };
+
+export function planCall(input: PlanInput): PlannedStep[] {
+  const v = input.settings;
+  return planAnnouncement({
+    templates: input.templates,
+    event: input.recall && input.templates.ticket_recalled ? "ticket_recalled" : "ticket_called",
+    settings: {
+      callLanguages: input.callLanguages ?? v.callLanguages,
+      ticketReading: v.ticketReading,
+      announceDesk: v.announceDesk,
+    },
+    displayNumber: input.displayNumber,
+    deskNumber: input.deskNumber,
+    ticketLanguage: input.ticketLanguage,
+    digits: input.digits,
+  });
+}
+
+/** The job the voice engine plays; null when nothing can be said. Used by the TV screen and the admin preview alike. */
+export function buildVoiceJob(input: CallInput): VoiceJob | null {
+  const v = input.settings;
+  const steps = planCall(input);
+  if (!steps.length) return null;
+  const browser = new BrowserTts();
+  const pack = new PackTts(input.packs);
+  // "cloud" is an extension point (see TtsProvider); until a cloud adapter is registered it behaves like "browser".
+  const providers: TtsProvider[] = v.provider === "pack" ? [pack, browser] : [browser, pack];
+  return {
+    id: input.id,
+    steps,
+    repeat: input.repeat ?? v.repeat,
+    gapMs: v.repeatGapSeconds * 1000,
+    chime: v.chime,
+    chimeVolume: v.chimeVolume,
+    gapChimeMs: v.gapChimeMs,
+    providers,
+    opts: {
+      rate: v.rate,
+      volume: v.volume,
+      speed: v.speed,
+      timing: {
+        gapPhraseMs: v.gapPhraseMs,
+        gapLetterNumberMs: v.gapLetterNumberMs,
+        gapDeskMs: v.gapDeskMs,
+        overlapMs: v.overlapMs,
+      },
+      voiceNames: v.voiceNames,
+    },
+  };
+}

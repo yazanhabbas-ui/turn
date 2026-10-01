@@ -139,25 +139,25 @@ describe.runIf(available)("user profiles (database)", () => {
   });
 
   describe("my activity", () => {
-    it("returns only the signed-in user's own rows, filtered by type and paginated", async () => {
-      await setOwnAvatar(khalid, await picture());
-      await setOwnAvatar(khalid, await picture());
-      await setOwnAvatar(noura, await picture());
-      const mine = await myActivity(khalid, activityQuery.parse({ type: "audit" }));
+    it("returns only the signed-in user's own rows (non-agent), filtered by type and paginated", async () => {
+      await setOwnAvatar(admin, await picture());
+      await setOwnAvatar(admin, await picture());
+      await setOwnAvatar(cityAdmin, await picture());
+      const mine = await myActivity(admin, activityQuery.parse({ type: "audit" }));
       expect(mine.items).toHaveLength(2);
       expect(
-        mine.items.every((i) => i.kind === "audit" && i.action === "user.avatar_set" && i.entityId === khalid.auth.user.id),
+        mine.items.every((i) => i.kind === "audit" && i.action === "user.avatar_set" && i.entityId === admin.auth.user.id),
       ).toBe(true);
 
-      const page1 = await myActivity(khalid, activityQuery.parse({ type: "audit", limit: 1 }));
+      const page1 = await myActivity(admin, activityQuery.parse({ type: "audit", limit: 1 }));
       expect(page1.items).toHaveLength(1);
       expect(page1.nextBefore).not.toBeNull();
-      const page2 = await myActivity(khalid, activityQuery.parse({ type: "audit", limit: 1, before: page1.nextBefore! }));
+      const page2 = await myActivity(admin, activityQuery.parse({ type: "audit", limit: 1, before: page1.nextBefore! }));
       expect(page2.items).toHaveLength(1);
       expect(page2.items[0].id).not.toBe(page1.items[0].id);
       expect(page2.nextBefore).toBeNull();
 
-      // Nothing of Noura's shows up for a supervisor with no activity of their own.
+      // Nothing of anyone else's shows up for a supervisor with no activity of their own.
       expect((await myActivity(supervisor, activityQuery.parse({}))).items).toEqual([]);
     });
 

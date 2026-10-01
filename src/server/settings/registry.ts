@@ -337,23 +337,36 @@ export const SETTINGS = {
       notifyEmails: z.array(z.string().email()).max(20).default([]),
     })
     .prefault({}),
-  /** Announcements on waiting-room screens. Individual screens can override volume and rate. */
+  /** Announcements on waiting-room screens. Individual screens can override languages, repeats, volume and rate. */
   voice: z
     .object({
       enabled: z.boolean().default(true),
       /** browser = the screen's own speech engine; pack = pre-recorded clips; cloud = server-side TTS (extension point). */
       provider: z.enum(["browser", "pack", "cloud"]).default("browser"),
-      /** sequence = speak every language in `languages`; ticket = only the visitor's language. */
-      mode: z.enum(["sequence", "ticket"]).default("sequence"),
-      languages: z
-        .array(z.enum(["ar", "en"]))
-        .min(1)
-        .default(["ar", "en"]),
+      /** Languages of the call: ar / en, the visitor's ticket language, or both in a given order. Unset = Arabic only. */
+      callLanguages: z.enum(["ar", "en", "ticket", "both_ar_en", "both_en_ar"]).default("ar"),
+      /** letter_then_number "رقم بي، أربعة عشر"; number_only skips the prefix; digits reads digit by digit. */
+      ticketReading: z.enum(["letter_then_number", "number_only", "digits"]).default("letter_then_number"),
+      /** Announce the desk ("please go to desk 3"). */
+      announceDesk: z.boolean().default(true),
       repeat: z.number().int().min(1).max(5).default(2),
-      repeatGapSeconds: z.number().min(0).max(30).default(3),
+      /** Pause between two repetitions of the same call. */
+      repeatGapSeconds: z.number().min(0.5).max(10).default(4),
+      /** Audio gaps of a recorded Arabic voice, in milliseconds. */
+      gapPhraseMs: z.number().int().min(0).max(1500).default(180),
+      gapLetterNumberMs: z.number().int().min(0).max(1500).default(120),
+      gapDeskMs: z.number().int().min(0).max(2000).default(350),
+      /** Pause between the chime and the voice. */
+      gapChimeMs: z.number().int().min(0).max(2000).default(250),
+      /** Overlap of clips that belong to one number (0 = none). */
+      overlapMs: z.number().int().min(0).max(120).default(0),
       chime: z.boolean().default(true),
+      chimeVolume: z.number().min(0).max(1).default(0.6),
       volume: z.number().min(0).max(1).default(1),
+      /** Speed of the browser voice. */
       rate: z.number().min(0.5).max(1.5).default(0.9),
+      /** Speed of a recorded voice (it also shifts the pitch slightly, so keep it near 1). */
+      speed: z.number().min(0.8).max(1.25).default(1),
       /** Optional preferred voice names per language (matched by prefix against the engine's voices). */
       voiceNames: localized.default({}),
     })

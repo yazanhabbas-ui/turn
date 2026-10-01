@@ -37,7 +37,7 @@ const toFact = (r: FactRow): ProgressFact => ({
 const toDaily = (rows: { d: string; n: number | string }[]): DayCount[] => rows.map((r) => ({ date: r.d, count: Number(r.n) }));
 
 /** The time zone the person's days are counted in: their agent branch, else a branch they are granted, else the first branch. */
-async function timezoneFor(actor: Actor, agentBranchId: string | null): Promise<string> {
+export async function timezoneFor(actor: Actor, agentBranchId: string | null): Promise<string> {
   const granted = actor.auth.grants.find((g) => g.branchId)?.branchId ?? null;
   const branchId = agentBranchId ?? granted;
   if (branchId) {

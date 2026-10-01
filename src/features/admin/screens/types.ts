@@ -1,10 +1,17 @@
 import type { DisplayThemeChoice } from "@/domain/branding/surface-theme";
+import type { CallLanguages } from "@/domain/display/speech";
 import type { L } from "../types";
 
 export type Layout = "classic" | "single" | "multi";
 export type Lang = "ar" | "en";
 
-export type DisplayVoice = { enabled?: boolean; volume?: number; rate?: number };
+export type DisplayVoice = {
+  enabled?: boolean;
+  volume?: number;
+  rate?: number;
+  callLanguages?: CallLanguages;
+  repeat?: number;
+};
 export type DisplayConfig = {
   languages: Lang[];
   rotateSeconds: number;

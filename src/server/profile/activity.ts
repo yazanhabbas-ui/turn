@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, isNotNull, lt, gte, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { auditLogs, tickets, visitReasons } from "@/db/schema";
+import { agentProfiles, auditLogs, tickets, visitReasons } from "@/db/schema";
 import type { Actor } from "../admin/actor";
 import { now as clockNow } from "../clock";
 
@@ -35,7 +35,11 @@ export type ActivityItem =
 
 const iso = (d: Date) => d.toISOString();
 
-/** The signed-in user's own recent actions (audit entries where they are the actor) and tickets they served or issued. */
+/**
+ * The signed-in user's own recent actions (audit entries where they are the actor) and tickets they served or issued.
+ * For AGENT accounts (D55) this is not a log: audit rows and issued tickets are never returned, only the visitors they
+ * served, whatever `type` asks for. Their profile shows reports instead (`/api/v1/me/report`).
+ */
 export async function myActivity(actor: Actor, q: ActivityQuery): Promise<{ items: ActivityItem[]; nextBefore: string | null }> {
   const me = actor.auth.user.id;
   const now = clockNow();
@@ -43,8 +47,10 @@ export async function myActivity(actor: Actor, q: ActivityQuery): Promise<{ item
   const before = q.before ? new Date(q.before) : null;
   const take = q.limit + 1;
   const items: ActivityItem[] = [];
+  const [agent] = await db().select({ id: agentProfiles.userId }).from(agentProfiles).where(eq(agentProfiles.userId, me));
+  const isAgent = !!agent;
 
-  if (q.type !== "tickets") {
+  if (q.type !== "tickets" && !isAgent) {
     const rows = await db()
       .select()
       .from(auditLogs)
@@ -55,7 +61,7 @@ export async function myActivity(actor: Actor, q: ActivityQuery): Promise<{ item
       items.push({ kind: "audit", id: r.id, at: iso(r.at), action: r.action, entityType: r.entityType, entityId: r.entityId });
   }
 
-  if (q.type !== "audit") {
+  if (q.type !== "audit" || isAgent) {
     const firstCalled = sql<Date | null>`(select min(e.at) from ticket_events e where e.ticket_id = ${tickets.id} and e.type = 'CALLED')`;
     const base = {
       id: tickets.id,
@@ -81,7 +87,7 @@ export async function myActivity(actor: Actor, q: ActivityQuery): Promise<{ item
         and(eq(tickets.servingAgentId, me), inArray(tickets.status, ["COMPLETED", "NO_SHOW"]), isNotNull(tickets.finishedAt)),
         tickets.finishedAt,
       ),
-      run(eq(tickets.issuedByUserId, me), tickets.arrivedAt),
+      isAgent ? Promise.resolve([]) : run(eq(tickets.issuedByUserId, me), tickets.arrivedAt),
     ]);
     const item = (r: (typeof served)[number], role: "served" | "issued"): ActivityItem => {
       const first = r.firstCalledAt ? new Date(r.firstCalledAt).getTime() : null;

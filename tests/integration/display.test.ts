@@ -182,7 +182,12 @@ describe.runIf(available)("display screens (database)", () => {
     expect(state.reasons.find((r) => r.id === reason.general)).toMatchObject({ waiting: 1 });
     expect(state.branch.timezone).toBe("Asia/Damascus");
     expect(state.voice.templates.ticket_called.ar).toContain("{ticket}");
-    expect(state.voice.settings).toMatchObject({ enabled: true, repeat: 2, mode: "sequence" });
+    expect(state.voice.settings).toMatchObject({
+      enabled: true,
+      repeat: 2,
+      callLanguages: "ar",
+      ticketReading: "letter_then_number",
+    });
 
     const json = JSON.stringify(state);
     for (const secret of ["فهد السري", "0501234567", "9876", "publicToken", "intake"]) expect(json).not.toContain(secret);
@@ -190,12 +195,12 @@ describe.runIf(available)("display screens (database)", () => {
 
   it("filters desks by zone and applies per-screen voice overrides", async () => {
     const screen = await pairedScreen({
-      config: { ...input().config, zones: ["B"], voice: { volume: 0.4, enabled: false } },
+      config: { ...input().config, zones: ["B"], voice: { volume: 0.4, enabled: false, callLanguages: "both_en_ar", repeat: 3 } },
     });
     const zoneB = await db().select().from(desks).where(eq(desks.zone, "B"));
     const state = await displayState(screen.display);
     expect(state.desks.map((d) => d.id).sort()).toEqual(zoneB.map((d) => d.id).sort());
-    expect(state.voice.settings).toMatchObject({ volume: 0.4, enabled: false });
+    expect(state.voice.settings).toMatchObject({ volume: 0.4, enabled: false, callLanguages: "both_en_ar", repeat: 3 });
   });
 
   it("serves active ticker lines and slides only, and refuses external media", async () => {

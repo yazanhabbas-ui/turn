@@ -1,9 +1,102 @@
 [
-  { "id": "ar-sa-hamed", "name": { "ar": "حامد — سعودي", "en": "Hamed — Saudi" }, "gender": "male", "engine": "Microsoft neural" },
-  { "id": "ar-ae-hamdan", "name": { "ar": "حمدان — إماراتي", "en": "Hamdan — Emirati" }, "gender": "male", "engine": "Microsoft neural" },
-  { "id": "ar-kw-fahed", "name": { "ar": "فهد — كويتي", "en": "Fahed — Kuwaiti" }, "gender": "male", "engine": "Microsoft neural" },
-  { "id": "ar-lb-rami", "name": { "ar": "رامي — لبناني", "en": "Rami — Lebanese" }, "gender": "male", "engine": "Microsoft neural" },
-  { "id": "ar-dz-ismael", "name": { "ar": "إسماعيل — جزائري", "en": "Ismael — Algerian" }, "gender": "male", "engine": "Microsoft neural" },
-  { "id": "ar-ma-jamal", "name": { "ar": "جمال — مغربي", "en": "Jamal — Moroccan" }, "gender": "male", "engine": "Microsoft neural" },
-  { "id": "piper-kareem", "name": { "ar": "كريم — أردني (دون اتصال)", "en": "Kareem — Jordanian (offline engine)" }, "gender": "male", "engine": "Piper" }
+  {
+    "id": "ar-sa-hamed",
+    "name": {
+      "ar": "حامد — سعودي",
+      "en": "Hamed — Saudi"
+    },
+    "gender": "male",
+    "engine": "Microsoft neural",
+    "numbers": "full"
+  },
+  {
+    "id": "ar-sa-zariyah",
+    "name": {
+      "ar": "زارية — سعودية",
+      "en": "Zariyah — Saudi"
+    },
+    "gender": "female",
+    "engine": "Microsoft neural",
+    "numbers": "full"
+  },
+  {
+    "id": "ar-sy-laith",
+    "name": {
+      "ar": "ليث — سوري",
+      "en": "Laith — Syrian"
+    },
+    "gender": "male",
+    "engine": "Microsoft neural",
+    "numbers": "full"
+  },
+  {
+    "id": "ar-sy-amany",
+    "name": {
+      "ar": "أماني — سورية",
+      "en": "Amany — Syrian"
+    },
+    "gender": "female",
+    "engine": "Microsoft neural",
+    "numbers": "core"
+  },
+  {
+    "id": "ar-ae-hamdan",
+    "name": {
+      "ar": "حمدان — إماراتي",
+      "en": "Hamdan — Emirati"
+    },
+    "gender": "male",
+    "engine": "Microsoft neural",
+    "numbers": "core"
+  },
+  {
+    "id": "ar-kw-fahed",
+    "name": {
+      "ar": "فهد — كويتي",
+      "en": "Fahed — Kuwaiti"
+    },
+    "gender": "male",
+    "engine": "Microsoft neural",
+    "numbers": "core"
+  },
+  {
+    "id": "ar-lb-rami",
+    "name": {
+      "ar": "رامي — لبناني",
+      "en": "Rami — Lebanese"
+    },
+    "gender": "male",
+    "engine": "Microsoft neural",
+    "numbers": "core"
+  },
+  {
+    "id": "ar-dz-ismael",
+    "name": {
+      "ar": "إسماعيل — جزائري",
+      "en": "Ismael — Algerian"
+    },
+    "gender": "male",
+    "engine": "Microsoft neural",
+    "numbers": "core"
+  },
+  {
+    "id": "ar-ma-jamal",
+    "name": {
+      "ar": "جمال — مغربي",
+      "en": "Jamal — Moroccan"
+    },
+    "gender": "male",
+    "engine": "Microsoft neural",
+    "numbers": "core"
+  },
+  {
+    "id": "piper-kareem",
+    "name": {
+      "ar": "كريم — أردني (دون اتصال)",
+      "en": "Kareem — Jordanian (offline engine)"
+    },
+    "gender": "male",
+    "engine": "Piper",
+    "numbers": "core"
+  }
 ]

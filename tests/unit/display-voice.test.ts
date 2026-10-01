@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseDisplayConfig } from "@/domain/display/config";
 import { planAnnouncement } from "@/domain/display/plan";
-import { announcementText, packClipKeys, speechLanguages, splitTicket, spokenTicket } from "@/domain/display/speech";
+import { announcementText, callSequence, splitTicket, spokenTicket } from "@/domain/display/speech";
 import { pickVoice } from "@/features/display/voice/providers";
 import { VoiceEngine, type VoiceJob } from "@/features/display/voice/engine";
 import type { TtsProvider } from "@/features/display/voice/providers";
@@ -22,16 +22,25 @@ describe("ticket numbers for speech", () => {
   });
 });
 
+const SETTINGS_BOTH = { callLanguages: "both_ar_en" as const, ticketReading: "letter_then_number" as const, announceDesk: true };
+
 describe("announcement templates", () => {
   it("fills {ticket} and {desk} and leaves unknown placeholders visible", () => {
     const text = announcementText("رقم {ticket}، الرجاء التوجه إلى المكتب {desk} {x}", { ticket: "A-014", desk: "3" }, "arab");
     expect(text).toBe("رقم A ١٤، الرجاء التوجه إلى المكتب ٣ {x}");
   });
 
-  it("chooses languages: the sequence, or only the visitor's language", () => {
-    expect(speechLanguages("sequence", ["ar", "en"], "en")).toEqual(["ar", "en"]);
-    expect(speechLanguages("ticket", ["ar", "en"], "en")).toEqual(["en"]);
-    expect(speechLanguages("sequence", [], "ar")).toEqual(["ar"]);
+  it("chooses the languages of the call", () => {
+    expect(callSequence("ar", "en")).toEqual(["ar"]);
+    expect(callSequence("en", "ar")).toEqual(["en"]);
+    expect(callSequence("ticket", "en")).toEqual(["en"]);
+    expect(callSequence("both_ar_en", "en")).toEqual(["ar", "en"]);
+    expect(callSequence("both_en_ar", "ar")).toEqual(["en", "ar"]);
+  });
+
+  it("reads the ticket according to the reading mode", () => {
+    expect(spokenTicket("A-014", "latn", "number_only")).toBe("14");
+    expect(spokenTicket("A-114", "latn", "digits")).toBe("A 1 1 4");
   });
 
   it("plans one step per language from the editable templates, skipping missing ones", () => {
@@ -44,33 +53,22 @@ describe("announcement templates", () => {
       ticketLanguage: "en",
       digits: "latn" as const,
     };
-    const both = planAnnouncement({ ...base, settings: { mode: "sequence", languages: ["ar", "en"] } });
+    const both = planAnnouncement({ ...base, settings: SETTINGS_BOTH });
     expect(both.map((s) => s.locale)).toEqual(["ar", "en"]);
     expect(both[1].text).toBe("Number A 14, desk 3");
-    expect(planAnnouncement({ ...base, settings: { mode: "ticket", languages: ["ar", "en"] } }).map((s) => s.locale)).toEqual([
+    expect(planAnnouncement({ ...base, settings: { ...SETTINGS_BOTH, callLanguages: "ticket" } }).map((s) => s.locale)).toEqual([
       "en",
     ]);
     const onlyEn = planAnnouncement({
       ...base,
       templates: { ticket_called: { en: "x" } },
-      settings: { mode: "sequence", languages: ["ar", "en"] },
+      settings: SETTINGS_BOTH,
     });
     expect(onlyEn.map((s) => s.locale)).toEqual(["en"]);
     // A recall without its own template reuses the call template.
-    expect(planAnnouncement({ ...base, event: "ticket_recalled", settings: { mode: "ticket", languages: ["en"] } })).toHaveLength(
-      1,
-    );
-  });
-
-  it("builds the clip list of a pre-recorded pack", () => {
-    expect(packClipKeys("A-014", "3", "ar")).toEqual([
-      "ar.phrase.number",
-      "ar.letter.A",
-      "ar.digit.1",
-      "ar.digit.4",
-      "ar.phrase.desk",
-      "ar.digit.3",
-    ]);
+    expect(
+      planAnnouncement({ ...base, event: "ticket_recalled", settings: { ...SETTINGS_BOTH, callLanguages: "ticket" } }),
+    ).toHaveLength(1);
   });
 });
 
@@ -78,6 +76,11 @@ describe("screen configuration", () => {
   it("fills defaults and falls back on garbage", () => {
     const c = parseDisplayConfig({});
     expect(c.languages).toEqual(["ar", "en"]);
+    expect(c.voice).toEqual({});
+    expect(parseDisplayConfig({ voice: { callLanguages: "ticket", repeat: 3 } }).voice).toEqual({
+      callLanguages: "ticket",
+      repeat: 3,
+    });
     expect(c.showTicker).toBe(true);
     expect(parseDisplayConfig({ rotateSeconds: 1 }).rotateSeconds).toBe(15);
     expect(parseDisplayConfig("nonsense").zones).toEqual([]);
@@ -133,5 +136,38 @@ describe("voice queue", () => {
     expect(maxActive).toBe(1);
     expect(log).toEqual(["ar:a-ar", "en:a-en", "ar:a-ar", "en:a-en", "ar:b-ar", "en:b-en", "ar:b-ar", "en:b-en"]);
     expect(unavailable).toEqual(["xx", "xx", "xx", "xx"]);
+  });
+});
+
+describe("voice queue cancellation", () => {
+  it("clear() ends the running announcement at once so a new one can start", async () => {
+    const log: string[] = [];
+    const provider: TtsProvider = {
+      id: "browser",
+      supports: () => true,
+      speak: async (s) => {
+        log.push(s.text);
+        await new Promise((r) => setTimeout(r, 15));
+      },
+      stop: () => undefined,
+    };
+    const engine = new VoiceEngine();
+    const job = (id: string): VoiceJob => ({
+      id,
+      steps: [1, 2, 3].map((n) => ({ locale: "ar", text: `${id}${n}`, keys: [] })),
+      repeat: 3,
+      gapMs: 5000,
+      chime: false,
+      opts: { rate: 1, volume: 1 },
+      providers: [provider],
+    });
+    engine.enqueue(job("a"));
+    await new Promise((r) => setTimeout(r, 20));
+    engine.clear();
+    engine.enqueue(job("b"));
+    await new Promise((r) => setTimeout(r, 300));
+    // "a" got at most its first two steps; the 5 s repeat pause did not hold "b" back.
+    expect(log.filter((x) => x.startsWith("a")).length).toBeLessThanOrEqual(2);
+    expect(log.filter((x) => x.startsWith("b")).length).toBeGreaterThanOrEqual(3);
   });
 });

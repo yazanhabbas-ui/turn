@@ -6,6 +6,7 @@ import { can } from "@/domain/rbac/permissions";
 import { ActivityFeed } from "@/features/profile/activity-feed";
 import { AvatarEditor } from "@/features/profile/avatar-editor";
 import { ProgressPanel } from "@/features/profile/progress-panel";
+import { ReportsPanel } from "@/features/profile/reports-panel";
 import { pickText } from "@/i18n/locales";
 import { Link } from "@/i18n/navigation";
 import { requireAuth } from "@/server/auth/current";
@@ -88,14 +89,23 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
           <ProgressPanel />
         </section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("activityTitle")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ActivityFeed showTickets={me.isAgent || can(auth.grants, "tickets.issue")} />
-          </CardContent>
-        </Card>
+        {me.isAgent ? (
+          <section aria-labelledby="reports-title" className="space-y-3">
+            <h2 id="reports-title" className="text-lg font-semibold">
+              {t("reports.title")}
+            </h2>
+            <ReportsPanel />
+          </section>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("activityTitle")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ActivityFeed showTickets={can(auth.grants, "tickets.issue")} />
+            </CardContent>
+          </Card>
+        )}
       </div>
     </AppShell>
   );

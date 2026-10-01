@@ -1424,7 +1424,10 @@
       "volume": "Volume ({value}%)",
       "rate": "Speech rate",
       "rateHint": "0.5 to 1.5. Empty = inherit.",
-      "theme": "Look of the screen"
+      "theme": "Look of the screen",
+      "callLanguages": "Language of the call",
+      "repeat": "Repeat (times)",
+      "repeatHint": "1 to 5. Empty = inherit."
     },
     "ann": {
       "add": "Add announcement",
@@ -1463,31 +1466,20 @@
         "cloud": "Cloud voice (requires configuration)"
       },
       "cloudNote": "Cloud voice is an extension point: it needs a server-side speech service to be configured first.",
-      "mode": "Languages spoken",
-      "modes": {
-        "sequence": "Every selected language, in order",
-        "ticket": "Only the visitor's language"
-      },
-      "languages": "Languages",
       "langAr": "Arabic",
       "langEn": "English",
-      "order": "Speaking order",
-      "arFirst": "Arabic first",
-      "enFirst": "English first",
-      "languagesRequired": "Select at least one language.",
       "repeat": "Repeat (times)",
-      "repeatGap": "Gap between repeats (s)",
-      "volume": "Volume ({value}%)",
-      "rate": "Speech rate",
+      "repeatGap": "Pause between repeats",
+      "rate": "Speed of the browser voice",
       "voiceNames": "Preferred voice names",
       "voiceNamesHint": "Optional. The start of an installed voice name, per language. Empty = the first available voice.",
-      "phrasesHint": "The sentence spoken when a ticket is called, per language. Click a placeholder to insert it where the cursor is.",
+      "phrasesHint": "The sentence spoken by the browser voice when a ticket is called, per language. Click a placeholder to insert it where the cursor is. A recorded Arabic voice always says its own fixed wording: “number”, the ticket, “please go to the desk”, the desk.",
       "placeholders": "Placeholders",
       "preview": "Preview",
       "test": "Test voice",
       "testHint": "Testing uses the voices installed on this computer, with the saved rate and volume.",
       "noVoice": "No {lang} voice is installed on this device. Use a pre-recorded audio pack or a cloud voice instead, or install a voice for this language.",
-      "packsHint": "Pre-recorded clips per language. Required keys: ar.phrase.number, ar.phrase.desk, ar.digit.0 to ar.digit.9 and ar.letter.A to ar.letter.Z for the letters in use (the same with the en. prefix for English).",
+      "packsHint": "Pre-recorded clips per language. Keys: ar.phrase.number, ar.phrase.desk, ar.num.0 to ar.num.999 (whole numbers, best) or only ar.digit.0 to ar.digit.9, ar.word.thousand for 1000 and above, and ar.letter.A to ar.letter.Z for the letters in use (the same with the en. prefix for English). Missing whole numbers are built from smaller ones.",
       "addPack": "Add audio pack",
       "editPack": "Edit audio pack",
       "packsEmpty": "No audio packs yet.",
@@ -1500,7 +1492,7 @@
         "value": "Every value must be a path starting with / or a data:audio/ URI."
       },
       "arabicTitle": "Arabic announcement voice",
-      "arabicHint": "Choose who speaks the Arabic announcements on the screens. The change reaches every paired screen at once. Press Preview to hear a sample: number A 12 to desk 3.",
+      "arabicHint": "Choose who speaks the Arabic announcements on the screens. The change reaches every paired screen at once. Press Preview to hear a sample: number B 14 to desk 3, with the settings on this page.",
       "browserVoice": "Browser voice (the screen device)",
       "browserVoiceHint": "Uses the speech voice installed on the screen itself. Does not work if the device has no Arabic voice.",
       "stop": "Stop",
@@ -1509,7 +1501,60 @@
       "addBundled": "Add the bundled voices",
       "bundledAdded": "Bundled voices added",
       "noBundled": "No voices yet. Press \"Add the bundled voices\".",
-      "bundledNote": "The bundled voices are pre-recorded and work without internet."
+      "bundledNote": "The bundled voices are pre-recorded and work without internet.",
+      "announcedTitle": "What is announced",
+      "announcedHint": "Which languages the call is spoken in, and how the ticket number and the desk are read out.",
+      "callLanguages": "Language of the call",
+      "callLanguagesHint": "Arabic only is recommended when most visitors are Arabic speakers. The visitor's language follows the language chosen at reception.",
+      "callLanguageOptions": {
+        "ar": "Arabic only",
+        "en": "English only",
+        "ticket": "The visitor's language",
+        "both_ar_en": "Arabic, then English",
+        "both_en_ar": "English, then Arabic"
+      },
+      "ticketReading": "Ticket reading",
+      "ticketReadingHint": "Real Arabic numbers are used, so 14 is read as one number, not digit by digit. Examples are for ticket B-014.",
+      "readingOptions": {
+        "letter_then_number": "Letter, then number",
+        "number_only": "Number only",
+        "digits": "Digit by digit"
+      },
+      "announceDesk": "Announce the desk",
+      "announceDeskHint": "Adds the desk to the call. With the browser voice the part of the phrase that contains the desk placeholder is left out (write it as its own clause, after a comma).",
+      "repeatTitle": "How many times",
+      "repeatHint": "How often the call is repeated, and the pause between repeats.",
+      "seconds": "{value} s",
+      "ms": "{value} ms",
+      "timingTitle": "Timing",
+      "timingHint": "Pauses inside one announcement of a recorded voice. They are exact and do not depend on the silence in the clips. The browser voice paces itself.",
+      "gapPhrase": "Between “number” and the ticket",
+      "gapLetterNumber": "Between the letter and the number",
+      "gapDesk": "Before the desk part",
+      "gapChime": "Between the chime and the voice",
+      "overlap": "Overlap inside a number",
+      "overlapHint": "Only used when a number is built from several clips. 0 = none.",
+      "resetTiming": "Reset to natural defaults",
+      "soundTitle": "Sound",
+      "soundHint": "Who speaks, how loud and how fast, and the chime.",
+      "volumeLabel": "Volume",
+      "speed": "Speed of the recorded voice",
+      "speedHint": "Also shifts the pitch a little, so keep it close to 1.00.",
+      "rateHint": "0.5 to 1.5. Default 0.90.",
+      "chimeVolume": "Chime volume",
+      "unsaved": "Unsaved changes",
+      "testTitle": "Test the announcement",
+      "testAreaHint": "Plays through the same engine as a screen, with the values on this page, even before you save them. Press once to allow sound in this browser.",
+      "testTicket": "Ticket number",
+      "testDesk": "Desk",
+      "testVisitorLanguage": "Visitor's language",
+      "playAr": "Play in Arabic",
+      "playEn": "Play in English",
+      "playConfigured": "Play as configured",
+      "spokenText": "Exactly what is spoken",
+      "sourcePack": "recorded voice",
+      "sourceBrowser": "browser voice",
+      "noVoiceHere": "This device has no voice for that language. Choose a recorded voice or install one."
     }
   },
   "wallboard": {
@@ -2170,6 +2215,178 @@
       "csatTrendAria": "Line chart of your average visitor score per day",
       "csatRecent": "Recent comments",
       "csatScore": "Score {n} / 5"
+    },
+    "reports": {
+      "title": "My reports",
+      "hint": "Reports on the visitors you served. Only you can see them.",
+      "period": {
+        "label": "Period",
+        "day": "Today",
+        "week": "This week",
+        "month": "This month",
+        "custom": "Custom",
+        "from": "From",
+        "to": "To",
+        "apply": "Show report",
+        "invalid": "Choose a valid range that starts before it ends and covers at most {max} days.",
+        "shown": "{from} to {to}"
+      },
+      "loading": "Loading…",
+      "error": "Could not load your report.",
+      "none": "—",
+      "minutes": "{n} min",
+      "notAgent": "Reports are available for agent accounts.",
+      "summary": {
+        "served": "Served",
+        "noShows": "No-shows",
+        "avgService": "Average service time",
+        "avgWait": "Average wait of your visitors",
+        "resolved": "Completed share",
+        "avgScore": "Average satisfaction",
+        "responses": "Answers"
+      },
+      "daily": {
+        "title": "Daily summary",
+        "date": "Date",
+        "total": "Total",
+        "empty": "No visitors were served in this period.",
+        "sortBy": "Sort by {column}"
+      },
+      "byReason": {
+        "title": "By visit reason",
+        "reason": "Visit reason",
+        "count": "Visitors",
+        "avgService": "Average service time",
+        "empty": "Nothing to show for this period."
+      },
+      "byHour": {
+        "title": "When you are busiest",
+        "hint": "Visitors by the hour service started.",
+        "aria": "Visitors handled in each hour of the day",
+        "series": "Visitors"
+      },
+      "distribution": {
+        "title": "Service time",
+        "hint": "Completed visits, grouped by how long they took.",
+        "aria": "Number of visits by service time",
+        "range": "{from}-{to} min",
+        "open": "{from}+ min",
+        "series": "Visits"
+      },
+      "comparison": {
+        "title": "Comparison",
+        "hint": "Your previous period of the same length, and the average of the whole branch (a total, no names).",
+        "metric": "Measure",
+        "thisPeriod": "This period",
+        "previousPeriod": "Previous period",
+        "branch": "Branch average",
+        "change": "Change"
+      },
+      "csat": {
+        "title": "Visitor satisfaction",
+        "hint": "Scores from 1 to 5 that visitors gave for the visits you served.",
+        "avg": "Average score",
+        "outOf": "{n} / 5",
+        "responses": "Answers",
+        "satisfied": "Satisfied (4 or 5)",
+        "distribution": "Scores given",
+        "comments": "Written comments",
+        "commentMeta": "{number} · score {score}",
+        "none": "No answers in this period.",
+        "off": "Visitor feedback is switched off."
+      },
+      "details": {
+        "title": "Served visitors",
+        "hint": "Every visit you finished in this period.",
+        "number": "Ticket",
+        "reason": "Visit reason",
+        "visitor": "Visitor",
+        "arrived": "Arrived",
+        "called": "Called",
+        "started": "Started",
+        "finished": "Finished",
+        "wait": "Wait",
+        "service": "Service",
+        "outcome": "Outcome",
+        "score": "Score",
+        "filterOutcome": "Outcome",
+        "filterReason": "Visit reason",
+        "all": "All",
+        "outcomes": {
+          "COMPLETED": "Completed",
+          "NO_SHOW": "No-show"
+        },
+        "loadMore": "Load more",
+        "empty": "No visits match."
+      },
+      "download": {
+        "label": "Download",
+        "csv": "CSV",
+        "xlsx": "Excel",
+        "pdf": "PDF",
+        "print": "Print",
+        "error": "Could not prepare the file."
+      },
+      "export": {
+        "title": "My work report",
+        "period": "Period",
+        "periodValue": "{from} to {to}",
+        "generatedAt": "Generated",
+        "timezone": "Time zone",
+        "preparedFor": "Prepared for",
+        "agent": "Agent",
+        "footer": "Page {page} of {pages}",
+        "thisPeriod": "This period",
+        "previousPeriod": "Previous period",
+        "branchAverage": "Branch average",
+        "total": "Total",
+        "sections": {
+          "summary": "Summary",
+          "daily": "Daily summary",
+          "byReason": "By visit reason",
+          "details": "Served visitors"
+        },
+        "columns": {
+          "metric": "Measure",
+          "date": "Date",
+          "served": "Served",
+          "noShows": "No-shows",
+          "avgService": "Avg. service (min)",
+          "avgWait": "Avg. wait (min)",
+          "resolved": "Completed (%)",
+          "avgScore": "Avg. satisfaction",
+          "reason": "Visit reason",
+          "count": "Visitors",
+          "number": "Ticket",
+          "visitor": "Visitor",
+          "phone": "Phone",
+          "arrived": "Arrived",
+          "called": "Called",
+          "started": "Started",
+          "finished": "Finished",
+          "wait": "Wait (min)",
+          "service": "Service (min)",
+          "outcome": "Outcome",
+          "score": "Score"
+        },
+        "metrics": {
+          "served": "Served",
+          "noShows": "No-shows",
+          "avgService": "Average service time",
+          "avgWait": "Average wait",
+          "resolved": "Completed share",
+          "avgScore": "Average satisfaction",
+          "responses": "Satisfaction answers"
+        },
+        "units": {
+          "min": "min",
+          "pct": "%"
+        },
+        "outcomes": {
+          "COMPLETED": "Completed",
+          "NO_SHOW": "No-show"
+        }
+      }
     }
   },
   "logoUpload": {
