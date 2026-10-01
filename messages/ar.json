@@ -254,6 +254,9 @@
     },
     "cities": {
       "manage": "إدارة المدن"
+    },
+    "halls": {
+      "manage": "إدارة القاعات وسعتها"
     }
   },
   "ticketStatus": {

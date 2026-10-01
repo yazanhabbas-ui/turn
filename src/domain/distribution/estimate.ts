@@ -191,3 +191,22 @@ export function waitValueText(
   const value = cfg.showAsRange && e.high > e.low ? `${digits(e.low)}–${digits(e.high)}` : digits(e.minutes);
   return { next: false, text: unit ? `${value} ${unit}` : value };
 }
+
+/**
+ * Estimated wait for a visitor of a reason served in halls (D62): visitors are taken `capacity` at a time, so
+ * `ceil(ahead / capacity)` sessions run first; with several halls working in parallel they share those sessions.
+ * `perSession` is the session length (the reason's expected minutes, or learned from completed hall visits).
+ */
+export function estimateHallWait(
+  ahead: number,
+  capacity: number,
+  halls: number,
+  perSession: number | { minutes: number; low?: number; high?: number },
+  cfg: Pick<WaitShapeConfig, "rounding" | "bufferPercent">,
+): WaitEstimate {
+  if (ahead <= 0) return { minutes: 0, low: 0, high: 0 };
+  const sessions = Math.ceil(ahead / Math.max(1, capacity));
+  const rounds = Math.ceil(sessions / Math.max(1, halls));
+  // Same maths as the desk estimate with "agents = 1" and the number of rounds in front of the visitor.
+  return estimateWait(rounds, 1, perSession, { ...cfg, divideByAgents: false });
+}

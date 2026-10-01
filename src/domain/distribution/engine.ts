@@ -132,15 +132,15 @@ export type CallDecision =
  */
 export function selectTicketForAgent(s: EngineSnapshot, agentId: string): CallDecision {
   const agent = s.agents.find((a) => a.id === agentId);
-  if (!agent || !isWorking(agent)) return { ticket: null, reason: "not_working" };
+  if (!agent || !isWorking(agent) || agent.inHall) return { ticket: null, reason: "not_working" };
   const v = new View(s);
   if (!v.hasCapacity(agent, "active")) return { ticket: null, reason: "at_capacity" };
 
-  const mine = v.waiting.filter((t) => t.assignedAgentId === agentId);
+  const mine = v.waiting.filter((t) => t.assignedAgentId === agentId && !t.hall);
   if (mine.length) return { ticket: orderTickets(mine, s.now, s.configFor, s.reasons, s.priorities)[0], reserved: true };
 
   const pool = v.waiting.filter(
-    (t) => t.assignedAgentId === null && s.configFor(t.queueId).mode !== "manual" && v.canServe(agent, t),
+    (t) => !t.hall && t.assignedAgentId === null && s.configFor(t.queueId).mode !== "manual" && v.canServe(agent, t),
   );
   if (!pool.length) return { ticket: null, reason: "empty" };
   return { ticket: orderTickets(pool, s.now, s.configFor, s.reasons, s.priorities)[0], reserved: false };
@@ -149,17 +149,17 @@ export function selectTicketForAgent(s: EngineSnapshot, agentId: string): CallDe
 export type AssignDecision = { agentId: string; via: "sticky" | "push" } | null;
 
 function decide(s: EngineSnapshot, v: View, ticket: EngineTicket, cfg: DistributionConfig): AssignDecision {
-  if (ticket.status !== "WAITING" || ticket.assignedAgentId || cfg.mode === "manual") return null;
+  if (ticket.hall || ticket.status !== "WAITING" || ticket.assignedAgentId || cfg.mode === "manual") return null;
 
   if (cfg.sticky.enabled && ticket.lastAgentId) {
     const prev = s.agents.find((a) => a.id === ticket.lastAgentId);
-    if (prev && isWorking(prev) && prev.skills.has(ticket.reasonId)) return { agentId: prev.id, via: "sticky" };
+    if (prev && isWorking(prev) && !prev.inHall && prev.skills.has(ticket.reasonId)) return { agentId: prev.id, via: "sticky" };
   }
   if (cfg.mode !== "push" && cfg.mode !== "hybrid") return null;
 
   const candidates: AgentCandidate[] = [];
   for (const a of s.agents) {
-    if (!isWorking(a) || a.offShift || !v.hasCapacity(a, "total") || !v.canServe(a, ticket)) continue;
+    if (!isWorking(a) || a.inHall || a.offShift || !v.hasCapacity(a, "total") || !v.canServe(a, ticket)) continue;
     candidates.push({ agent: a, load: v.totalLoad(a.id), proficiency: a.skills.get(ticket.reasonId)?.proficiency ?? 0 });
   }
   const primaries = candidates.filter((c) => c.agent.skills.get(ticket.reasonId)?.isPrimary);
@@ -185,7 +185,7 @@ export type Assignment = { ticketId: string; agentId: string; via: "sticky" | "p
 export function dispatch(s: EngineSnapshot): Assignment[] {
   const v = new View(s);
   const candidates = v.waiting.filter((t) => {
-    if (t.assignedAgentId) return false;
+    if (t.assignedAgentId || t.hall) return false;
     const cfg = s.configFor(t.queueId);
     return cfg.mode === "push" || cfg.mode === "hybrid" || (cfg.sticky.enabled && t.lastAgentId);
   });

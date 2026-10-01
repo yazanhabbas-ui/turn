@@ -18,7 +18,7 @@ export function positionsFor(bctx: BranchContext): Map<string, Position> {
     const ordered = orderTickets(list, s.now, s.configFor, s.reasons, s.priorities);
     const agents = s.agents.filter((a) => a.skills.has(reasonId) && (a.status === "AVAILABLE" || a.status === "BUSY")).length;
     ordered.forEach((t, i) => {
-      const e = bctx.wait.estimate(reasonId, i, agents);
+      const e = bctx.waitFor(reasonId, i, agents);
       out.set(t.id, { ahead: i, estimatedWaitMinutes: e.minutes, waitLow: e.low, waitHigh: e.high });
     });
   }

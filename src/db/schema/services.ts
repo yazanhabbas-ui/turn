@@ -1,4 +1,4 @@
-import { boolean, date, index, integer, jsonb, pgTable, primaryKey, text, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { archivedAt, createdAt, id, updatedAt, type LocalizedText } from "./_common";
 import { agentGroups } from "./agents";
 import { users } from "./identity";
@@ -38,6 +38,10 @@ export type IntakeField = {
   selfService?: boolean;
 };
 
+/** How a reason is delivered: one visitor at a desk (default), or a group together in a hall (D62). */
+export const reasonDelivery = pgEnum("reason_delivery", ["desk", "hall"]);
+export type ReasonDelivery = (typeof reasonDelivery.enumValues)[number];
+
 /** Visit reason (service). Defines the ticket prefix and service expectations. */
 export const visitReasons = pgTable(
   "visit_reasons",
@@ -60,6 +64,8 @@ export const visitReasons = pgTable(
     allowAppointments: boolean("allow_appointments").notNull().default(false),
     /** The visitor must be helped by staff: a self check-in kiosk shows this reason as "please ask the agent". */
     requiresStaff: boolean("requires_staff").notNull().default(false),
+    /** desk = one visitor at a time at a desk; hall = served only by group sessions in a hall (never auto-assigned to desks). */
+    delivery: reasonDelivery("delivery").notNull().default("desk"),
     /** Shown first on the reception screen for two-tap issuing. */
     isFeatured: boolean("is_featured").notNull().default(false),
     shortcutKey: text("shortcut_key"),

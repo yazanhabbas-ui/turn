@@ -6,3 +6,4 @@ export * from "./services";
 export * from "./tickets";
 export * from "./devices";
 export * from "./platform";
+export * from "./halls";

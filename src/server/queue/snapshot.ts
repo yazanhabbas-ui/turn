@@ -1,21 +1,25 @@
-import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import type { Tx } from "@/db/client";
 import {
   agentGroupMembers,
   agentProfiles,
   branches,
   distributionRules,
+  hallReasons,
+  halls,
   priorityLevels,
   reasonAssignments,
   shifts,
   tickets,
   visitReasons,
 } from "@/db/schema";
+import type { WaitEstimate } from "@/domain/distribution/estimate";
 import { resolveConfig, toEngineConfig, type DistributionConfig } from "@/domain/distribution/config";
 import type { AgentSkill, EngineAgent, EngineSnapshot, EngineTicket } from "@/domain/distribution/types";
 import { serviceDay } from "@/domain/schedule/time";
 import { shiftState } from "@/domain/shifts/window";
 import { now as clockNow } from "../clock";
+import type { SettingValue } from "../settings/registry";
 import { getSetting } from "../settings/service";
 import { buildWaitModel, type WaitModel } from "./wait-analytics";
 
@@ -25,6 +29,17 @@ export async function lockBranch(tx: Tx, branchId: string) {
 }
 
 export type BranchRow = typeof branches.$inferSelect;
+
+/** A hall of the branch with the reasons it accepts (empty = every reason delivered in halls) and who hosts it now. */
+export type HallInfo = {
+  id: string;
+  number: string;
+  name: Record<string, string>;
+  capacity: number;
+  zone: string | null;
+  reasonIds: Set<string>;
+  hostAgentId: string | null;
+};
 
 export type AgentShift = { id: string; name: Record<string, string>; startsAt: string; endsAt: string };
 
@@ -43,6 +58,14 @@ export type BranchContext = {
   wait: WaitModel;
   /** Open tickets that belong to a visitor record (someone we may have a contact for). */
   visitorTicketIds: Set<string>;
+  /** Halls (D62): the branch setting, its halls and which reasons are delivered in halls. */
+  hallSettings: SettingValue<"halls">;
+  halls: HallInfo[];
+  hallReasonIds: Set<string>;
+  /** Does this hall accept tickets of the reason? */
+  hallAccepts: (hall: HallInfo, reasonId: string) => boolean;
+  /** The wait estimate for a waiting ticket with `ahead` in front: hall maths for hall reasons, desk maths otherwise. */
+  waitFor: (reasonId: string, ahead: number, agents: number) => WaitEstimate;
 };
 
 export const OPEN_STATUSES = ["WAITING", "CALLED", "SERVING"] as const;
@@ -55,8 +78,9 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
   const ticketing = await getSetting(org, "ticketing", branchId, tx);
   const work = await getSetting(org, "agentWork", branchId, tx);
   const day = serviceDay(now, branch.timezone, ticketing.dailyResetTime);
+  const hallSettings = await getSetting(org, "halls", branchId, tx);
 
-  const [ticketRows, profileRows, reasonRows, priorityRows, ruleRows, todayStats] = await Promise.all([
+  const [ticketRows, profileRows, reasonRows, priorityRows, ruleRows, todayStats, hallRows, hallReasonRows] = await Promise.all([
     tx
       .select({
         id: tickets.id,
@@ -86,6 +110,16 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
       select serving_agent_id as agent_id, count(*)::int as handled, max(called_at) as last_at
       from tickets where branch_id = ${branchId} and service_day = ${day} and serving_agent_id is not null
       group by serving_agent_id`),
+    tx
+      .select()
+      .from(halls)
+      .where(and(eq(halls.branchId, branchId), isNull(halls.archivedAt)))
+      .orderBy(asc(halls.sortOrder), asc(halls.number)),
+    tx
+      .select({ hallId: hallReasons.hallId, reasonId: hallReasons.reasonId })
+      .from(hallReasons)
+      .innerJoin(halls, eq(halls.id, hallReasons.hallId))
+      .where(eq(halls.branchId, branchId)),
   ]);
 
   // Skills: direct assignments plus group assignments, best proficiency wins, primary if any is primary.
@@ -138,6 +172,7 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
     lastAssignedAt: stats.get(p.userId)?.last_at ? new Date(stats.get(p.userId)!.last_at!).getTime() : null,
     handledToday: stats.get(p.userId)?.handled ?? 0,
     skills: skills.get(p.userId)!,
+    inHall: !!p.currentHallId,
     offShift: (() => {
       const sh = agentShifts.get(p.userId);
       return work.shiftMode !== "off" && !!sh && !shiftState(sh, now, branch.timezone).onShift;
@@ -164,6 +199,19 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
     from tickets where branch_id = ${branchId} and assigned_agent_id is not null
     order by queue_id, assigned_at desc nulls last`);
 
+  const hallReasonIds = new Set(reasonRows.filter((r) => r.delivery === "hall").map((r) => r.id));
+  const hostOf = new Map(profileRows.filter((p) => p.currentHallId && p.status !== "OFFLINE").map((p) => [p.currentHallId!, p.userId]));
+  const hallList: HallInfo[] = hallRows.map((h) => ({
+    id: h.id,
+    number: h.number,
+    name: h.name,
+    capacity: h.capacity,
+    zone: h.zone,
+    reasonIds: new Set(hallReasonRows.filter((r) => r.hallId === h.id).map((r) => r.reasonId)),
+    hostAgentId: hostOf.get(h.id) ?? null,
+  }));
+  const hallAccepts = (h: HallInfo, reasonId: string) => hallReasonIds.has(reasonId) && (h.reasonIds.size === 0 || h.reasonIds.has(reasonId));
+
   const engineTickets: EngineTicket[] = ticketRows.map((t) => ({
     id: t.id,
     queueId: t.queueId,
@@ -176,16 +224,29 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
     appointmentAt: t.appointmentAt ? new Date(t.appointmentAt).getTime() : null,
     lastAgentId: t.lastAgentId,
     servingAgentId: t.servingAgentId,
+    hall: hallReasonIds.has(t.reasonId),
   }));
 
   const reasonById = new Map(reasonRows.map((r) => [r.id, r]));
   // Reading the learned durations never fails issuing: on any error every reason uses its own expected time.
   const wait = await buildWaitModel(tx, branch, (id) => reasonById.get(id)?.expectedServiceMinutes ?? 10, now);
 
+  const waitFor = (reasonId: string, ahead: number, agents: number): WaitEstimate => {
+    if (!hallReasonIds.has(reasonId)) return wait.estimate(reasonId, ahead, agents);
+    const usable = hallSettings.enabled ? hallList.filter((h) => hallAccepts(h, reasonId)) : [];
+    const capacity = usable.length ? Math.max(...usable.map((h) => hallSettings.maxGroup > 0 ? Math.min(h.capacity, hallSettings.maxGroup) : h.capacity)) : 1;
+    return wait.estimateHall(reasonId, ahead, capacity, Math.max(1, usable.length));
+  };
+
   return {
     branch,
     now,
     wait,
+    hallSettings,
+    halls: hallList,
+    hallReasonIds,
+    hallAccepts,
+    waitFor,
     agentShifts,
     shiftMode: work.shiftMode,
     shiftEndGraceMinutes: work.shiftEndGraceMinutes,

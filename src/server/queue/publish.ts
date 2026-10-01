@@ -18,6 +18,21 @@ export type QueueEvent =
       reasonId: string;
       language: string;
       recall: boolean;
+      /** Set when the visitor is called to a hall (D62): the screens announce the group with `hall.called`, not each ticket. */
+      hallId?: string | null;
+      hallNumber?: string | null;
+    }
+  | {
+      /** One grouped call to a hall (D62): every ticket of the group, announced together. */
+      type: "hall.called";
+      branchId: string;
+      hallId: string;
+      hallNumber: string;
+      hallName: Record<string, string>;
+      sessionId: string;
+      agentId: string;
+      tickets: { ticketId: string; displayNumber: string; reasonId: string; language: string }[];
+      recall: boolean;
     }
   | { type: "agent.updated"; branchId: string; agentId: string; status: string }
   | {
@@ -52,6 +67,11 @@ export function publish(events: QueueEvent[]) {
     hub.to(`branch:${e.branchId}`).emit(e.type, e);
     // Waiting-room screens only get what they render: queue changes and calls (never agent status or alerts).
     if (e.type === "queue.updated") hub.to(`screens:${e.branchId}`).emit(e.type, e);
+    if (e.type === "hall.called") {
+      const forScreens: Omit<typeof e, "agentId"> & { agentId?: string } = { ...e };
+      delete forScreens.agentId;
+      hub.to(`screens:${e.branchId}`).emit(e.type, forScreens);
+    }
     if (e.type === "ticket.called") {
       const forScreens: Omit<typeof e, "agentId"> & { agentId?: string } = { ...e };
       delete forScreens.agentId;

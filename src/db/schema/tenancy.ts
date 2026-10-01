@@ -1,4 +1,5 @@
-import { boolean, index, integer, jsonb, pgTable, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { boolean, check, index, integer, jsonb, pgTable, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { archivedAt, createdAt, id, updatedAt, type LocalizedText } from "./_common";
 
 export const organizations = pgTable("organizations", {
@@ -99,4 +100,39 @@ export const desks = pgTable(
     updatedAt: updatedAt(),
   },
   (t) => [uniqueIndex("desks_branch_number_uq").on(t.branchId, t.number), index("desks_branch_idx").on(t.branchId)],
+);
+
+/**
+ * A hall (D62): a named room of a branch with a capacity, where one agent (the host) receives several visitors together
+ * in one session. `number` is what the display and voice announce ("hall 2"). Which reasons it accepts is `hall_reasons`.
+ */
+export const halls = pgTable(
+  "halls",
+  {
+    id: id(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => branches.id),
+    floorId: uuid("floor_id").references(() => floors.id),
+    number: text("number").notNull(),
+    name: jsonb("name").$type<LocalizedText>().notNull(),
+    /** How many visitors fit (at least 2: a hall of one is a desk). */
+    capacity: integer("capacity").notNull().default(10),
+    /** Zone label for multi-zone display layouts. */
+    zone: text("zone"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    archivedAt: archivedAt(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("halls_branch_number_uq")
+      .on(t.branchId, t.number)
+      .where(sql`${t.archivedAt} is null`),
+    index("halls_branch_idx").on(t.branchId),
+    check("halls_capacity_min", sql`${t.capacity} >= 2`),
+  ],
 );

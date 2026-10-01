@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, type DbOrTx, type Tx } from "@/db/client";
 import {
@@ -7,6 +7,8 @@ import {
   alerts,
   appointments,
   desks,
+  hallSessions,
+  halls,
   queues,
   ticketCounters,
   ticketEvents,
@@ -39,18 +41,20 @@ import { hashPhone, randomToken } from "../crypto";
 import { AppError } from "../http/errors";
 import { now as clockNow } from "../clock";
 import { getSetting } from "../settings/service";
+import { announceHallGroup } from "../halls/announce";
+import { syncHallTicket } from "../halls/sync";
 import { cancelBreakRequest, offerFreedBreaks, requestBreak } from "./breaks";
 import { dispatchNotifications } from "../notifications/dispatch";
 import { aheadBefore, recordNotifications, type NotifyRequest } from "../notifications/record";
 import { publish, type QueueEvent } from "./publish";
 import { loadBranchContext, lockBranch, type BranchContext } from "./snapshot";
 
-type TicketRow = typeof tickets.$inferSelect;
+export type TicketRow = typeof tickets.$inferSelect;
 /** Who performed a queue operation: a signed-in user, or the system (timers). */
 export type QueueActor = Actor | { system: true; deviceId?: string };
-const isSystem = (a: QueueActor): a is { system: true; deviceId?: string } => "system" in a;
+export const isSystem = (a: QueueActor): a is { system: true; deviceId?: string } => "system" in a;
 
-type Ctx = { tx: Tx; bctx: BranchContext; events: QueueEvent[]; actor: QueueActor; notify: NotifyRequest[] };
+export type Ctx = { tx: Tx; bctx: BranchContext; events: QueueEvent[]; actor: QueueActor; notify: NotifyRequest[] };
 
 /** Ticket events that tell the visitor something. */
 const NOTIFY_ON: Record<string, NotifyRequest["event"]> = {
@@ -61,7 +65,7 @@ const NOTIFY_ON: Record<string, NotifyRequest["event"]> = {
 };
 
 /** Runs a queue mutation under the branch lock and publishes realtime events after commit. */
-async function withBranch<T>(branchId: string, actor: QueueActor, fn: (ctx: Ctx) => Promise<T>): Promise<T> {
+export async function withBranch<T>(branchId: string, actor: QueueActor, fn: (ctx: Ctx) => Promise<T>): Promise<T> {
   const events: QueueEvent[] = [];
   const notify: NotifyRequest[] = [];
   let outbox: string[] = [];
@@ -89,7 +93,7 @@ function actorFields(actor: QueueActor) {
   return isSystem(actor) ? { actorType: "system", actorUserId: null } : { actorType: "user", actorUserId: actor.auth.user.id };
 }
 
-async function recordEvent(
+export async function recordEvent(
   ctx: Ctx,
   t: TicketRow,
   e: {
@@ -122,7 +126,7 @@ async function recordEvent(
 }
 
 /** Updates a ticket only if it is still in the expected status; otherwise someone else changed it first. */
-async function guardedUpdate(ctx: Ctx, t: TicketRow, patch: Partial<typeof tickets.$inferInsert>): Promise<TicketRow> {
+export async function guardedUpdate(ctx: Ctx, t: TicketRow, patch: Partial<typeof tickets.$inferInsert>): Promise<TicketRow> {
   const [row] = await ctx.tx
     .update(tickets)
     .set({ ...patch, version: sql`${tickets.version} + 1` })
@@ -132,7 +136,7 @@ async function guardedUpdate(ctx: Ctx, t: TicketRow, patch: Partial<typeof ticke
   return row;
 }
 
-function next(t: TicketRow, action: TicketAction): TicketStatus {
+export function next(t: TicketRow, action: TicketAction): TicketStatus {
   try {
     return transition(t.status, action);
   } catch (err) {
@@ -141,7 +145,7 @@ function next(t: TicketRow, action: TicketAction): TicketStatus {
   }
 }
 
-async function loadTicket(tx: Tx, organizationId: string, id: string): Promise<TicketRow> {
+export async function loadTicket(tx: Tx, organizationId: string, id: string): Promise<TicketRow> {
   const [t] = await tx
     .select()
     .from(tickets)
@@ -154,7 +158,7 @@ async function loadTicket(tx: Tx, organizationId: string, id: string): Promise<T
  * After any change: release reservations whose agent left or whose hybrid accept time passed, then let the
  * engine reserve agents for unassigned tickets (push / hybrid / sticky). Everything is persisted with events.
  */
-async function rebalance(ctx: Ctx) {
+export async function rebalance(ctx: Ctx) {
   const fresh = await loadBranchContext(ctx.tx, ctx.bctx.branch.id, ctx.bctx.now);
   const s = fresh.snapshot;
   for (const r of expiredReservations(s)) {
@@ -446,6 +450,8 @@ export async function issueTicketWith(actor: QueueActor, input: IssueInput, opts
       const allowedToAssign =
         isSystem(actor) || cfg.mode === "manual" || can(actor.auth.grants, "tickets.reassign", bctx.branch.id);
       if (!allowedToAssign) throw new AppError("forbidden", { reason: "assign" });
+      if (reason.delivery === "hall")
+        throw new AppError("validation", { reason: "hall_reason_no_agent", field: "assignToAgentId" });
       await assertAgentCanServe(ctx, input.assignToAgentId, reason.id);
       const row = await guardedUpdate(ctx, t, { assignedAgentId: input.assignToAgentId, assignedAt: now });
       await recordEvent(ctx, row, { type: "ASSIGNED", agentId: input.assignToAgentId, payload: { via: "manual" } });
@@ -467,7 +473,7 @@ export async function issueTicketWith(actor: QueueActor, input: IssueInput, opts
  */
 async function serveNow(ctx: Ctx, t: TicketRow, serve: { agentId: string; deskId: string }) {
   const agent = ctx.bctx.snapshot.agents.find((a) => a.id === serve.agentId);
-  if (!agent || !agent.skills.has(t.reasonId))
+  if (!agent || !agent.skills.has(t.reasonId) || agent.inHall || ctx.bctx.hallReasonIds.has(t.reasonId))
     throw new AppError("validation", { reason: "agent_cannot_serve", field: "reasonId" });
   const busy = ctx.bctx.snapshot.tickets.filter((x) => x.servingAgentId === agent.id && ACTIVE_WITH_AGENT.has(x.status)).length;
   if (busy >= agent.maxConcurrent) throw new AppError("conflict", { reason: "at_capacity" });
@@ -521,7 +527,7 @@ function positionIn(
     ordered.findIndex((x) => x.id === t.id),
   );
   const agents = s.agents.filter((a) => a.skills.has(t.reasonId) && (a.status === "AVAILABLE" || a.status === "BUSY")).length;
-  const e = bctx.wait.estimate(t.reasonId, ahead, agents);
+  const e = bctx.waitFor(t.reasonId, ahead, agents);
   return { ahead, estimatedWaitMinutes: e.minutes, waitLow: e.low, waitHigh: e.high };
 }
 
@@ -534,27 +540,32 @@ export async function describePosition(t: TicketRow): Promise<Omit<IssuedTicket,
 
 // ─── Agent workflow ──────────────────────────────────────────────────────────
 
-async function agentProfile(tx: DbOrTx, userId: string) {
+export async function agentProfile(tx: DbOrTx, userId: string) {
   const [p] = await tx.select().from(agentProfiles).where(eq(agentProfiles.userId, userId));
   if (!p) throw new AppError("forbidden", { reason: "not_an_agent" });
   return p;
 }
 
-function requireAgent(actor: QueueActor): Actor {
+export function requireAgent(actor: QueueActor): Actor {
   if (isSystem(actor)) throw new AppError("forbidden");
   if (!can(actor.auth.grants, "agent.serve")) throw new AppError("forbidden");
   return actor;
 }
 
-async function setStatusInTx(
+export async function setStatusInTx(
   ctx: Ctx,
   userId: string,
   status: (typeof agentProfiles.$inferSelect)["status"],
-  opts: { breakTypeId?: string | null; deskId?: string | null } = {},
+  opts: { breakTypeId?: string | null; deskId?: string | null; hallId?: string | null } = {},
 ) {
   const p = await agentProfile(ctx.tx, userId);
-  const deskId = opts.deskId !== undefined ? opts.deskId : p.currentDeskId;
-  if (p.status === status && deskId === p.currentDeskId && (opts.breakTypeId ?? null) === p.breakTypeId) return;
+  // An agent works at a desk or hosts a hall, never both: choosing one clears the other (D62).
+  let deskId = opts.deskId !== undefined ? opts.deskId : p.currentDeskId;
+  let hallId = opts.hallId !== undefined ? opts.hallId : p.currentHallId;
+  if (opts.hallId) deskId = null;
+  else if (opts.deskId) hallId = null;
+  if (p.status === status && deskId === p.currentDeskId && hallId === p.currentHallId && (opts.breakTypeId ?? null) === p.breakTypeId)
+    return;
   await ctx.tx
     .update(agentProfiles)
     .set({
@@ -562,6 +573,7 @@ async function setStatusInTx(
       statusChangedAt: new Date(ctx.bctx.now),
       breakTypeId: status === "ON_BREAK" ? (opts.breakTypeId ?? null) : null,
       currentDeskId: deskId,
+      currentHallId: hallId,
     })
     .where(eq(agentProfiles.userId, userId));
   await ctx.tx.insert(agentStatusLog).values({
@@ -580,7 +592,39 @@ export const statusInput = z.object({
   status: z.enum(["AVAILABLE", "BUSY", "ON_BREAK", "AWAY", "OFFLINE"]),
   breakTypeId: uuid.nullable().optional(),
   deskId: uuid.nullable().optional(),
+  /** Sign in to a hall as its host (D62) instead of a desk. */
+  hallId: uuid.nullable().optional(),
 });
+
+/**
+ * Hall rules for a status change (D62): a hall needs the feature switched on and belongs to the agent's branch; one
+ * host per hall; and a host with a live group session stays until it is closed or cancelled.
+ */
+export async function assertHallSignIn(
+  ctx: Ctx,
+  userId: string,
+  p: { branchId: string; currentHallId: string | null; currentDeskId: string | null },
+  input: { status: string; deskId?: string | null; hallId?: string | null },
+) {
+  const [live] = await ctx.tx
+    .select({ id: hallSessions.id })
+    .from(hallSessions)
+    .where(and(eq(hallSessions.hostAgentId, userId), inArray(hallSessions.status, ["OPEN", "IN_SESSION"])));
+  const leaving = input.status === "OFFLINE" || input.status === "ON_BREAK" || input.status === "AWAY";
+  if (live && (leaving || (input.deskId && input.deskId !== p.currentDeskId) || (input.hallId && input.hallId !== p.currentHallId)))
+    throw new AppError("conflict", { reason: "hall_session_open" });
+  if (!input.hallId) return;
+  if (!ctx.bctx.hallSettings.enabled) throw new AppError("conflict", { reason: "halls_disabled" });
+  const [hall] = await ctx.tx.select().from(halls).where(eq(halls.id, input.hallId));
+  if (!hall || hall.branchId !== p.branchId || hall.archivedAt) throw new AppError("validation", { field: "hallId" });
+  const [other] = await ctx.tx
+    .select({ id: agentProfiles.userId })
+    .from(agentProfiles)
+    .where(
+      and(eq(agentProfiles.currentHallId, hall.id), ne(agentProfiles.userId, userId), ne(agentProfiles.status, "OFFLINE")),
+    );
+  if (other) throw new AppError("conflict", { reason: "hall_taken" });
+}
 
 /** Agent status toggle. Leaving work releases reservations; becoming available triggers push assignment. */
 export async function setAgentStatus(actor: QueueActor, input: z.infer<typeof statusInput>) {
@@ -590,6 +634,7 @@ export async function setAgentStatus(actor: QueueActor, input: z.infer<typeof st
     const [d] = await db().select().from(desks).where(eq(desks.id, input.deskId));
     if (!d || d.branchId !== p.branchId || d.archivedAt) throw new AppError("validation", { field: "deskId" });
   }
+  if (input.deskId && input.hallId) throw new AppError("validation", { reason: "desk_or_hall" });
   return withBranch(p.branchId, actor, async (ctx) => {
     const userId = agent.auth.user.id;
     const breaks = breakCtx(ctx, p);
@@ -618,7 +663,12 @@ export async function setAgentStatus(actor: QueueActor, input: z.infer<typeof st
     } else {
       await cancelBreakRequest(breaks, userId);
     }
-    await setStatusInTx(ctx, userId, input.status, { breakTypeId: input.breakTypeId, deskId: input.deskId });
+    await assertHallSignIn(ctx, userId, p, input);
+    await setStatusInTx(ctx, userId, input.status, {
+      breakTypeId: input.breakTypeId,
+      deskId: input.deskId,
+      hallId: input.hallId,
+    });
     // Someone leaving a break (or going offline) frees a place for the next agent in line.
     await offerFreedBreaks(breaks);
     await rebalance(ctx);
@@ -635,8 +685,17 @@ export async function callNext(actor: QueueActor, input: { deskId?: string | nul
   const userId = agent.auth.user.id;
   const p = await agentProfile(db(), userId);
   return withBranch(p.branchId, actor, async (ctx) => {
+    // A host calls groups with the hall console; the desk queue is for agents at a desk (D62).
+    if (p.currentHallId && !input.deskId) throw new AppError("conflict", { reason: "hall_mode" });
     const deskId = input.deskId ?? p.currentDeskId ?? p.defaultDeskId;
     if (!deskId) throw new AppError("validation", { reason: "desk_required" });
+    if (p.currentHallId && deskId !== p.currentDeskId) {
+      const [live] = await ctx.tx
+        .select({ id: hallSessions.id })
+        .from(hallSessions)
+        .where(and(eq(hallSessions.hostAgentId, userId), inArray(hallSessions.status, ["OPEN", "IN_SESSION"])));
+      if (live) throw new AppError("conflict", { reason: "hall_session_open" });
+    }
     // Pressing "call next" means the agent is ready: end a break / busy / offline state.
     if (p.status !== "AVAILABLE" || deskId !== p.currentDeskId) {
       await setStatusInTx(ctx, userId, "AVAILABLE", { deskId });
@@ -671,6 +730,10 @@ export async function callNext(actor: QueueActor, input: { deskId?: string | nul
 }
 
 async function announce(ctx: Ctx, t: TicketRow, recall: boolean) {
+  if (t.hallSessionId) {
+    await announceHallGroup(ctx, t.hallSessionId, { recall, ticketIds: [t.id] });
+    return;
+  }
   const [desk] = t.deskId ? await ctx.tx.select().from(desks).where(eq(desks.id, t.deskId)) : [];
   ctx.events.push({
     type: "ticket.called",
@@ -763,40 +826,12 @@ export async function ticketAction(actor: QueueActor, ticketId: string, input: T
       }
       case "start": {
         assertOwnerOrSupervisor(actor, t);
-        row = await guardedUpdate(ctx, t, { status: next(t, "start"), startedAt: now });
-        await recordEvent(ctx, row, {
-          type: EVENT_TYPE.start,
-          from: t.status,
-          to: row.status,
-          agentId: t.servingAgentId,
-          deskId: t.deskId,
-        });
+        row = await startTicket(ctx, t);
         break;
       }
       case "complete": {
         assertOwnerOrSupervisor(actor, t);
-        row = await guardedUpdate(ctx, t, {
-          status: next(t, "complete"),
-          finishedAt: now,
-          outcome: input.outcome ?? null,
-          notes: input.notes ?? t.notes,
-          tags: input.tags ?? t.tags,
-        });
-        await recordEvent(ctx, row, {
-          type: EVENT_TYPE.complete,
-          from: t.status,
-          to: row.status,
-          agentId: t.servingAgentId,
-          deskId: t.deskId,
-          payload: { outcome: input.outcome },
-        });
-        if (t.visitorId && t.servingAgentId) {
-          await ctx.tx
-            .update(visitors)
-            .set({ lastAgentId: t.servingAgentId, lastVisitAt: now, visitCount: sql`${visitors.visitCount} + 1` })
-            .where(eq(visitors.id, t.visitorId));
-        }
-        await markIdleIfFree(ctx, t.servingAgentId);
+        row = await completeTicket(ctx, t, input);
         break;
       }
       case "no_show": {
@@ -841,6 +876,8 @@ export async function ticketAction(actor: QueueActor, ticketId: string, input: T
       case "transfer": {
         if (t.status === "WAITING" || t.status === "ON_HOLD") assertPermission(actor, "tickets.reassign", t.branchId);
         else assertOwnerOrSupervisor(actor, t);
+        if (input.toAgentId && ctx.bctx.hallReasonIds.has(input.toReasonId ?? t.reasonId))
+          throw new AppError("validation", { reason: "hall_reason_no_agent", field: "toAgentId" });
         let queueId = t.queueId;
         let reasonId = t.reasonId;
         if (input.toReasonId && input.toReasonId !== t.reasonId) {
@@ -867,6 +904,8 @@ export async function ticketAction(actor: QueueActor, ticketId: string, input: T
           calledAt: null,
           startedAt: null,
           recallCount: 0,
+          hallId: null,
+          hallSessionId: null,
         });
         await recordEvent(ctx, row, {
           type: EVENT_TYPE.transfer,
@@ -882,6 +921,8 @@ export async function ticketAction(actor: QueueActor, ticketId: string, input: T
       case "assign": {
         const manual = cfg.mode === "manual" && !isSystem(actor) && can(actor.auth.grants, "tickets.issue", t.branchId);
         if (!manual) assertPermission(actor, "tickets.reassign", t.branchId);
+        if (input.agentId && ctx.bctx.hallReasonIds.has(t.reasonId))
+          throw new AppError("validation", { reason: "hall_reason_no_agent", field: "agentId" });
         if (input.agentId) await assertAgentCanServe(ctx, input.agentId, t.reasonId);
         row = await guardedUpdate(ctx, t, {
           status: next(t, input.agentId ? "assign" : "release"),
@@ -926,6 +967,12 @@ export async function ticketAction(actor: QueueActor, ticketId: string, input: T
             )
           : null;
         if (!target || !last) throw new AppError("conflict", { reason: "undo_expired" });
+        if (t.hallSessionId && (target === "CALLED" || target === "SERVING")) {
+          // A visitor can only come back into a group session that is still running.
+          const [session] = await ctx.tx.select().from(hallSessions).where(eq(hallSessions.id, t.hallSessionId));
+          if (!session || (session.status !== "OPEN" && session.status !== "IN_SESSION"))
+            throw new AppError("conflict", { reason: "hall_session_closed" });
+        }
         const own = !isSystem(actor) && last.actorUserId === actor.auth.user.id;
         if (!own) assertPermission(actor, "tickets.reassign", t.branchId);
         if (target === "CALLED" || target === "SERVING") {
@@ -948,13 +995,61 @@ export async function ticketAction(actor: QueueActor, ticketId: string, input: T
       }
     }
 
+    // A visitor of a hall session: the session follows the ticket (entered, served, missed, left).
+    if (t.hallSessionId && input.action !== "edit" && input.action !== "no_show") await syncHallTicket(syncOf(ctx), t, row);
     ctx.events.push({ type: "queue.updated", branchId: row.branchId, cause: input.action, ticketId: row.id });
     await rebalance(ctx);
-    return { ticket: await toView(ctx.tx, row) };
+    return { ticket: await toView(ctx.tx, await loadTicket(ctx.tx, row.organizationId, row.id)) };
   });
 }
 
-async function noShow(ctx: Ctx, t: TicketRow, cause: "manual" | "timeout"): Promise<TicketRow> {
+/** CALLED → SERVING: the visitor is with the agent (at the desk, or inside the hall). */
+export async function startTicket(ctx: Ctx, t: TicketRow): Promise<TicketRow> {
+  const row = await guardedUpdate(ctx, t, { status: next(t, "start"), startedAt: new Date(ctx.bctx.now) });
+  await recordEvent(ctx, row, {
+    type: EVENT_TYPE.start,
+    from: t.status,
+    to: row.status,
+    agentId: t.servingAgentId,
+    deskId: t.deskId,
+    ...(t.hallSessionId ? { payload: { hallId: t.hallId, sessionId: t.hallSessionId } } : {}),
+  });
+  return row;
+}
+
+/** SERVING → COMPLETED, with the visitor's history updated. The hall session follows through `syncHallTicket`. */
+export async function completeTicket(
+  ctx: Ctx,
+  t: TicketRow,
+  input: { outcome?: string | null; notes?: string; tags?: string[] },
+): Promise<TicketRow> {
+  const now = new Date(ctx.bctx.now);
+  const row = await guardedUpdate(ctx, t, {
+    status: next(t, "complete"),
+    finishedAt: now,
+    outcome: input.outcome ?? null,
+    notes: input.notes ?? t.notes,
+    tags: input.tags ?? t.tags,
+  });
+  await recordEvent(ctx, row, {
+    type: EVENT_TYPE.complete,
+    from: t.status,
+    to: row.status,
+    agentId: t.servingAgentId,
+    deskId: t.deskId,
+    payload: { outcome: input.outcome, ...(t.hallSessionId ? { hallId: t.hallId, sessionId: t.hallSessionId } : {}) },
+  });
+  if (t.visitorId && t.servingAgentId) {
+    await ctx.tx
+      .update(visitors)
+      .set({ lastAgentId: t.servingAgentId, lastVisitAt: now, visitCount: sql`${visitors.visitCount} + 1` })
+      .where(eq(visitors.id, t.visitorId));
+  }
+  await markIdleIfFree(ctx, t.servingAgentId);
+  return row;
+}
+
+export async function noShow(ctx: Ctx, t: TicketRow, cause: "manual" | "timeout"): Promise<TicketRow> {
   const cfg = ctx.bctx.configFor(t.queueId);
   const requeue = cause === "timeout" && cfg.noShow.action === "requeue_end";
   const now = new Date(ctx.bctx.now);
@@ -967,6 +1062,8 @@ async function noShow(ctx: Ctx, t: TicketRow, cause: "manual" | "timeout"): Prom
         assignedAt: null,
         deskId: null,
         calledAt: null,
+        hallId: null,
+        hallSessionId: null,
       })
     : await guardedUpdate(ctx, t, { status: next(t, "no_show"), finishedAt: now });
   await recordEvent(ctx, row, {
@@ -977,11 +1074,14 @@ async function noShow(ctx: Ctx, t: TicketRow, cause: "manual" | "timeout"): Prom
     deskId: t.deskId,
     payload: { cause, recalls: t.recallCount },
   });
+  await syncHallTicket(syncOf(ctx), t, row);
   await markIdleIfFree(ctx, t.servingAgentId);
   return row;
 }
 
-async function markIdleIfFree(ctx: Ctx, agentId: string | null) {
+const syncOf = (ctx: Ctx) => ({ tx: ctx.tx, now: ctx.bctx.now, events: ctx.events });
+
+export async function markIdleIfFree(ctx: Ctx, agentId: string | null) {
   if (!agentId) return;
   const [{ n }] = await ctx.tx
     .select({ n: sql<number>`count(*)::int` })
@@ -1007,6 +1107,8 @@ export async function maintainBranch(branchId: string, now = clockNow()) {
       .select()
       .from(tickets)
       .where(and(eq(tickets.branchId, branchId), eq(tickets.status, "CALLED")));
+    // Visitors of a hall session are recalled together: one announcement per session (D62).
+    const groupRecalls = new Map<string, string[]>();
     for (const t of called) {
       const cfg = ctx.bctx.configFor(t.queueId);
       const since = (now - (t.calledAt?.getTime() ?? now)) / 60_000;
@@ -1020,7 +1122,8 @@ export async function maintainBranch(branchId: string, now = clockNow()) {
           deskId: t.deskId,
           payload: { count: row.recallCount, auto: true },
         });
-        await announce(ctx, row, true);
+        if (row.hallSessionId) groupRecalls.set(row.hallSessionId, [...(groupRecalls.get(row.hallSessionId) ?? []), row.id]);
+        else await announce(ctx, row, true);
       } else if (
         cfg.noShow.timeoutMinutes > 0 &&
         since >= cfg.noShow.timeoutMinutes &&
@@ -1029,6 +1132,7 @@ export async function maintainBranch(branchId: string, now = clockNow()) {
         await noShow(ctx, t, "timeout");
       }
     }
+    for (const [sessionId, ticketIds] of groupRecalls) await announceHallGroup(ctx, sessionId, { recall: true, ticketIds });
     // Break line: expire offers nobody took and hand free places to the next in line.
     await offerFreedBreaks(breakCtx(ctx, { organizationId: ctx.bctx.branch.organizationId, branchId }));
     await signOutAfterShift(ctx, now);
@@ -1068,6 +1172,9 @@ export type TicketView = {
   assignedAgentId: string | null;
   servingAgentId: string | null;
   deskId: string | null;
+  /** The hall and group session the visitor is in (D62), if any. */
+  hallId: string | null;
+  hallSessionId: string | null;
   arrivedAt: string;
   queuedAt: string;
   calledAt: string | null;
@@ -1106,6 +1213,8 @@ export function viewOf(t: TicketRow, v: VisitorRow | null | undefined): TicketVi
     assignedAgentId: t.assignedAgentId,
     servingAgentId: t.servingAgentId,
     deskId: t.deskId,
+    hallId: t.hallId,
+    hallSessionId: t.hallSessionId,
     arrivedAt: t.arrivedAt.toISOString(),
     queuedAt: t.queuedAt.toISOString(),
     calledAt: t.calledAt?.toISOString() ?? null,

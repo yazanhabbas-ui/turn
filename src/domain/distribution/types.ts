@@ -21,6 +21,8 @@ export type EngineTicket = {
   /** Agent who served this visitor last time (sticky routing). */
   lastAgentId: string | null;
   servingAgentId: string | null;
+  /** The reason is served in halls (D62): never reserved for or called by a desk agent. */
+  hall?: boolean;
 };
 
 export const AGENT_STATUSES = ["AVAILABLE", "BUSY", "ON_BREAK", "AWAY", "OFFLINE"] as const;
@@ -35,6 +37,8 @@ export type EngineAgent = {
   weight: number;
   /** Outside their shift (and shifts are in use): not chosen for automatic assignment. */
   offShift?: boolean;
+  /** Signed in to a hall as host (D62): serves group sessions, not desk tickets. */
+  inHall?: boolean;
   /** Since when the agent has had no active ticket (for "longest idle"). */
   idleSince: number | null;
   /** Last time a ticket was assigned or called (for round robin). */

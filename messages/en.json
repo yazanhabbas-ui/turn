@@ -254,6 +254,9 @@
     },
     "cities": {
       "manage": "Manage cities"
+    },
+    "halls": {
+      "manage": "Manage halls and their capacity"
     }
   },
   "ticketStatus": {

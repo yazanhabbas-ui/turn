@@ -2,7 +2,7 @@ import { boolean, date, index, integer, jsonb, pgEnum, pgTable, text, uniqueInde
 import { createdAt, id, ts, updatedAt } from "./_common";
 import { users } from "./identity";
 import { queues, visitReasons } from "./services";
-import { branches, desks, organizations } from "./tenancy";
+import { branches, desks, halls, organizations } from "./tenancy";
 
 export const ticketStatus = pgEnum("ticket_status", [
   "APPOINTMENT_PENDING",
@@ -116,6 +116,9 @@ export const tickets = pgTable(
     assignedAt: ts("assigned_at"),
     servingAgentId: uuid("serving_agent_id").references(() => users.id),
     deskId: uuid("desk_id").references(() => desks.id),
+    /** Hall and group session the ticket is in (D62); the hall is cleared when the ticket goes back to the queue. */
+    hallId: uuid("hall_id").references(() => halls.id),
+    hallSessionId: uuid("hall_session_id"),
     /** Original arrival; preserved across transfers so waiting time is honest. */
     arrivedAt: ts("arrived_at").notNull().defaultNow(),
     /** When the ticket entered its current queue. */

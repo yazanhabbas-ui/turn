@@ -110,7 +110,7 @@ export async function displayState(display: DisplayRow) {
         icon: r.icon,
         prefix: r.prefix,
         waiting,
-        estimatedWaitMinutes: bctx.wait.estimate(r.id, waiting, agents).minutes,
+        estimatedWaitMinutes: bctx.waitFor(r.id, waiting, agents).minutes,
       };
     });
 

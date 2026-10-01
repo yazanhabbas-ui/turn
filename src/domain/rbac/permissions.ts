@@ -6,7 +6,7 @@ export const PERMISSION_GROUPS = {
   admin: ["admin.access", "settings.manage", "audit.view"],
   users: ["users.view", "users.manage", "users.invite", "roles.view", "roles.manage"],
   organization: ["cities.manage", "branches.manage", "displays.manage", "announcements.manage", "templates.manage"],
-  services: ["reasons.view", "reasons.manage", "distribution.manage", "distribution.simulate"],
+  services: ["reasons.view", "reasons.manage", "halls.manage", "distribution.manage", "distribution.simulate"],
   tickets: [
     "tickets.view",
     "tickets.issue",

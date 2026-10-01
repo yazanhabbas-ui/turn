@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import type { DbOrTx } from "@/db/client";
 import {
+  estimateHallWait,
   estimateWait,
   resolveServiceMinutes,
   summarizeSamples,
@@ -104,6 +105,8 @@ export type WaitModel = {
   serviceMinutes: (reasonId: string) => ServiceMinutes;
   /** The estimate for a visitor with `ahead` people in front in the reason's queue served by `agents` agents. */
   estimate: (reasonId: string, ahead: number, agents: number) => WaitEstimate;
+  /** The estimate for a reason served in halls (D62): visitors enter `capacity` at a time, `halls` halls work in parallel. */
+  estimateHall: (reasonId: string, ahead: number, capacity: number, halls: number) => WaitEstimate;
 };
 
 /** Everything needed to estimate waits of one branch: the setting plus, in analytics mode, the learned durations. */
@@ -129,6 +132,8 @@ export async function buildWaitModel(
     settings,
     serviceMinutes,
     estimate: (reasonId, ahead, agents) => estimateWait(ahead, agents, serviceMinutes(reasonId), settings),
+    estimateHall: (reasonId, ahead, capacity, halls) =>
+      estimateHallWait(ahead, capacity, halls, serviceMinutes(reasonId), settings),
   };
 }
 

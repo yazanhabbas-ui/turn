@@ -294,6 +294,29 @@ export const SETTINGS = {
       visitorsPerAgent: z.number().int().min(1).max(20).default(2),
     })
     .prefault({}),
+  /**
+   * Halls (D62): a hall receives a group of visitors together with one agent as host. Off by default; an organization,
+   * a city or a branch switches it on. Nothing here depends on the time of day.
+   */
+  halls: z
+    .object({
+      enabled: z.boolean().default(false),
+      /** same_reason = one reason per session; any_reason = first come first served across the reasons the hall accepts. */
+      groupMode: z.enum(["same_reason", "any_reason"]).default("same_reason"),
+      /** Fewest visitors worth opening a session for. */
+      minGroup: z.number().int().min(1).max(100).default(1),
+      /** Most visitors called at once; 0 = the capacity of the hall. */
+      maxGroup: z.number().int().min(0).max(200).default(0),
+      /** The host may call more visitors into a session that has not started yet. */
+      allowTopUp: z.boolean().default(true),
+      /** The session starts by itself when every called visitor has entered. */
+      autoStartWhenAllEntered: z.boolean().default(true),
+      /** list = read each number; range = read consecutive numbers as from-to; hall_only = "the next group to hall 2". */
+      announceMode: z.enum(["list", "range", "hall_only"]).default("list"),
+      /** More numbers than this are announced as ranges (or as "the next group"). */
+      maxAnnounced: z.number().int().min(1).max(30).default(6),
+    })
+    .prefault({}),
   /** Limits on agents being on a break at the same time. */
   breaks: z
     .object({
@@ -451,6 +474,7 @@ export const BRANCH_OVERRIDABLE: readonly SettingKey[] = [
   "displayTheme",
   "waitEstimate",
   "notifications",
+  "halls",
 ];
 
 /**
@@ -475,6 +499,7 @@ export const CITY_OVERRIDABLE: readonly SettingKey[] = [
   "visitorStatus",
   "feedback",
   "agentWork",
+  "halls",
   "breaks",
   "notifications",
   "wallboard",

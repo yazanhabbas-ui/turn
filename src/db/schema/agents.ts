@@ -13,7 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { archivedAt, createdAt, id, ts, updatedAt, type LocalizedText } from "./_common";
 import { users } from "./identity";
-import { branches, cities, desks, organizations } from "./tenancy";
+import { branches, cities, desks, halls, organizations } from "./tenancy";
 
 export const agentStatus = pgEnum("agent_status", ["AVAILABLE", "BUSY", "ON_BREAK", "AWAY", "OFFLINE"]);
 export type AgentStatus = (typeof agentStatus.enumValues)[number];
@@ -61,6 +61,10 @@ export const agentProfiles = pgTable(
     breakTypeId: uuid("break_type_id"),
     currentDeskId: uuid("current_desk_id").references(() => desks.id),
     defaultDeskId: uuid("default_desk_id").references(() => desks.id),
+    /** The hall the agent is signed in to as host (an agent works at a desk or in a hall, never both). */
+    currentHallId: uuid("current_hall_id").references(() => halls.id),
+    /** The hall this agent usually hosts (profile assignment). */
+    defaultHallId: uuid("default_hall_id").references(() => halls.id),
     /** Maximum tickets in CALLED/SERVING (and pre-assigned WAITING for push mode) at once. */
     /** Visitors this agent can have at once; null = the organization default (Settings → Agents). */
     maxConcurrent: integer("max_concurrent"),
