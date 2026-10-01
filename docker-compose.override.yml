@@ -1,0 +1,6 @@
+# Development conveniences, loaded automatically by plain `docker compose ...`.
+# NOT loaded when you pass -f explicitly (the production command in docker-compose.yml).
+services:
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"

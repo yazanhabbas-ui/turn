@@ -147,9 +147,21 @@ export function IssuePanel({
   language,
   onIssued,
   onClear,
+  submit,
+  hideAssign = false,
 }: {
   ctx: ReceptionContext;
   reason: ReceptionReason;
+  /** Another way to send the ticket (the agent's walk-in panel posts to its own endpoint). Default: reception issuing. */
+  submit?: (opts: {
+    priorityKey: string | null;
+    language: string;
+    fields: Record<string, string>;
+    consent: boolean;
+    idempotencyKey: string;
+  }) => Promise<IssueResult>;
+  /** No "assign to agent" picker (agents issue into the normal distribution). */
+  hideAssign?: boolean;
   appointmentId?: string | null;
   /** Chosen in the bar above the reasons; null = the reason's default. */
   priorityKey: string | null;
@@ -189,7 +201,7 @@ export function IssuePanel({
   const optional = reason.intakeFields.filter((f) => !f.required);
   const hasPersonalData = Object.values(fields).some((v) => v.trim());
   const needsConsent = ctx.privacy.requireConsent && hasPersonalData;
-  const manual = ctx.modes[reason.id] === "manual";
+  const manual = !hideAssign && ctx.modes[reason.id] === "manual";
   const agents = ctx.agents.filter((a) => a.reasons.includes(reason.id));
   const label = (key: string, custom?: Record<string, string>) =>
     tr.has(`intakeFields.${key}`) ? tr(`intakeFields.${key}`) : pickText(custom, locale, key);
@@ -198,15 +210,17 @@ export function IssuePanel({
     setBusy(true);
     setError(null);
     try {
-      const res = await issueRequest(ctx, reason, {
-        priorityKey,
-        language,
-        fields,
-        consent,
-        assignToAgentId: assignTo || null,
-        appointmentId,
-        idempotencyKey: key.current,
-      });
+      const res = submit
+        ? await submit({ priorityKey, language, fields, consent, idempotencyKey: key.current })
+        : await issueRequest(ctx, reason, {
+            priorityKey,
+            language,
+            fields,
+            consent,
+            assignToAgentId: assignTo || null,
+            appointmentId,
+            idempotencyKey: key.current,
+          });
       key.current = newKey();
       onIssued(res);
     } catch (err) {
@@ -292,7 +306,7 @@ export function IssuePanel({
       )}
 
       <div className="grid gap-3 sm:grid-cols-2">
-        {(manual || ctx.canReassign) && agents.length > 0 && (
+        {!hideAssign && (manual || ctx.canReassign) && agents.length > 0 && (
           <div className="space-y-1.5">
             <Label htmlFor="assign-to">{t("assignTo")}</Label>
             <AgentPicker

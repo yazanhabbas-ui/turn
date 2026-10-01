@@ -5,15 +5,20 @@
 import "dotenv/config";
 import { createServer } from "node:http";
 import next from "next";
+import { pool } from "./src/db/client";
 import { env } from "./src/server/env";
 import { startJobs, stopJobs } from "./src/server/jobs";
+import { setDraining } from "./src/server/lifecycle";
 import { logger } from "./src/server/logger";
 import { startQueueMaintenance, stopQueueMaintenance } from "./src/server/queue/maintenance";
-import { initRealtime } from "./src/server/realtime";
+import { startRetentionScheduler, stopRetentionScheduler } from "./src/server/privacy/scheduler";
+import { initRealtime, io } from "./src/server/realtime";
 import { startReportScheduler, stopReportScheduler } from "./src/server/reports/scheduler";
+import { assertSecureConfiguration } from "./src/server/security/startup";
 
 async function main() {
   const config = env();
+  assertSecureConfiguration(config);
   const dev = config.NODE_ENV !== "production";
   // Development bundler: webpack by default (~45 ms warm requests). DEV_BUNDLER=turbopack compiles first visits
   // faster, but measured ~450 ms per warm request on Windows with this custom server.
@@ -26,26 +31,66 @@ async function main() {
     // Pass the real socket address to route handlers; never trust a client-supplied copy.
     delete req.headers["x-dor-client-ip"];
     req.headers["x-dor-client-ip"] = req.socket.remoteAddress ?? "unknown";
+    // Browsers must keep using https once they have seen it (set here because it depends on the runtime APP_URL).
+    if (config.APP_URL.startsWith("https://")) res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     handle(req, res);
   });
+  // Slow-request (slowloris) limits: headers must arrive within 20 s and a whole request within 60 s.
+  server.headersTimeout = 20_000;
+  server.requestTimeout = 60_000;
 
   initRealtime(server);
   await startJobs();
   startQueueMaintenance();
   startReportScheduler();
+  startRetentionScheduler();
 
   await listen(server, config.PORT, config.HOSTNAME);
   logger.info({ port: config.PORT, host: config.HOSTNAME, dev, turbopack }, `Dor ready on ${config.APP_URL}`);
 
-  const shutdown = (signal: string) => {
+  // Graceful shutdown (docker stop sends SIGTERM): report not-ready, stop timers, stop accepting connections and
+  // disconnect Socket.IO clients (they reconnect to the restarted server by themselves), let in-flight requests
+  // finish, drain pg-boss, close the database pool. Forced exit after SHUTDOWN_TIMEOUT_SECONDS (default 20).
+  let stopping = false;
+  const shutdown = async (signal: string) => {
+    if (stopping) return;
+    stopping = true;
     logger.info({ signal }, "shutting down");
-    stopQueueMaintenance();
-    stopReportScheduler();
-    server.close(() => stopJobs().finally(() => process.exit(0)));
-    setTimeout(() => process.exit(1), 10_000).unref();
+    setDraining();
+    const force = setTimeout(
+      () => {
+        logger.error("graceful shutdown timed out; forcing exit");
+        process.exit(1);
+      },
+      Number(process.env.SHUTDOWN_TIMEOUT_SECONDS ?? 20) * 1000,
+    );
+    force.unref();
+    try {
+      stopQueueMaintenance();
+      stopReportScheduler();
+      stopRetentionScheduler();
+      server.closeIdleConnections();
+      // io.close() disconnects every socket and closes the HTTP server (waits for requests in flight).
+      await Promise.race([
+        new Promise<void>((resolve) => (io() ?? server).close(() => resolve())),
+        new Promise<void>((resolve) =>
+          setTimeout(() => {
+            server.closeAllConnections();
+            resolve();
+          }, 8_000).unref(),
+        ),
+      ]);
+      await stopJobs();
+      await pool().end();
+      logger.info("shutdown complete");
+      process.exit(0);
+    } catch (err) {
+      logger.error({ err }, "error during shutdown");
+      process.exit(1);
+    }
   };
-  process.on("SIGTERM", () => shutdown("SIGTERM"));
-  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => void shutdown("SIGTERM"));
+  process.on("SIGINT", () => void shutdown("SIGINT"));
 }
 
 /**

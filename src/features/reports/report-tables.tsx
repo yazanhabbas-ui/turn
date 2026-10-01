@@ -5,7 +5,15 @@ import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { CHART_THEME } from "@/components/charts/echart";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { AgentReport, CsatGroup, LowScoreComment, ReasonReport, RepeatVisitor, ShiftReport } from "@/domain/reports/types";
+import type {
+  AgentReport,
+  CsatGroup,
+  LowScoreComment,
+  ReasonReport,
+  ReportData,
+  RepeatVisitor,
+  ShiftReport,
+} from "@/domain/reports/types";
 import { pickText } from "@/i18n/locales";
 import { cn } from "@/lib/utils";
 import { useReportFormat } from "./use-report-format";
@@ -227,6 +235,39 @@ export function ReasonsTable({ reasons }: { reasons: ReasonReport[] }) {
                   {c === "visitors" || c === "served" ? f.num(r[c]) : c === "slaPct" ? f.pct(r[c], 0) : f.minutes(r[c])}
                 </TableCell>
               ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+/* ─────────────── Tickets by source ─────────────── */
+
+export function SourceTable({ rows }: { rows: ReportData["bySource"] }) {
+  const t = useTranslations("reports.sources");
+  const f = useReportFormat();
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t("name")}</TableHead>
+            <TableHead className="text-end">{t("visitors")}</TableHead>
+            <TableHead className="text-end">{t("served")}</TableHead>
+            <TableHead className="text-end">{t("avgWaitMin")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((s) => (
+            <TableRow key={s.source}>
+              <TableCell className="font-medium whitespace-nowrap">
+                {t.has(`kinds.${s.source}`) ? t(`kinds.${s.source}`) : s.source}
+              </TableCell>
+              <TableCell className="tabular text-end">{f.num(s.visitors)}</TableCell>
+              <TableCell className="tabular text-end">{f.num(s.served)}</TableCell>
+              <TableCell className="tabular text-end whitespace-nowrap">{f.minutes(s.avgWaitMin)}</TableCell>
             </TableRow>
           ))}
         </TableBody>

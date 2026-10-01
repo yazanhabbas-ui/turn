@@ -1,9 +1,10 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/db/client";
-import { messageTemplates, notificationsLog } from "@/db/schema";
+import { branches, messageTemplates, notificationsLog } from "@/db/schema";
 import { maskRecipient, renderTemplate } from "@/domain/templates/render";
 import { pickText } from "@/i18n/locales";
 import { logger } from "../logger";
+import { pickByCity } from "../settings/templates";
 import { providerFor } from "./providers";
 import type { Channel, MessageAttachment } from "./types";
 
@@ -26,7 +27,11 @@ export type SendRequest = {
  * configured provider, and records a masked entry in notifications_log. Never throws for delivery failures.
  */
 export async function sendTemplated(req: SendRequest): Promise<{ status: "sent" | "failed" | "skipped"; error?: string }> {
-  const [tpl] = await db()
+  const cityId = req.branchId
+    ? ((await db().select({ cityId: branches.cityId }).from(branches).where(eq(branches.id, req.branchId)))[0]?.cityId ?? null)
+    : null;
+  // The city's own template wins over the organization's; an inactive city template falls back to the organization's.
+  const tpls = await db()
     .select()
     .from(messageTemplates)
     .where(
@@ -35,8 +40,10 @@ export async function sendTemplated(req: SendRequest): Promise<{ status: "sent" 
         eq(messageTemplates.channel, req.channel),
         eq(messageTemplates.event, req.event),
         eq(messageTemplates.isActive, true),
+        cityId ? or(isNull(messageTemplates.cityId), eq(messageTemplates.cityId, cityId)) : isNull(messageTemplates.cityId),
       ),
     );
+  const tpl = pickByCity(tpls, cityId);
   const provider = providerFor(req.channel);
   const base = {
     organizationId: req.organizationId,

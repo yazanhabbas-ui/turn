@@ -106,7 +106,8 @@ export function UserDialog({
   );
 
   const action = useApiMutation(
-    (body: { action: string; sendEmail?: boolean }) => api<{ link?: string }>(`${USERS}/${user!.id}/actions`, { body }),
+    (body: { action: string; sendEmail?: boolean; reason?: string; confirm?: boolean }) =>
+      api<{ link?: string }>(`${USERS}/${user!.id}/actions`, { body }),
     {
       invalidate,
       success: t("done"),
@@ -418,6 +419,23 @@ export function UserDialog({
                   <Button type="button" variant="outline" size="sm" onClick={() => action.mutate({ action: "activate" })}>
                     {t("activate")}
                   </Button>
+                )}
+                {!user.isActive && !user.anonymizedAt && (
+                  <ConfirmButton
+                    variant="destructive"
+                    label={t("anonymize")}
+                    title={t("anonymizeTitle")}
+                    description={t("anonymizeBody")}
+                    onConfirm={() =>
+                      action
+                        .mutateAsync({
+                          action: "anonymize",
+                          reason: "Staff account anonymized by an administrator",
+                          confirm: true,
+                        })
+                        .then(() => onOpenChange(false))
+                    }
+                  />
                 )}
               </div>
             )}

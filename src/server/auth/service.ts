@@ -2,12 +2,21 @@ import { encodeBase32UpperCaseNoPadding } from "@oslojs/encoding";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { organizations, users } from "@/db/schema";
+import { toWesternDigits } from "@/domain/i18n/digits";
 import { checkPassword } from "@/domain/auth/password-policy";
 import { audit } from "../audit";
 import { AppError } from "../http/errors";
+import { rateLimit } from "../rate-limit";
 import { getSetting } from "../settings/service";
 import { dummyPasswordHash, hashPassword, verifyPassword } from "./password";
-import { createSession, invalidateUserSessions, markSessionTwoFactorVerified, type AuthContext } from "./session";
+import {
+  createSession,
+  invalidateOtherSessions,
+  invalidateSession,
+  invalidateUserSessions,
+  markSessionTwoFactorVerified,
+  type AuthContext,
+} from "./session";
 import { decryptTotpSecret, encryptTotpSecret, generateTotpSecret, totpUri, verifyTotp } from "./totp";
 
 type ClientInfo = { ip?: string | null; userAgent?: string | null };
@@ -36,11 +45,14 @@ export async function login(
     throw new AppError("invalid_credentials");
   }
 
+  const security = await getSetting(user.organizationId, "security");
   if (user.lockedUntil && user.lockedUntil > new Date()) {
+    // Only someone who knows the password learns that the account is locked; a guess gets the ordinary error, so
+    // the lock cannot be used to find out which addresses have accounts. Failures while locked do not extend it.
+    if (!(await verifyPassword(user.passwordHash, input.password))) throw new AppError("invalid_credentials");
     throw new AppError("account_locked", { minutes: Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60_000) });
   }
 
-  const security = await getSetting(user.organizationId, "security");
   if (!(await verifyPassword(user.passwordHash, input.password))) {
     const failed = user.failedLoginCount + 1;
     const lock = failed >= security.maxFailedLogins;
@@ -86,10 +98,34 @@ async function loadTotpSecret(userId: string): Promise<Uint8Array | null> {
   return u?.enc ? decryptTotpSecret(u.enc) : null;
 }
 
+/** A code is valid for three 30-second steps (clock drift); remembering it that long makes it single-use at sign-in. */
+const TOTP_REPLAY_WINDOW_MS = 100_000;
+/** Wrong codes allowed on a pending sign-in before it is cancelled and the password has to be entered again. */
+export const TOTP_MAX_FAILURES = 5;
+const TOTP_FAILURE_WINDOW_MS = 15 * 60_000;
+
 export async function verifySecondFactor(auth: AuthContext, code: string, client: ClientInfo): Promise<void> {
   if (auth.twoFactorVerified) return;
   const secret = await loadTotpSecret(auth.user.id);
-  if (!secret || !verifyTotp(secret, code)) {
+  const valid = !!secret && verifyTotp(secret, code);
+  // The same code cannot sign in twice (someone who saw it over a shoulder or in a log cannot reuse it).
+  const fresh =
+    !valid ||
+    (await rateLimit(`totp-used:${auth.user.id}:${toWesternDigits(code).replace(/\s/g, "")}`, 1, TOTP_REPLAY_WINDOW_MS)).ok;
+  if (!valid || !fresh) {
+    const failures = await rateLimit(`totp-fail:${auth.user.id}`, TOTP_MAX_FAILURES, TOTP_FAILURE_WINDOW_MS);
+    if (!failures.ok) {
+      await invalidateSession(auth.sessionId);
+      await audit({
+        organizationId: auth.user.organizationId,
+        actorUserId: auth.user.id,
+        action: "auth.totp_locked",
+        entityType: "user",
+        entityId: auth.user.id,
+        ...client,
+      });
+      throw new AppError("rate_limited");
+    }
     await audit({
       organizationId: auth.user.organizationId,
       actorUserId: auth.user.id,
@@ -180,12 +216,15 @@ export async function confirmTotpSetup(auth: AuthContext, code: string, client: 
     entityId: auth.user.id,
     ...client,
   });
+  // Sessions opened before the second factor existed must not outlive the change.
+  await invalidateOtherSessions(auth.user.id, auth.sessionId);
 }
 
 export async function disableTotp(auth: AuthContext, password: string, client: ClientInfo): Promise<void> {
   const [u] = await db().select().from(users).where(eq(users.id, auth.user.id));
   if (!u?.passwordHash || !(await verifyPassword(u.passwordHash, password))) throw new AppError("wrong_password");
   await db().update(users).set({ totpSecretEnc: null, totpEnabledAt: null }).where(eq(users.id, u.id));
+  await invalidateOtherSessions(u.id, auth.sessionId);
   await audit({
     organizationId: u.organizationId,
     actorUserId: u.id,

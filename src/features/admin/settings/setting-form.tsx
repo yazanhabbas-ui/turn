@@ -9,7 +9,7 @@ import { api, useErrorMessage } from "@/components/admin/use-api";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "@/i18n/navigation";
 import type { SettingKey, SettingValue } from "@/server/settings/registry";
-import { useSettingsShell } from "./settings-context";
+import { scopeQuery, useSettingsScope, useSettingsShell } from "./settings-context";
 
 export const SETTINGS = "/api/v1/admin/settings";
 
@@ -20,13 +20,10 @@ export const SETTINGS = "/api/v1/admin/settings";
 export function SettingForm<K extends SettingKey>({
   k,
   initial,
-  branchId = null,
   children,
 }: {
   k: K;
   initial: SettingValue<K>;
-  /** Save as this branch's own value instead of the organization default. */
-  branchId?: string | null;
   children: (v: SettingValue<K>, set: (patch: Partial<SettingValue<K>>) => void) => React.ReactNode;
 }) {
   const t = useTranslations("settings");
@@ -35,6 +32,8 @@ export function SettingForm<K extends SettingKey>({
   const qc = useQueryClient();
   const message = useErrorMessage();
   const shell = useSettingsShell();
+  // Saves to the scope picked at the top of the page: the organization default, or a city's or branch's own value.
+  const scope = useSettingsScope();
   const formId = useId();
   const formRef = useRef<HTMLFormElement>(null);
   const [draft, setDraft] = useState(initial);
@@ -53,13 +52,12 @@ export function SettingForm<K extends SettingKey>({
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(initial), [draft, initial]);
 
   const save = useMutation({
-    mutationFn: () => api(`${SETTINGS}/${k}${branchId ? `?branchId=${branchId}` : ""}`, { method: "PUT", body: draft }),
+    mutationFn: () => api(`${SETTINGS}/${k}${scopeQuery(scope)}`, { method: "PUT", body: draft }),
     onSuccess: () => {
       setError(null);
       setSaved(true);
       toast.success(t("saved"));
-      qc.invalidateQueries({ queryKey: [SETTINGS] });
-      qc.invalidateQueries({ queryKey: [`${SETTINGS}?branchId=${branchId}`] });
+      qc.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).startsWith(SETTINGS) });
       // Branding and language affect the server-rendered shell; refresh it.
       router.refresh();
     },

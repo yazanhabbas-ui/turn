@@ -12,7 +12,16 @@ export type City = {
   updatedAt?: string;
   branchCount: number;
 };
-export type Shift = { id: string; code: string; name: L; startsAt: string; endsAt: string; sortOrder: number };
+export type Shift = {
+  id: string;
+  code: string;
+  name: L;
+  startsAt: string;
+  endsAt: string;
+  sortOrder: number;
+  /** Null = an organization-wide shift; set = only that city's agents may use it. */
+  cityId?: string | null;
+};
 export type AgentProfile = {
   branchId: string;
   defaultDeskId?: string | null;
@@ -31,6 +40,7 @@ export type UserRow = {
   totpEnabled: boolean;
   avatarVersion?: number | null;
   lastLoginAt: string | null;
+  anonymizedAt?: string | null;
   lockedUntil: string | null;
   grants: Grant[];
   agent: AgentProfile | null;
@@ -84,7 +94,14 @@ export type Priority = {
 };
 export type BreakType = { id: string; name: L; maxMinutes: number | null; countsAsProductive: boolean; sortOrder: number };
 
-export type IntakeField = { key: string; label?: L; type?: "text" | "phone" | "number" | "email"; required: boolean };
+export type IntakeField = {
+  key: string;
+  label?: L;
+  type?: "text" | "phone" | "number" | "email";
+  required: boolean;
+  /** May a visitor enter it at a self check-in kiosk? Unset = the built-in default. */
+  selfService?: boolean;
+};
 export type Assignment = {
   userId?: string | null;
   groupId?: string | null;
@@ -105,6 +122,7 @@ export type Reason = {
   slaTargetWaitMinutes: number;
   intakeFields: IntakeField[];
   allowAppointments: boolean;
+  requiresStaff: boolean;
   isFeatured: boolean;
   shortcutKey: string | null;
   sortOrder: number;

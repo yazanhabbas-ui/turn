@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { ApiError } from "@/lib/api";
 
-export function Providers({ children, dir }: { children: React.ReactNode; dir: "rtl" | "ltr" }) {
+export function Providers({ children, dir, nonce }: { children: React.ReactNode; dir: "rtl" | "ltr"; nonce?: string }) {
   const [client] = useState(
     () =>
       new QueryClient({
@@ -21,7 +21,7 @@ export function Providers({ children, dir }: { children: React.ReactNode; dir: "
       }),
   );
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange nonce={nonce}>
       <QueryClientProvider client={client}>
         {children}
         <Toaster position={dir === "rtl" ? "top-left" : "top-right"} dir={dir} richColors />

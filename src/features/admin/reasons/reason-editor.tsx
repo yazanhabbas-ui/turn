@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { AgentPicker } from "@/components/admin/agent-picker";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Link, useRouter } from "@/i18n/navigation";
+import { fieldSelfService } from "@/domain/kiosk/self-service";
 import { cn } from "@/lib/utils";
 import type { Assignment, IntakeField, L, Lookups, Reason } from "../types";
 import { useAgentOptions } from "../agent-options";
@@ -38,6 +39,7 @@ const EMPTY: Form = {
   slaTargetWaitMinutes: 15,
   intakeFields: [],
   allowAppointments: false,
+  requiresStaff: false,
   isFeatured: false,
   shortcutKey: null,
   sortOrder: 0,
@@ -329,15 +331,26 @@ export function ReasonEditor({ id, canManage }: { id: string | null; canManage: 
                     {t(`intakeFields.${key}`)}
                   </label>
                   {f && (
-                    <NativeSelect
-                      className="h-7 w-28 text-xs"
-                      value={f.required ? "1" : "0"}
-                      onChange={(e) => setField(key, { ...f, required: e.target.value === "1" })}
-                      aria-label={tu("required")}
-                    >
-                      <option value="0">{tu("optional")}</option>
-                      <option value="1">{tu("required")}</option>
-                    </NativeSelect>
+                    <div className="flex items-center gap-2">
+                      <label className="text-muted-foreground flex items-center gap-1 text-xs" title={t("selfServiceHint")}>
+                        <input
+                          type="checkbox"
+                          className="accent-brand size-3.5"
+                          checked={fieldSelfService(f)}
+                          onChange={(e) => setField(key, { ...f, selfService: e.target.checked })}
+                        />
+                        {t("selfService")}
+                      </label>
+                      <NativeSelect
+                        className="h-7 w-28 text-xs"
+                        value={f.required ? "1" : "0"}
+                        onChange={(e) => setField(key, { ...f, required: e.target.value === "1" })}
+                        aria-label={tu("required")}
+                      >
+                        <option value="0">{tu("optional")}</option>
+                        <option value="1">{tu("required")}</option>
+                      </NativeSelect>
+                    </div>
                   )}
                 </div>
               );
@@ -375,6 +388,18 @@ export function ReasonEditor({ id, canManage }: { id: string | null; canManage: 
                   <option value="1">{tu("required")}</option>
                 </NativeSelect>
               </Field>
+              <label
+                className="text-muted-foreground flex items-center gap-1 text-xs sm:col-span-full"
+                title={t("selfServiceHint")}
+              >
+                <input
+                  type="checkbox"
+                  className="accent-brand size-3.5"
+                  checked={fieldSelfService(f)}
+                  onChange={(e) => setField(f.key, { ...f, selfService: e.target.checked })}
+                />
+                {t("selfService")}
+              </label>
               <Button type="button" variant="ghost" size="icon" aria-label={tu("remove")} onClick={() => setField(f.key, null)}>
                 <Trash2 aria-hidden />
               </Button>
@@ -405,6 +430,19 @@ export function ReasonEditor({ id, canManage }: { id: string | null; canManage: 
             />
             {t("allowAppointments")}
           </label>
+        </Section>
+
+        <Section title={t("kioskSection")} hint={t("kioskSectionHint")}>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="accent-brand size-4"
+              checked={form.requiresStaff}
+              onChange={(e) => set("requiresStaff", e.target.checked)}
+            />
+            {t("requiresStaff")}
+          </label>
+          <p className="text-muted-foreground text-xs">{t("requiresStaffHint")}</p>
         </Section>
 
         <Section title={t("assignments")} hint={t("assignmentsHint")}>

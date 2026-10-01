@@ -66,6 +66,7 @@ export type UserView = {
   totpEnabled: boolean;
   avatarVersion: number | null;
   lastLoginAt: Date | null;
+  anonymizedAt: Date | null;
   lockedUntil: Date | null;
   createdAt: Date;
   grants: { roleId: string; branchId: string | null; cityId: string | null }[];
@@ -110,6 +111,7 @@ export async function listUsers(
       totpEnabled: !!u.totpEnabledAt,
       avatarVersion: u.avatarVersion,
       lastLoginAt: u.lastLoginAt,
+      anonymizedAt: u.anonymizedAt,
       lockedUntil: u.lockedUntil,
       createdAt: u.createdAt,
       grants: grants.filter((g) => g.userId === u.id).map((g) => ({ roleId: g.roleId, branchId: g.branchId, cityId: g.cityId })),
@@ -284,10 +286,15 @@ async function writeAgentAndGroups(tx: Tx, actor: Actor, userId: string, input: 
       }
       if (input.agent.shiftId) {
         const [sh] = await tx
-          .select({ id: shifts.id })
+          .select({ id: shifts.id, cityId: shifts.cityId })
           .from(shifts)
           .where(and(eq(shifts.id, input.agent.shiftId), eq(shifts.organizationId, orgOf(actor)), isNull(shifts.archivedAt)));
         if (!sh) throw new AppError("validation", { field: "agent.shiftId" });
+        // A city's shift is for that city's agents only; organization shifts suit everyone.
+        if (sh.cityId) {
+          const [br] = await tx.select({ cityId: branches.cityId }).from(branches).where(eq(branches.id, input.agent.branchId));
+          if (br?.cityId !== sh.cityId) throw new AppError("validation", { field: "agent.shiftId" });
+        }
       }
       const values = {
         branchId: input.agent.branchId,

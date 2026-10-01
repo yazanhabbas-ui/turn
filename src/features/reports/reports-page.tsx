@@ -43,7 +43,15 @@ import {
   WeekdayChart,
 } from "./report-charts";
 import { ReportFilters } from "./report-filters";
-import { AgentsTable, CsatGroupTable, LowCommentsTable, ReasonsTable, RepeatVisitorsTable, ShiftsTable } from "./report-tables";
+import {
+  AgentsTable,
+  CsatGroupTable,
+  LowCommentsTable,
+  ReasonsTable,
+  RepeatVisitorsTable,
+  ShiftsTable,
+  SourceTable,
+} from "./report-tables";
 import { SchedulesPanel } from "./schedules-panel";
 import { useReportFormat } from "./use-report-format";
 
@@ -60,6 +68,7 @@ function emptySections(d: ReportData | undefined): ExportSectionId[] {
   if (!d.byReason.length) out.push("byReason");
   if (!d.agents.length) out.push("byAgent");
   if (d.byBranch.length <= 1) out.push("byBranch");
+  if (d.bySource.length <= 1) out.push("bySource");
   if (!d.byShift.length) out.push("byShift");
   if (!d.repeat.uniqueVisitors) out.push("repeatSummary", "repeatDistribution");
   if (!d.repeat.top.length) out.push("repeatTop");
@@ -371,6 +380,12 @@ function ReportBody({
           </ChartBlock>
         </div>
       </Section>
+
+      {data.bySource.length > 1 && (
+        <Section title={t("sections.sources")} description={t("sources.hint")} exports={["bySource"]}>
+          <SourceTable rows={data.bySource} />
+        </Section>
+      )}
 
       {data.byShift.length > 0 && (
         <Section title={t("sections.shifts")} description={t("shifts.hint")} exports={["byShift"]}>

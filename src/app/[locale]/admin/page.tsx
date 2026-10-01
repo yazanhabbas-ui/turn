@@ -8,6 +8,8 @@ import { visibleBranchIds } from "@/server/admin/branches";
 import { listUsers } from "@/server/admin/users";
 import { pickText } from "@/i18n/locales";
 import { requireAuth } from "@/server/auth/current";
+import { BackupCard } from "@/components/admin/backup-card";
+import { CoverageCard } from "@/components/admin/coverage-card";
 
 export default async function AdminOverviewPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -62,6 +64,8 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
           </div>
         ))}
       </div>
+      <CoverageCard actor={actor} locale={locale} />
+      <BackupCard actor={actor} />
     </div>
   );
 }

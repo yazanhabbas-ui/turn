@@ -11,14 +11,27 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { L, Shift } from "../types";
-import { LOOKUPS, useText } from "../use-lookups";
+import { LOOKUPS, useLookups, useText } from "../use-lookups";
+import { useSettingsScope } from "./settings-context";
 
-/** Organization-wide shifts (when agents work): list, add, edit, archive. */
+/**
+ * Shifts (when agents work): list, add, edit, archive. In the organization scope they are organization-wide; with a
+ * city (or one of its branches) selected, the city's own shifts are managed and the organization's are shown read-only.
+ */
 export function ShiftsManager({ items }: { items: Shift[] }) {
   const t = useTranslations("settings");
   const tu = useTranslations("ui");
   const tc = useTranslations("common");
   const text = useText();
+  const scope = useSettingsScope();
+  const lookups = useLookups();
+  const scopeCityId =
+    scope.kind === "city"
+      ? scope.id
+      : scope.kind === "branch"
+        ? (lookups.data?.branches.find((b) => b.id === scope.id)?.cityId ?? null)
+        : null;
+  const editable = (sh: Shift) => (sh.cityId ?? null) === scopeCityId;
   const [editing, setEditing] = useState<Shift | "new" | null>(null);
   const [f, setF] = useState({ code: "", name: {} as L, startsAt: "08:00", endsAt: "15:00", sortOrder: 0 });
   useEffect(() => {
@@ -39,8 +52,8 @@ export function ShiftsManager({ items }: { items: Shift[] }) {
   const save = useApiMutation(
     () =>
       editing && editing !== "new"
-        ? api(`/api/v1/admin/shifts/${editing.id}`, { method: "PUT", body: f })
-        : api("/api/v1/admin/shifts", { body: f }),
+        ? api(`/api/v1/admin/shifts/${editing.id}`, { method: "PUT", body: { ...f, cityId: editing.cityId ?? null } })
+        : api("/api/v1/admin/shifts", { body: { ...f, cityId: scopeCityId } }),
     { invalidate, success: tu("saved"), onSuccess: () => setEditing(null) },
   );
   const archive = useApiMutation((id: string) => api(`/api/v1/admin/shifts/${id}`, { method: "DELETE" }), { invalidate });
@@ -51,7 +64,7 @@ export function ShiftsManager({ items }: { items: Shift[] }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold">{t("shifts")}</h3>
-          <p className="text-muted-foreground text-xs">{t("shiftsHint")}</p>
+          <p className="text-muted-foreground text-xs">{scopeCityId ? t("shiftsHintCity") : t("shiftsHint")}</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => setEditing("new")}>
           <Plus aria-hidden />
@@ -67,6 +80,7 @@ export function ShiftsManager({ items }: { items: Shift[] }) {
               <Badge variant="secondary">
                 <span dir="ltr">{sh.code}</span>
               </Badge>
+              {sh.cityId && <Badge variant="outline">{t("shiftCity")}</Badge>}
             </div>
             <div className="text-muted-foreground text-xs">
               <bdi className="tabular">
@@ -75,18 +89,22 @@ export function ShiftsManager({ items }: { items: Shift[] }) {
               {sh.endsAt <= sh.startsAt && ` · ${t("shiftOvernight")}`}
             </div>
           </div>
-          <Button variant="ghost" size="icon-sm" aria-label={tu("edit")} onClick={() => setEditing(sh)}>
-            <Pencil aria-hidden />
-          </Button>
-          <ConfirmButton
-            size="icon-sm"
-            variant="ghost"
-            icon={<Trash2 aria-hidden />}
-            label={tu("archive")}
-            title={tu("confirmArchive")}
-            description={tu("confirmArchiveBody")}
-            onConfirm={() => archive.mutateAsync(sh.id)}
-          />
+          {editable(sh) && (
+            <>
+              <Button variant="ghost" size="icon-sm" aria-label={tu("edit")} onClick={() => setEditing(sh)}>
+                <Pencil aria-hidden />
+              </Button>
+              <ConfirmButton
+                size="icon-sm"
+                variant="ghost"
+                icon={<Trash2 aria-hidden />}
+                label={tu("archive")}
+                title={tu("confirmArchive")}
+                description={tu("confirmArchiveBody")}
+                onConfirm={() => archive.mutateAsync(sh.id)}
+              />
+            </>
+          )}
         </div>
       ))}
       <Dialog open={editing !== null} onOpenChange={(o) => !o && setEditing(null)}>

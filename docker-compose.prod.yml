@@ -1,0 +1,38 @@
+# Production override. Use together with the base file:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Every secret is REQUIRED: if one is missing, compose stops with the message below and nothing starts.
+# There are no insecure defaults in this file. Create the values once (docs/deployment.md):
+#   openssl rand -base64 32   -> APP_ENCRYPTION_KEY
+#   openssl rand -hex 24      -> PHONE_HASH_KEY
+#   openssl rand -hex 24      -> POSTGRES_PASSWORD
+services:
+  db:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1g
+    security_opt:
+      - no-new-privileges:true
+
+  app:
+    environment:
+      APP_URL: ${APP_URL:?set APP_URL in .env to the address browsers use, e.g. https://queue.example.com}
+      DATABASE_URL: postgres://${POSTGRES_USER:-dor}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-dor}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?set APP_ENCRYPTION_KEY in .env (openssl rand -base64 32)}
+      PHONE_HASH_KEY: ${PHONE_HASH_KEY:?set PHONE_HASH_KEY in .env (openssl rand -hex 24)}
+      NODE_ENV: production
+      # No demo accounts in production. The first administrator comes from ADMIN_EMAIL / ADMIN_PASSWORD (docs/deployment.md).
+      SEED_DEMO: "false"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1536m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL

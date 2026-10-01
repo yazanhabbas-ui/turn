@@ -1,0 +1,16 @@
+# Caddy reverse proxy with automatic TLS (Let's Encrypt for public names, or `tls internal` for an office LAN).
+# Run Caddy on the host (or as another container on the same network) and set in .env:
+#   APP_URL=https://queue.example.com   TRUST_PROXY=true   APP_BIND=127.0.0.1
+# WebSockets (Socket.IO) are upgraded automatically by Caddy; X-Forwarded-* headers are added by default.
+queue.example.com {
+	# For an office LAN without a public name, use this instead of Let's Encrypt:
+	# tls internal
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3000 {
+		# Health-check the app through its readiness endpoint.
+		health_uri /api/ready
+		health_interval 15s
+		# Keep long-lived Socket.IO connections open during config reloads.
+		stream_close_delay 5m
+	}
+}

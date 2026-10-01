@@ -11,6 +11,7 @@ import {
   ListChecks,
   Monitor,
   ScrollText,
+  ShieldCheck,
   Settings,
   UsersRound,
   UserRoundCog,
@@ -33,6 +34,7 @@ const ITEMS = [
   { href: "/admin/screens", key: "screens", icon: Monitor, permission: "displays.manage" },
   { href: "/admin/notifications", key: "notifications", icon: BellRing, permission: "admin.access" },
   { href: "/admin/settings", key: "settings", icon: Settings, permission: "settings.manage", also: ["branches.manage"] },
+  { href: "/admin/privacy", key: "privacy", icon: ShieldCheck, permission: "visitors.privacy" },
   { href: "/admin/audit", key: "audit", icon: ScrollText, permission: "audit.view" },
 ] as const;
 

@@ -118,7 +118,21 @@
     "groups": "Agent groups",
     "screens": "Screens",
     "cities": "Cities",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "privacy": "Privacy requests",
+    "backup": {
+      "title": "Database backup",
+      "state": {
+        "ok": "Backed up",
+        "stale": "Backup is overdue",
+        "failed": "Last backup failed",
+        "none": "No backup recorded"
+      },
+      "last": "Last successful backup: {when}",
+      "verified": "restore tested",
+      "failedAt": "The latest attempt failed ({when}). Check the backup log.",
+      "noneHint": "Schedule scripts/backup.sh (or backup.ps1) so a backup runs every night. See docs/backup-restore.md."
+    }
   },
   "workspace": {
     "receptionEmpty": "The reception console opens here: choose a visit reason and issue a ticket in two taps.",
@@ -207,7 +221,8 @@
       "edit": "Edit tickets",
       "cancel": "Cancel tickets",
       "reprint": "Reprint tickets",
-      "reassign": "Reassign tickets to other agents"
+      "reassign": "Reassign tickets to other agents",
+      "issue_self": "Issue walk-in tickets from the agent screen"
     },
     "appointments": {
       "manage": "Manage appointments",
@@ -338,14 +353,23 @@
       "missing": "Choose a picture first.",
       "invalid_form": "The upload could not be read. Try again.",
       "to": "Enter a valid phone number or email address.",
-      "phone": "Enter a valid phone number."
+      "phone": "Enter a valid phone number.",
+      "not_overridable": "This setting is set for the whole organization and cannot be changed for a city or branch.",
+      "one_scope": "Choose either a city or a branch, not both.",
+      "no_scope": "Choose the city or branch whose value to reset.",
+      "same_city": "Choose a different city to copy from.",
+      "desk_required": "Choose your desk first.",
+      "agent_cannot_serve": "You do not serve this reason."
     },
     "unauthorized": "Your session ended. Please sign in again.",
     "forbidden": {
       "_": "You do not have permission to do this.",
       "escalation": "You cannot grant permissions that you do not have yourself.",
       "branch_scope": "You can only manage users in your own branches.",
-      "user_scope": "You are not allowed to manage this user."
+      "user_scope": "You are not allowed to manage this user.",
+      "agent_issuing_off": "Issuing tickets from the agent screen is not enabled for this branch.",
+      "ask_staff": "This service needs a member of staff.",
+      "kiosk_disabled": "Self check-in is not enabled for this branch."
     },
     "not_found": {
       "_": "Not found. It may have been removed.",
@@ -373,7 +397,11 @@
       "shift_in_use": "Agents still use this shift. Move them to another shift first.",
       "channel_not_configured": "This channel is not configured on the server yet.",
       "not_resendable": "This message cannot be sent again.",
-      "already_has_phone": "This ticket already has a phone number."
+      "already_has_phone": "This ticket already has a phone number.",
+      "user_active": "Deactivate the account first, then anonymize it.",
+      "already_anonymized": "This account is already anonymized.",
+      "queue_full": "The line is full right now.",
+      "at_capacity": "You are already serving as many visitors as you can."
     },
     "rate_limited": "Too many requests. Please wait a moment.",
     "weak_password": "The password does not meet the policy.",
@@ -436,7 +464,10 @@
     "scopeBranch": "Branch: {name}",
     "shift": "Shift",
     "shiftHint": "When this agent is expected to work.",
-    "noShift": "No fixed shift"
+    "noShift": "No fixed shift",
+    "anonymize": "Anonymize",
+    "anonymizeTitle": "Remove this person's personal data?",
+    "anonymizeBody": "The name, email, phone, picture and sign-in methods are removed for good. The account stays in the history as a deleted user, so tickets and the audit log remain complete. This cannot be undone."
   },
   "invites": {
     "title": "Invitations",
@@ -581,7 +612,13 @@
     "sla": "SLA",
     "created": "Visit reason created",
     "saved": "Visit reason saved",
-    "archivedNotice": "This reason is archived and cannot be chosen at reception."
+    "archivedNotice": "This reason is archived and cannot be chosen at reception.",
+    "selfService": "On kiosk",
+    "selfServiceHint": "A visitor may type this at a self check-in kiosk",
+    "kioskSection": "Self check-in kiosk",
+    "kioskSectionHint": "A required detail that visitors may not type alone makes the service “please ask the agent” on the kiosk.",
+    "requiresStaff": "Needs a member of staff (not offered for self check-in)",
+    "requiresStaffHint": "The kiosk shows this service as “please ask the agent”."
   },
   "settings": {
     "title": "Settings",
@@ -604,7 +641,9 @@
       "wifi": "Wi-Fi",
       "breakLimit": "Break limit",
       "waitEstimate": "Waiting time",
-      "feedback": "Feedback"
+      "feedback": "Feedback",
+      "retention": "Data retention",
+      "selfCheckin": "Self check-in"
     },
     "companyName": "Company name",
     "logoUrl": "Logo URL",
@@ -640,7 +679,7 @@
     "require2faForRoles": "Roles that must use 2FA",
     "inviteExpiryHours": "Invitation validity (hours)",
     "retentionDays": "Anonymize visitor data after (days)",
-    "retentionHint": "0 keeps data until erased manually. Statistics are kept without personal data.",
+    "retentionHint": "Counted from the last visit. Name, phone number and company are removed so the person cannot be recognised again. Visit counts and statistics stay.",
     "consentText": "Consent text on the reception form",
     "requireConsent": "Require consent before issuing a ticket",
     "visitorStatusEnabled": "Visitor live status page (QR)",
@@ -846,8 +885,10 @@
       "reports": "Targets used in reports and forecasts.",
       "alerts": "When to raise an alert and who receives the emails.",
       "security": "Password rules, lockout and two-step verification.",
-      "privacy": "How long data is kept and the visitor consent text.",
-      "feedback": "Ask visitors how their visit went, and what counts as a low score."
+      "privacy": "The visitor consent text.",
+      "feedback": "Ask visitors how their visit went, and what counts as a low score.",
+      "retention": "How long personal data is kept before it is anonymized or deleted, and a button to run or preview it.",
+      "selfCheckin": "A tablet where visitors take their own ticket, and its limits."
     },
     "cards": {
       "preview": "Preview",
@@ -884,7 +925,12 @@
       "feedbackScope": "Applies to",
       "feedbackAsk": "Asking for feedback",
       "feedbackTexts": "Wording",
-      "alertSatisfaction": "Visitor satisfaction"
+      "alertSatisfaction": "Visitor satisfaction",
+      "agentIssuing": "Agents issuing tickets",
+      "selfCheckin": "Self check-in kiosk",
+      "selfCheckinLimits": "Limits",
+      "selfCheckinReasons": "Services on the kiosk",
+      "selfCheckinWelcome": "Welcome text"
     },
     "ui": {
       "search": "Search settings…",
@@ -938,7 +984,107 @@
     "lowSatisfactionBelow": "Alert when average satisfaction is below",
     "lowSatisfactionBelowHint": "Out of 5. 0 turns this alert off.",
     "lowSatisfactionMinResponses": "Least answers before this alert",
-    "lowSatisfactionWindowHours": "Hours to average over"
+    "lowSatisfactionWindowHours": "Hours to average over",
+    "ticketDataDays": "Clear ticket notes and intake answers after (days)",
+    "ticketDataDaysHint": "Finished tickets only. The ticket, its times and its outcome stay in reports. Keep this no longer than the visitor period.",
+    "commentDays": "Clear feedback comments after (days)",
+    "commentDaysHint": "Only the written comment is removed. The score stays in the satisfaction reports.",
+    "notificationDays": "Clear message recipients and details after (days)",
+    "notificationDaysHint": "In the notification log. Whether a message was sent stays.",
+    "auditDays": "Delete audit log entries after (days)",
+    "auditDaysHint": "Sign-in, user, role, invitation, privacy and settings entries are always kept at least 365 days. Other entries at least 30 days.",
+    "credentialDays": "Delete expired sign-ins and codes after (days)",
+    "credentialDaysHint": "Sessions, invitations, password-reset links and screen pairing codes, counted from when they expired.",
+    "retention": {
+      "cardVisitors": "Visitors and their messages",
+      "cardSystem": "Logs and access",
+      "zeroKeeps": "0 keeps that kind of data until you erase it by hand. Reports keep their numbers.",
+      "runTitle": "Run and preview",
+      "runHint": "The job runs by itself about once a day. Preview shows what it would change with the saved periods, and changes nothing.",
+      "preview": "Preview",
+      "runNow": "Run now",
+      "runNowTitle": "Run the retention job now?",
+      "runNowBody": "Personal data older than the saved periods is anonymized or deleted for good. This cannot be undone.",
+      "previewTitle": "Would change",
+      "previewAt": "Preview taken {when}. Nothing was changed.",
+      "ranAutomatically": "Ran automatically {when}.",
+      "ranManually": "Run by an administrator {when}.",
+      "lastRun": "Last run",
+      "neverRan": "The job has not run yet.",
+      "nothingDue": "Nothing is due.",
+      "counts": {
+        "visitors": "Visitors anonymized",
+        "tickets": "Tickets and appointments cleared of free text",
+        "comments": "Feedback comments cleared",
+        "notifications": "Notification entries cleared",
+        "audit": "Audit entries deleted",
+        "sessions": "Expired sessions deleted",
+        "invites": "Old invitations deleted",
+        "resetTokens": "Old password-reset links deleted",
+        "pairingCodes": "Expired pairing codes cleared",
+        "idempotencyKeys": "Stored request replies deleted"
+      }
+    },
+    "shiftCity": "City shift",
+    "shiftsHintCity": "Shifts of this city. The organization's shifts are also available to its agents (shown, but edited under Organization). A shift whose end is earlier than its start runs past midnight.",
+    "scope": {
+      "label": "Applies to",
+      "organization": "Organization",
+      "city": "City",
+      "branch": "Branch",
+      "chooseCity": "Choose a city",
+      "wholeCity": "Whole city",
+      "levelCity": "city",
+      "levelBranch": "branch",
+      "appliesOrganization": "Organization only",
+      "appliesCity": "Organization default, city can override",
+      "appliesBranch": "Organization default, city or branch can override",
+      "sourceOrganization": "Organization default",
+      "sourceCity": "City: {name}",
+      "sourceBranch": "Branch: {name}",
+      "overrideCity": "Override for this city",
+      "overrideBranch": "Override for this branch",
+      "overrideOnHint": "This {level} has its own value. Everything below applies to it only.",
+      "overrideOffHint": "Using the value from {source}. Turn this on to give this {level} its own value, starting from the current one.",
+      "overrideCreated": "Override created. You can now change the values.",
+      "overrideRemoved": "Back to the inherited value.",
+      "reset": "Reset to default",
+      "cancel": "Cancel",
+      "resetTitle": "Reset to the inherited value?",
+      "resetBody": "The values set for this {level} are deleted and it uses the value from the level above again.",
+      "organizationOnly": "This section is set once for the whole organization. It cannot be changed per city or branch.",
+      "cityOnly": "This section can be set per city, not per branch. Choose the whole city to change it."
+    },
+    "agentIssuingIntro": "Where no receptionist is at the desk, an agent can issue a ticket for a walk-in visitor from the agent screen.",
+    "agentIssuing": "Agents can issue walk-in tickets",
+    "agentIssuingHint": "Agents need the permission “Issue walk-in tickets from the agent screen”.",
+    "agentIssuingOff": "Never",
+    "agentIssuingWhenNone": "Only when the branch has no receptionist",
+    "agentIssuingAlways": "Always",
+    "selfCheckinIntro": "Visitors take a ticket on a tablet. Add the tablet under Admin → Screens (Add kiosk). Services that need staff are shown as “please ask the agent”.",
+    "selfCheckinEnabled": "Self check-in is on",
+    "selfCheckinEnabledHint": "Off: a paired kiosk shows “please ask the staff”.",
+    "selfCheckinPrint": "Print the ticket",
+    "selfCheckinPrintHint": "Uses the browser print dialog. Start the kiosk browser with --kiosk-printing to print without a dialog.",
+    "selfCheckinShowWait": "Show the estimated wait",
+    "selfCheckinShowWaitHint": "Worded as set in Waiting time.",
+    "selfCheckinShowQr": "Show a QR code to follow the ticket",
+    "selfCheckinShowQrHint": "Opens the visitor status page on the visitor's phone.",
+    "selfCheckinIdle": "Seconds before returning to the start",
+    "selfCheckinIdleHint": "How long the ticket stays on screen.",
+    "selfCheckinLimitsHint": "Volume limits only. They never depend on the time of day.",
+    "selfCheckinMaxWaiting": "Most visitors waiting in the branch",
+    "selfCheckinMaxWaitingHint": "At this many waiting, the kiosk stops issuing. 0 = no limit.",
+    "selfCheckinRate": "Tickets per minute per kiosk",
+    "selfCheckinRateHint": "Protects the line from someone pressing the screen repeatedly.",
+    "selfCheckinReasonsHint": "Untouched, the kiosk offers every service a visitor can take alone.",
+    "selfCheckinReasons": "Services offered",
+    "selfCheckinNeedsStaff": "Needs staff: shown as “please ask the agent”",
+    "selfCheckinReasonsFoot": "Mark a service as “needs staff”, or choose which details a visitor may type, in",
+    "selfCheckinReasonsLink": "Visit reasons",
+    "selfCheckinFieldsFoot": "Some details are staff-only (for example the last 4 digits of the ID), so those services need staff.",
+    "selfCheckinWelcome": "Welcome text on the kiosk",
+    "selfCheckinKiosks": "Pair kiosks in Screens"
   },
   "audit": {
     "title": "Audit log",
@@ -1205,7 +1351,12 @@
       "consent_required": "Please confirm the visitor's consent.",
       "missing_field": "Please fill in: {field}",
       "invalid_field": "Please check: {field}",
-      "range_exhausted": "The ticket numbers for today are used up for this service."
+      "range_exhausted": "The ticket numbers for today are used up for this service.",
+      "at_capacity": "You are already serving as many visitors as you can.",
+      "agent_cannot_serve": "You do not serve this reason, so you cannot take this visitor yourself. Add to queue instead.",
+      "desk_required": "Choose your desk first.",
+      "agent_issuing_off": "Issuing tickets from the agent screen is not enabled for this branch.",
+      "queue_full": "The line is full right now."
     },
     "dismiss": "Dismiss",
     "phoneHint": "A mobile number lets the system recognise returning visitors and show their history to the agent."
@@ -1404,7 +1555,8 @@
       "instructions": "Open {url} on the TV and type this code.",
       "code": "Pairing code",
       "validity": "The code is valid for 15 minutes and can be used once.",
-      "address": "Screen address"
+      "address": "Screen address",
+      "kioskInstructions": "Open {url} on the kiosk tablet and type this code."
     },
     "config": {
       "content": "Content",
@@ -1555,6 +1707,29 @@
       "sourcePack": "recorded voice",
       "sourceBrowser": "browser voice",
       "noVoiceHere": "This device has no voice for that language. Choose a recorded voice or install one."
+    },
+    "kiosk": {
+      "add": "Add kiosk",
+      "edit": "Edit kiosk",
+      "intro": "A kiosk is a tablet where visitors take their own ticket. Pair it with a code, like a waiting-room screen.",
+      "languages": "Languages",
+      "languagesHint": "The first language is shown at the start; the visitor can switch.",
+      "languageSets": {
+        "ar_en": "Arabic, then English",
+        "en_ar": "English, then Arabic",
+        "ar": "Arabic only",
+        "en": "English only"
+      },
+      "themes": {
+        "default": "Follow the screen theme",
+        "dark": "Dark",
+        "light": "Light",
+        "brand": "Brand"
+      },
+      "settingsHint": "Reasons, wording, printing and limits are set in Settings → Self check-in.",
+      "badge": "Kiosk",
+      "type": "Self check-in kiosk",
+      "preview": "Open kiosk page"
     }
   },
   "wallboard": {
@@ -1648,7 +1823,8 @@
       "csatDistribution": "Satisfaction: answers by score",
       "csatByDay": "Satisfaction by day",
       "csatBreakdown": "Satisfaction by agent, reason, branch and shift",
-      "csatComments": "Recent low scores with a comment"
+      "csatComments": "Recent low scores with a comment",
+      "bySource": "By source"
     },
     "units": {
       "min": "min",
@@ -1698,7 +1874,8 @@
       "time": "Time",
       "comment": "Comment",
       "ticket": "Ticket",
-      "satisfied": "Satisfied (%)"
+      "satisfied": "Satisfied (%)",
+      "source": "Source"
     },
     "metrics": {
       "visitors": "Visitors",
@@ -1750,6 +1927,13 @@
       "groupReason": "Visit reason",
       "groupBranch": "Branch",
       "groupShift": "Shift"
+    },
+    "sources": {
+      "reception": "Reception",
+      "agent": "Agent walk-in",
+      "kiosk": "Self check-in kiosk",
+      "appointment": "Appointment",
+      "api": "API"
     }
   },
   "reports": {
@@ -1828,7 +2012,8 @@
       "reasons": "Visit reasons",
       "forecast": "Forecast",
       "repeat": "Repeat visits",
-      "shifts": "By shift"
+      "shifts": "By shift",
+      "sources": "How tickets were issued"
     },
     "charts": {
       "visitors": "Visitors",
@@ -1980,6 +2165,20 @@
         "reason": "Visit reason",
         "visitor": "Visitor"
       }
+    },
+    "sources": {
+      "hint": "Tickets by where they were issued: reception, an agent, a self check-in kiosk, an appointment check-in or the API.",
+      "name": "Source",
+      "visitors": "Visitors",
+      "served": "Served",
+      "avgWaitMin": "Avg wait",
+      "kinds": {
+        "reception": "Reception",
+        "agent": "Agent walk-in",
+        "kiosk": "Self check-in kiosk",
+        "appointment": "Appointment",
+        "api": "API"
+      }
     }
   },
   "reportSchedules": {
@@ -2061,7 +2260,19 @@
     "codeHint": "Letters A-Z, digits, hyphen and underscore.",
     "branchesCount": "{count, plural, one {# branch} other {# branches}}",
     "archiveTitle": "Archive this city?",
-    "archiveBody": "A city can only be archived when it has no active branches."
+    "archiveBody": "A city can only be archived when it has no active branches.",
+    "config": {
+      "title": "Configuration",
+      "overridden": "{count, plural, =0 {Uses organization defaults} one {# setting overridden} other {# settings overridden}}",
+      "branchOverrides": "{count, plural, one {# branch override} other {# branch overrides}}",
+      "hiddenReasons": "{count, plural, one {# reason hidden} other {# reasons hidden}}",
+      "open": "Open city settings",
+      "copyFrom": "Copy from another city",
+      "copy": "Copy configuration",
+      "copyTitle": "Copy the configuration of {from} to {to}?",
+      "copyBody": "The settings overrides and hidden reasons of this city are replaced by the other city's. Branch overrides, shifts and message templates are not copied.",
+      "copied": "Configuration copied."
+    }
   },
   "picker": {
     "placeholder": "Select…",
@@ -2593,5 +2804,138 @@
         "ticket_missing": "Ticket not found"
       }
     }
+  },
+  "privacy": {
+    "title": "Privacy requests",
+    "description": "Handle a visitor's request to see or erase their data. Everything here is recorded without the person's details.",
+    "find": "Find a visitor",
+    "findLabel": "Phone number, name or ticket number",
+    "findHint": "At least 2 characters. A phone number is matched exactly, in any common notation.",
+    "search": "Search",
+    "noMatch": "No visitor found. Visitors who were already anonymized cannot be found by name or phone.",
+    "noName": "No name",
+    "noPhone": "No phone number",
+    "anonymized": "Anonymized",
+    "optedOut": "Messages off",
+    "visits": "Visits",
+    "lastVisit": "Last visit",
+    "held": {
+      "tickets": "Tickets",
+      "ticketsWithData": "Tickets with notes or answers",
+      "appointments": "Appointments",
+      "feedback": "Feedback entries",
+      "comments": "Feedback comments",
+      "notifications": "Notification entries"
+    },
+    "exportJson": "Export JSON",
+    "exportCsv": "Export CSV",
+    "exported": "Export ready",
+    "erase": "Erase now",
+    "erased": "The visitor's data was erased",
+    "eraseTitle": "Erase this visitor's data?",
+    "eraseBody": "The name, phone number and company are removed, notes and answers on their tickets and the feedback comments are cleared, and messages to them are switched off. Tickets and scores stay in the reports. This cannot be undone.",
+    "reason": "Reason",
+    "reasonHint": "For example: request by the visitor on the phone. Do not write names or numbers here.",
+    "eraseConfirm": "I confirm the identity of the person and want to erase their data.",
+    "history": "Request history",
+    "historyEmpty": "No requests yet.",
+    "when": "When",
+    "type": "Type",
+    "subject": "Person",
+    "by": "Handled by",
+    "status": "Status",
+    "types": {
+      "access": "Access (export)",
+      "erasure": "Erasure"
+    },
+    "kinds": {
+      "visitor": "Visitor",
+      "user": "Staff"
+    },
+    "statuses": {
+      "completed": "Done",
+      "failed": "Failed"
+    }
+  },
+  "kiosk": {
+    "notPaired": "This kiosk is not paired yet",
+    "pairHint": "Ask an administrator for a pairing code (Admin → Screens) and enter it here.",
+    "codeLabel": "Pairing code",
+    "pair": "Pair",
+    "pairing": "Pairing…",
+    "invalidCode": "The code is wrong or has expired",
+    "tooMany": "Too many attempts, wait a minute and try again",
+    "pairFailed": "Could not pair. Check the connection and try again",
+    "loading": "Loading…",
+    "chooseService": "Choose the service you need",
+    "askStaff": "Please ask the agent",
+    "back": "Back",
+    "getNumber": "Get my number",
+    "issuing": "One moment…",
+    "yourNumber": "Your number",
+    "ahead": "{count} ahead of you",
+    "youAreNext": "You are next",
+    "scanQr": "Scan with your phone to follow your place in line",
+    "print": "Print my ticket",
+    "done": "Done",
+    "returning": "Back to the start in {seconds} s",
+    "duplicate": "You already have a ticket, here it is",
+    "optional": "optional",
+    "field_name": "Your name",
+    "field_phone": "Mobile number",
+    "field_company": "Company",
+    "field_email": "Email",
+    "field_notes": "Notes",
+    "keypad": "Number keypad",
+    "clear": "Clear",
+    "delete": "Delete",
+    "language": "Language",
+    "unavailableTitle": "Self check-in is not available here",
+    "unavailableBody": "Please ask the staff to give you a ticket.",
+    "offlineTitle": "We cannot reach the system",
+    "offlineBody": "Please try again in a moment, or ask the staff for a ticket.",
+    "retry": "Try again",
+    "offlineBanner": "The connection is unstable. Taking a ticket may not work right now.",
+    "networkError": "We could not reach the system. Please try again, or ask the staff.",
+    "queueFull": "The line is full right now. Please ask the staff.",
+    "slowDown": "Please wait a moment and try again.",
+    "askStaffError": "This service needs a member of staff. Please ask the agent.",
+    "invalidPhone": "Please check the phone number.",
+    "missingField": "Please fill in the required details.",
+    "genericError": "Something went wrong. Please ask the staff."
+  },
+  "walkIn": {
+    "button": "New walk-in visitor",
+    "title": "New walk-in visitor",
+    "mode": "What to do with the ticket",
+    "serveNow": "Serve now",
+    "serveNowHint": "Take this visitor yourself, straight away",
+    "addToQueue": "Add to queue",
+    "addToQueueHint": "A normal ticket: the next free agent calls it",
+    "atCapacity": "You are already serving as many visitors as you can",
+    "noReasons": "No service is available for this choice.",
+    "servedNow": "You are now serving this visitor.",
+    "scanQr": "The visitor can scan this to follow their place on their phone",
+    "noPrinter": "This computer has no printer (show the ticket on screen instead)",
+    "print": "Print",
+    "another": "Another visitor",
+    "close": "Close"
+  },
+  "coverage": {
+    "staffed": "Reception: staffed",
+    "notStaffed": "Reception: not staffed",
+    "agentIssuingOn": "Agents can issue tickets",
+    "kiosks": "Kiosks: {count}",
+    "noWay": "No way to issue tickets",
+    "enableAgent": "Enable agent walk-in issuing",
+    "addKiosk": "Add a kiosk",
+    "enabled": "Agents of this branch can now issue walk-in tickets",
+    "cityNoReception": "{count} without a receptionist",
+    "cityAllStaffed": "All branches have a receptionist",
+    "cityNoWay": "{count} cannot issue tickets",
+    "cardTitle": "{count} branches have no way to issue tickets",
+    "cardBody": "These branches have no receptionist, agent walk-in issuing is off and no kiosk is paired. Visitors there cannot get a ticket.",
+    "more": "and {count} more",
+    "goBranches": "Open branches"
   }
 }

@@ -22,7 +22,10 @@ import type { Actor } from "../admin/actor";
 import { AppError } from "../http/errors";
 import { feedbackCardFor } from "../feedback/service";
 import { getSetting } from "../settings/service";
+import { pickByCity } from "../settings/templates";
+import { hiddenReasonIds } from "./city-reasons";
 import { breakStatus } from "./breaks";
+import { agentIssuingState } from "./reception-status";
 import { loadBranchContext } from "./snapshot";
 import { canOfferUpdates } from "../notifications/optin";
 import { waitDisplayOf } from "./wait-analytics";
@@ -131,6 +134,30 @@ export async function receptionContext(actor: Actor, requestedBranchId?: string 
   const allowed = await workBranches(actor, "tickets.issue");
   if (!allowed.length) throw new AppError("forbidden", { reason: "no_branch" });
   const branch = allowed.find((b) => b.id === requestedBranchId) ?? allowed[0];
+  return issueContext(actor, branch, allowed, { activeOnly: false });
+}
+
+/**
+ * Reference data for the agent's walk-in panel (D61): the same shape as the reception context, limited to the agent's
+ * own branch and to the reasons that have an active queue there. `null` when walk-in issuing is not available.
+ */
+export async function walkInContext(actor: Actor) {
+  if (!can(actor.auth.grants, "tickets.issue_self")) throw new AppError("forbidden");
+  const [profile] = await db().select().from(agentProfiles).where(eq(agentProfiles.userId, actor.auth.user.id));
+  if (!profile || !can(actor.auth.grants, "tickets.issue_self", profile.branchId))
+    throw new AppError("forbidden", { reason: "not_an_agent" });
+  const state = await agentIssuingState(actor.auth.user.organizationId, profile.branchId);
+  if (!state.allowed) throw new AppError("forbidden", { reason: "agent_issuing_off" });
+  const [branch] = await db().select().from(branches).where(eq(branches.id, profile.branchId));
+  return issueContext(actor, branch, [branch], { activeOnly: true });
+}
+
+async function issueContext(
+  actor: Actor,
+  branch: typeof branches.$inferSelect,
+  allowed: (typeof branches.$inferSelect)[],
+  opts: { activeOnly: boolean },
+) {
   const org = actor.auth.user.organizationId;
 
   const [
@@ -146,6 +173,7 @@ export async function receptionContext(actor: Actor, requestedBranchId?: string 
     regional,
     printTpl,
     queueRows,
+    hiddenReasons,
   ] = await Promise.all([
     db()
       .select()
@@ -173,31 +201,40 @@ export async function receptionContext(actor: Actor, requestedBranchId?: string 
           eq(messageTemplates.organizationId, org),
           eq(messageTemplates.channel, "ticket_print"),
           eq(messageTemplates.event, "ticket_issued"),
+          or(isNull(messageTemplates.cityId), eq(messageTemplates.cityId, branch.cityId)),
         ),
       ),
-    db().select({ id: queues.id, reasonId: queues.reasonId }).from(queues).where(eq(queues.branchId, branch.id)),
+    db()
+      .select({ id: queues.id, reasonId: queues.reasonId, isActive: queues.isActive })
+      .from(queues)
+      .where(eq(queues.branchId, branch.id)),
+    hiddenReasonIds(branch.cityId),
   ]);
 
+  // A reason is open when the branch queue is active and its city has not hidden it; hidden ones are not offered at all.
+  const openReasons = new Set(queueRows.filter((q) => q.isActive && !hiddenReasons.has(q.reasonId)).map((q) => q.reasonId));
   const reasons = await Promise.all(
-    reasonRows.map(async (r) => {
-      const waiting = ctx.snapshot.tickets.filter((t) => t.reasonId === r.id && t.status === "WAITING").length;
-      return {
-        id: r.id,
-        code: r.code,
-        name: r.name,
-        icon: r.icon,
-        color: r.color,
-        prefix: r.prefix,
-        intakeFields: r.intakeFields,
-        defaultPriorityKey: r.defaultPriorityKey,
-        isFeatured: r.isFeatured,
-        shortcutKey: r.shortcutKey,
-        allowAppointments: r.allowAppointments,
-        expectedServiceMinutes: r.expectedServiceMinutes,
-        waiting,
-        agentsAvailable: ctx.snapshot.agents.filter((a) => a.skills.has(r.id) && a.status === "AVAILABLE").length,
-      };
-    }),
+    reasonRows
+      .filter((r) => !hiddenReasons.has(r.id) && (!opts.activeOnly || openReasons.has(r.id)))
+      .map(async (r) => {
+        const waiting = ctx.snapshot.tickets.filter((t) => t.reasonId === r.id && t.status === "WAITING").length;
+        return {
+          id: r.id,
+          code: r.code,
+          name: r.name,
+          icon: r.icon,
+          color: r.color,
+          prefix: r.prefix,
+          intakeFields: r.intakeFields,
+          defaultPriorityKey: r.defaultPriorityKey,
+          isFeatured: r.isFeatured,
+          shortcutKey: r.shortcutKey,
+          allowAppointments: r.allowAppointments,
+          expectedServiceMinutes: r.expectedServiceMinutes,
+          waiting,
+          agentsAvailable: ctx.snapshot.agents.filter((a) => a.skills.has(r.id) && a.status === "AVAILABLE").length,
+        };
+      }),
   );
   const agentUsers = ctx.snapshot.agents.length
     ? await db()
@@ -240,7 +277,7 @@ export async function receptionContext(actor: Actor, requestedBranchId?: string 
     /** How the estimated wait is worded on the ticket and confirmation. */
     waitDisplay: waitDisplayOf(ctx.wait.settings),
     print: {
-      template: printTpl[0]?.body ?? null,
+      template: pickByCity(printTpl, branch.cityId)?.body ?? null,
       footer: branding.ticketFooter,
       companyName: branding.companyName,
       logoUrl: branding.logoUrl,
@@ -260,6 +297,9 @@ export async function agentWorkspace(actor: Actor) {
   const [profile] = await db().select().from(agentProfiles).where(eq(agentProfiles.userId, me));
   if (!profile) throw new AppError("forbidden", { reason: "not_an_agent" });
   const org = actor.auth.user.organizationId;
+  const walkIn = can(actor.auth.grants, "tickets.issue_self", profile.branchId)
+    ? await agentIssuingState(org, profile.branchId)
+    : null;
 
   return db().transaction(async (tx) => {
     const bctx = await loadBranchContext(tx, profile.branchId);
@@ -367,6 +407,8 @@ export async function agentWorkspace(actor: Actor) {
 
     return {
       now: new Date(s.now).toISOString(),
+      /** Whether this agent may issue walk-in tickets from the agent screen (permission and branch setting, D61). */
+      walkIn: { allowed: !!walkIn?.allowed },
       profile: {
         status: profile.status,
         statusChangedAt: profile.statusChangedAt.toISOString(),

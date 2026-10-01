@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { ConnectionPill, Elapsed, formatElapsed, SlaTimer, StatusBadge } from "../queue/bits";
 import type { AgentWorkspace, BreakEvent, Ticket, VisitHistoryItem } from "../queue/types";
 import { useLiveQuery } from "../queue/use-queue";
+import { WalkInButton } from "./walk-in-panel";
 
 type Status = AgentWorkspace["profile"]["status"];
 const STATUSES: Status[] = ["AVAILABLE", "BUSY", "ON_BREAK", "AWAY", "OFFLINE"];
@@ -101,6 +102,7 @@ export function AgentWorkspaceView() {
   const [completeFor, setCompleteFor] = useState<Ticket | null>(null);
   const [transferFor, setTransferFor] = useState<Ticket | null>(null);
   const [breakPicker, setBreakPicker] = useState(false);
+  const [walkInOpen, setWalkInOpen] = useState(false);
   // With several visitors at once, the agent works on one at a time; this is the one in focus.
   const [focusId, setFocusId] = useState<string | null>(null);
   const knownActive = useRef<string[]>([]);
@@ -200,7 +202,7 @@ export function AgentWorkspaceView() {
   // Keyboard / USB call button: Enter = primary action, R = recall.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (isTyping(e) || completeFor || transferFor || breakPicker || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (isTyping(e) || completeFor || transferFor || breakPicker || walkInOpen || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.key === "Enter" || e.key === "NumpadEnter") {
         e.preventDefault();
         primary();
@@ -211,7 +213,7 @@ export function AgentWorkspaceView() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [primary, current, action, completeFor, transferFor, breakPicker]);
+  }, [primary, current, action, completeFor, transferFor, breakPicker, walkInOpen]);
 
   if (ws.isLoading) return <LoadingRows rows={6} />;
   if (ws.error instanceof ApiError && ws.error.details?.reason === "not_an_agent") return <NotAnAgent />;
@@ -284,6 +286,7 @@ export function AgentWorkspaceView() {
               </option>
             ))}
           </NativeSelect>
+          <WalkInButton ws={data} open={walkInOpen} onOpenChange={setWalkInOpen} onChanged={refresh} />
           <ConnectionPill state={ws.connection} />
         </div>
       </div>

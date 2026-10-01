@@ -97,6 +97,7 @@ export type ReceptionContext = {
     askPriority: boolean;
     askLanguage: boolean;
     defaultLanguage: "interface" | "ar" | "en";
+    agentIssuing?: "off" | "when_no_reception" | "always";
   };
   regional: { digitsTicket: "latn" | "arab"; digitsScreen: "latn" | "arab" };
   /** Wording of the estimated wait (label, range, disclaimer, "next" text). */
@@ -110,6 +111,8 @@ export type ReceptionContext = {
 
 export type AgentWorkspace = {
   now: string;
+  /** The agent may issue walk-in tickets from this screen (permission and branch setting). */
+  walkIn: { allowed: boolean };
   profile: {
     status: "AVAILABLE" | "BUSY" | "ON_BREAK" | "AWAY" | "OFFLINE";
     statusChangedAt: string;

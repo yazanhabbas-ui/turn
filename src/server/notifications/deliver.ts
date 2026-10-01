@@ -1,4 +1,4 @@
-import { and, eq, inArray, lte, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, lte, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { branches, desks, messageTemplates, notificationsLog, tickets, visitReasons, visitors } from "@/db/schema";
 import { looksLikeEmail, RateLimiter, renderMessage, retryDelaySeconds, type NotifyChannel } from "@/domain/notifications/policy";
@@ -7,6 +7,7 @@ import { pickText } from "@/i18n/locales";
 import { logger } from "../logger";
 import { providerFor } from "../messaging/providers";
 import { getSetting } from "../settings/service";
+import { pickByCity } from "../settings/templates";
 import { defaultTemplate } from "./defaults";
 import { registerFeedbackTemplateVars } from "../feedback/register";
 import { buildTemplateVars } from "./vars";
@@ -22,9 +23,12 @@ const LEASE_SECONDS = 300;
 type Cursor = { index: number; tries: number };
 type Payload = { locale?: string; channels?: NotifyChannel[]; cursor?: Cursor; ahead?: string; wait?: string };
 
-/** The template for a channel and event: the organization's own if it has one, otherwise the built-in wording. */
-export async function templateFor(organizationId: string, channel: string, event: string) {
-  const [row] = await db()
+/**
+ * The template for a channel and event: the branch's city own wording if it has one, else the organization's, else the
+ * built-in wording.
+ */
+export async function templateFor(organizationId: string, channel: string, event: string, cityId: string | null = null) {
+  const rows = await db()
     .select()
     .from(messageTemplates)
     .where(
@@ -32,8 +36,10 @@ export async function templateFor(organizationId: string, channel: string, event
         eq(messageTemplates.organizationId, organizationId),
         eq(messageTemplates.channel, channel),
         eq(messageTemplates.event, event),
+        cityId ? or(isNull(messageTemplates.cityId), eq(messageTemplates.cityId, cityId)) : isNull(messageTemplates.cityId),
       ),
     );
+  const row = pickByCity(rows, cityId);
   if (row) return row.isActive ? { subject: row.subject, body: row.body, providerTemplate: row.providerTemplate } : null;
   const d = defaultTemplate(channel, event);
   return d ? { subject: d.subject ?? null, body: d.body, providerTemplate: null } : null;
@@ -122,7 +128,7 @@ async function deliver(logId: string, schedule: Schedule) {
   while (index < chain.length) {
     const channel = chain[index];
     const provider = providerFor(channel);
-    const tpl = await templateFor(t.organizationId, channel, row.event);
+    const tpl = await templateFor(t.organizationId, channel, row.event, branch?.cityId ?? null);
     const to = channel === "email" ? (looksLikeEmail(t.intake?.email) ? t.intake.email.trim() : null) : (v?.phone ?? null);
     if (!provider || !tpl || !to) {
       lastError = !provider ? "channel_not_configured" : !tpl ? "template_missing" : "no_recipient";

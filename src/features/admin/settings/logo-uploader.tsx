@@ -237,7 +237,7 @@ export function LogoUploader({
             <Input
               dir="ltr"
               aria-label={dark ? t("linkLabelDark") : t("linkLabel")}
-              placeholder="https://"
+              placeholder="/branding/logo.png"
               value={value ?? ""}
               onChange={(e) => onChange(e.target.value || null)}
             />

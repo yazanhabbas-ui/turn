@@ -4,6 +4,7 @@ import { displays } from "@/db/schema";
 import { audit } from "../audit";
 import { randomCode, randomToken, sha256Hex } from "../crypto";
 import { AppError } from "../http/errors";
+import { rateLimit } from "../rate-limit";
 import { io } from "../realtime";
 
 export type DisplayRow = typeof displays.$inferSelect;
@@ -30,12 +31,26 @@ export async function issuePairingCode(displayId: string): Promise<{ code: strin
  * Exchanges a pairing code for a long-lived device token (shown once; only its hash is stored). A device that
  * pairs again gets a new token and the previous one stops working.
  */
-export async function pairDevice(rawCode: string, meta: { ip: string; userAgent: string | null }) {
+export async function pairDevice(
+  rawCode: string,
+  meta: { ip: string; userAgent: string | null },
+  kind: "display" | "kiosk" = "display",
+) {
+  // Pairing is rare. Besides the per-address limit on the route, a global ceiling stops a spread-out guessing run
+  // (a pairing code is 6 characters from a 31-letter alphabet and lives 15 minutes).
+  if (!(await rateLimit("display-pair-global", 120, 60_000)).ok) throw new AppError("rate_limited");
   const code = rawCode.trim().toUpperCase().replace(/[\s-]/g, "");
   const [d] = await db()
     .select()
     .from(displays)
-    .where(and(eq(displays.pairingCode, code), gt(displays.pairingExpiresAt, new Date()), isNull(displays.archivedAt)));
+    .where(
+      and(
+        eq(displays.pairingCode, code),
+        eq(displays.kind, kind),
+        gt(displays.pairingExpiresAt, new Date()),
+        isNull(displays.archivedAt),
+      ),
+    );
   if (!d) throw new AppError("not_found", { reason: "invalid_pairing_code" });
   const token = randomToken(32);
   await db()
@@ -63,19 +78,25 @@ export async function pairDevice(rawCode: string, meta: { ip: string; userAgent:
   });
   // A screen that was paired before is replaced: tell it to go back to the pairing page.
   io()?.to(`display:${d.id}`).emit("display.revoked", { reason: "replaced" });
-  return { token, displayId: d.id, name: d.name };
+  return { token, displayId: d.id, name: d.name, kind: d.kind };
 }
 
 const lastTouch = new Map<string, number>();
 
-/** Resolves a device token to its display. Throws `unauthorized` for unknown, unpaired or revoked devices. */
-export async function authenticateDevice(token: string | null | undefined, meta?: { ip?: string }) {
+export type DeviceKind = "display" | "kiosk";
+
+/**
+ * Resolves a device token to its device. Throws `unauthorized` for unknown, unpaired or revoked devices, and for a
+ * device of another kind: a kiosk token never opens the waiting-room screen's data, and a screen token never issues
+ * tickets (D61).
+ */
+export async function authenticateDevice(token: string | null | undefined, meta?: { ip?: string }, kind: DeviceKind = "display") {
   if (!token) throw new AppError("unauthorized");
   const [d] = await db()
     .select()
     .from(displays)
     .where(eq(displays.tokenHash, sha256Hex(token)));
-  if (!d || d.revokedAt || d.archivedAt) throw new AppError("unauthorized");
+  if (!d || d.revokedAt || d.archivedAt || d.kind !== kind) throw new AppError("unauthorized");
   const now = Date.now();
   if (now - (lastTouch.get(d.id) ?? 0) > TOUCH_INTERVAL_MS) {
     lastTouch.set(d.id, now);

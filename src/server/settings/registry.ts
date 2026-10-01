@@ -25,6 +25,17 @@ const notificationEvent = (enabled: boolean) =>
     })
     .prefault({});
 
+/** A picture served by this server (a path) or embedded in the value: never another site, never svg (it can carry scripts). */
+export const localImage = z
+  .string()
+  .max(2_000_000)
+  .refine(
+    (v) =>
+      (v.startsWith("/") && !v.startsWith("//") && !v.startsWith("/\\")) ||
+      (/^data:image\//.test(v) && !v.startsWith("data:image/svg")),
+    { message: "local_image_only" },
+  );
+
 /**
  * Every configurable setting: key → schema with defaults. Values live in the `settings` table
  * (organization-wide, optionally overridden per branch) and are edited from Admin → Settings.
@@ -33,9 +44,9 @@ export const SETTINGS = {
   branding: z
     .object({
       companyName: localized.default({ ar: "دور", en: "Dor" }),
-      logoUrl: z.string().nullable().default(null),
+      logoUrl: localImage.nullable().default(null).catch(null),
       /** Logo for dark and brand-coloured backgrounds (display, wallboard); empty = use `logoUrl`. */
-      logoDarkUrl: z.string().nullable().default(null),
+      logoDarkUrl: localImage.nullable().default(null).catch(null),
       primaryColor: z.string().default("#0f766e"),
       accentColor: z.string().default("#b45309"),
       font: z.enum(BRAND_FONTS).default("IBM Plex Sans Arabic"),
@@ -90,8 +101,21 @@ export const SETTINGS = {
     .prefault({}),
   privacy: z
     .object({
-      /** Visitor personal data is anonymized after this many days (0 = keep until manually erased). */
-      retentionDays: z.number().int().min(0).max(3650).default(90),
+      /**
+       * Data retention. Every period is in days; 0 keeps that kind of data until it is erased by hand. See D56.
+       * Visitor personal data (name, phone, company) is anonymized this many days after the last visit.
+       */
+      retentionDays: z.number().int().min(0).max(3650).default(365),
+      /** Free text and intake answers of finished tickets (completed, no-show, cancelled). */
+      ticketDataDays: z.number().int().min(0).max(3650).default(365),
+      /** Comments left with a satisfaction rating. The score itself is kept. */
+      commentDays: z.number().int().min(0).max(3650).default(365),
+      /** Recipient and message variables of the notification log. The delivery status is kept. */
+      notificationDays: z.number().int().min(0).max(3650).default(90),
+      /** Audit log entries. Security-critical entries are never removed before AUDIT_SECURITY_MIN_DAYS. */
+      auditDays: z.number().int().min(0).max(3650).default(365),
+      /** Expired sessions, invitations, password-reset tokens and pairing codes, counted from their expiry. */
+      credentialDays: z.number().int().min(0).max(3650).default(30),
       consentText: localized.default({
         ar: "أوافق على استخدام بياناتي لغرض خدمتي في هذه الزيارة فقط.",
         en: "I agree that my data is used only to serve me during this visit.",
@@ -300,6 +324,36 @@ export const SETTINGS = {
       askLanguage: z.boolean().default(true),
       /** interface = the receptionist's own language. */
       defaultLanguage: z.enum(["interface", "ar", "en"]).default("interface"),
+      /**
+       * May an agent issue a walk-in ticket from the agent screen? off = never; when_no_reception = only in a branch
+       * without a receptionist (see `branchHasReception`); always = every branch. See D61.
+       */
+      agentIssuing: z.enum(["off", "when_no_reception", "always"]).default("when_no_reception"),
+    })
+    .prefault({}),
+  /**
+   * Self check-in kiosk: a paired tablet where visitors take their own ticket. Volume limits only, never a time rule
+   * (D61). A city or branch can override every value.
+   */
+  selfCheckin: z
+    .object({
+      enabled: z.boolean().default(false),
+      /** Seconds the ticket stays on screen before the kiosk returns to the start. */
+      idleSeconds: z.number().int().min(5).max(120).default(20),
+      showWait: z.boolean().default(true),
+      showQr: z.boolean().default(true),
+      /** Print the ticket through the browser print dialog (kiosk Chrome with --kiosk-printing prints silently). */
+      printTicket: z.boolean().default(false),
+      /** Reasons offered on the kiosk. Empty = every reason that allows self-service. */
+      allowedReasons: z.array(z.string().uuid()).max(100).default([]),
+      welcomeText: localized.default({
+        ar: "أهلاً بك، اختر الخدمة للحصول على رقمك",
+        en: "Welcome, choose a service to get your number",
+      }),
+      /** The most visitors that may be waiting in the branch before the kiosk stops issuing (0 = no limit). */
+      maxWaiting: z.number().int().min(0).max(2000).default(0),
+      /** Tickets one kiosk may issue per minute. */
+      ratePerMinute: z.number().int().min(1).max(120).default(12),
     })
     .prefault({}),
   /** Report definitions. */
@@ -390,6 +444,7 @@ export function defaultSetting<K extends SettingKey>(key: K): SettingValue<K> {
 export const BRANCH_OVERRIDABLE: readonly SettingKey[] = [
   "wifi",
   "reception",
+  "selfCheckin",
   "alerts",
   "wallboard",
   "feedback",
@@ -397,3 +452,40 @@ export const BRANCH_OVERRIDABLE: readonly SettingKey[] = [
   "waitEstimate",
   "notifications",
 ];
+
+/**
+ * Settings a city may override for its own branches (D60). Resolution is organization default ← city ← branch, the
+ * most specific wins. A conscious list, one decision per key:
+ *  - city-overridable: everything operational that legitimately differs between cities (language and digit habits,
+ *    ticket numbering, reception behaviour, Wi-Fi, waiting-time wording, how agents work, breaks, feedback,
+ *    visitor notifications, screens and voice, alert thresholds, report targets, the visitor status page).
+ *  - NOT overridable, organization-level only: `branding` (company identity: logo, colours, fonts, texts), `security`
+ *    (password policy, lockout, 2FA, invites) and `privacy` (retention periods are a legal commitment, and consent
+ *    text shares the group with them). Cities, roles, API keys, webhooks and message-provider credentials are not
+ *    settings at all and stay organization-wide.
+ * Every branch-overridable key is also city-overridable (the assertion below keeps it that way).
+ */
+export const CITY_OVERRIDABLE: readonly SettingKey[] = [
+  "regional",
+  "ticketing",
+  "reception",
+  "selfCheckin",
+  "wifi",
+  "waitEstimate",
+  "visitorStatus",
+  "feedback",
+  "agentWork",
+  "breaks",
+  "notifications",
+  "wallboard",
+  "displayTheme",
+  "voice",
+  "alerts",
+  "reports",
+];
+
+for (const k of BRANCH_OVERRIDABLE)
+  if (!CITY_OVERRIDABLE.includes(k)) throw new Error(`BRANCH_OVERRIDABLE key ${k} must be city-overridable`);
+
+export const isCityOverridable = (key: string): key is SettingKey => (CITY_OVERRIDABLE as readonly string[]).includes(key);
+export const isBranchOverridable = (key: string): key is SettingKey => (BRANCH_OVERRIDABLE as readonly string[]).includes(key);

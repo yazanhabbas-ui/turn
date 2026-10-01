@@ -6,7 +6,16 @@ import { api, ApiError } from "@/lib/api";
 import type { T } from "./text";
 
 /** First screen on a new TV: enter the code an administrator generated under Admin → Screens. */
-export function Pairing({ t, onPaired }: { t: T; onPaired: (token: string) => void }) {
+export function Pairing({
+  t,
+  onPaired,
+  endpoint = "/api/v1/public/display/pair",
+}: {
+  t: T;
+  onPaired: (token: string) => void;
+  /** Where the code is exchanged: the display's endpoint by default, the kiosk's for the self check-in tablet. */
+  endpoint?: string;
+}) {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +26,7 @@ export function Pairing({ t, onPaired }: { t: T; onPaired: (token: string) => vo
     setBusy(true);
     setError(null);
     try {
-      const res = await api<{ token: string }>("/api/v1/public/display/pair", { body: { code: value } });
+      const res = await api<{ token: string }>(endpoint, { body: { code: value } });
       onPaired(res.token);
     } catch (err) {
       setError(
@@ -31,7 +40,7 @@ export function Pairing({ t, onPaired }: { t: T; onPaired: (token: string) => vo
     }
   }
 
-  // `/display?code=ABC123` pairs without typing (handy when setting up a TV remotely).
+  // `/display?code=ABC123` (or `/kiosk?code=ABC123`) pairs without typing (handy when setting up a TV remotely).
   useEffect(() => {
     if (tried.current) return;
     tried.current = true;

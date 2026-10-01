@@ -24,7 +24,19 @@ const isTyping = (el: EventTarget | null) => {
  * Two-column settings layout: grouped navigation with search on the start side (a select on phones), and the active
  * section on the other. The section lives in `?section=`, unsaved edits are guarded when leaving a section.
  */
-export function SettingsShell({ sections, render }: { sections: SectionDef[]; render: (id: SectionId) => React.ReactNode }) {
+export function SettingsShell({
+  sections,
+  render,
+  meta,
+  topBar,
+}: {
+  sections: SectionDef[];
+  render: (id: SectionId) => React.ReactNode;
+  /** The "Applies to" badge text for a section (its level, or where its value comes from at the chosen scope). */
+  meta: (section: SectionDef) => string;
+  /** Rendered above the navigation, inside the shell (so it can use the unsaved-edits guard). */
+  topBar?: React.ReactNode;
+}) {
   const t = useTranslations("settings");
   const params = useSearchParams();
   const requested = params.get("section");
@@ -133,6 +145,7 @@ export function SettingsShell({ sections, render }: { sections: SectionDef[]; re
     <SettingsShellContext.Provider value={shell}>
       <div className="mx-auto max-w-6xl">
         <PageHeader title={t("title")} description={t("description")} />
+        {topBar}
         <div className="gap-8 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
           <aside className="mb-5 space-y-3 lg:sticky lg:top-20 lg:mb-0 lg:max-h-[calc(100dvh-6rem)] lg:self-start lg:overflow-y-auto lg:pe-1">
             <div className="relative">
@@ -283,7 +296,7 @@ export function SettingsShell({ sections, render }: { sections: SectionDef[]; re
                 <h2 className="text-lg leading-tight font-bold">{title(current.id)}</h2>
                 <p className="text-muted-foreground mt-0.5 text-sm">{t(`sectionDescriptions.${current.id}`)}</p>
                 <Badge variant="outline" className="mt-2">
-                  {t("ui.appliesTo")}: {t(current.scope === "branch" ? "ui.scopeBranch" : "ui.scopeOrganization")}
+                  {t("ui.appliesTo")}: {meta(current)}
                 </Badge>
               </div>
             </header>

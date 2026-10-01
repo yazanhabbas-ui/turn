@@ -16,6 +16,7 @@ import { REGION_TIMEZONES } from "@/domain/validation";
 import type { Branch, City, Desk, Floor, L } from "../types";
 import { LOOKUPS, useLookups, useText } from "../use-lookups";
 import { useListJoin } from "../use-list";
+import { ReceptionBadge } from "../coverage/coverage";
 
 const BRANCHES = "/api/v1/admin/branches";
 const invalidate = [[BRANCHES], [LOOKUPS]];
@@ -132,6 +133,9 @@ function BranchCard({ branch, canManage, onEdit }: { branch: Branch; canManage: 
                 {t("isDefault")}
               </Badge>
             )}
+          </div>
+          <div className="mt-2">
+            <ReceptionBadge branchId={branch.id} canManage={canManage} />
           </div>
           <p className="text-muted-foreground mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
             {branch.address && text(branch.address) && (

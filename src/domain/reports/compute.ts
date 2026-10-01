@@ -368,6 +368,22 @@ export function computeReport(input: ReportInput): ReportData {
     ([k, count]) => [Number(k.split(":")[0]), Number(k.split(":")[1]), count] as [number, number, number],
   );
 
+  // Per way of issuing the ticket (D61): reception, agent walk-in, kiosk, appointment check-in, API.
+  const SOURCE_ORDER = ["reception", "agent", "kiosk", "appointment", "api"];
+  const sourceOf = (f: TicketFact) => f.source ?? "reception";
+  const rank = (s: string) => (SOURCE_ORDER.includes(s) ? SOURCE_ORDER.indexOf(s) : SOURCE_ORDER.length);
+  const bySource = [...new Set(facts.map(sourceOf))]
+    .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
+    .map((source) => {
+      const list = facts.filter((f) => sourceOf(f) === source);
+      return {
+        source,
+        visitors: list.length,
+        served: list.filter((f) => f.status === "COMPLETED").length,
+        avgWaitMin: avgWaitOf(list),
+      };
+    });
+
   // Per branch.
   const byBranch = [...new Set(facts.map((f) => f.branchId))].map((branchId) => {
     const list = facts.filter((f) => f.branchId === branchId);
@@ -461,6 +477,7 @@ export function computeReport(input: ReportInput): ReportData {
     })),
     byWeekday: weekdayCount.map((visitors, weekday) => ({ weekday, visitors })),
     byBranch,
+    bySource,
     byReason,
     byShift: shiftRows,
     repeat: repeatVisitors(facts),

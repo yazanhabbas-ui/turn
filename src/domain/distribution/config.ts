@@ -114,7 +114,10 @@ function isObject(v: unknown): v is Record<string, unknown> {
 export function deepMerge(base: unknown, override: unknown): unknown {
   if (!isObject(base) || !isObject(override)) return override === undefined ? base : override;
   const out: Record<string, unknown> = { ...base };
-  for (const [k, v] of Object.entries(override)) out[k] = deepMerge(base[k], v);
+  for (const [k, v] of Object.entries(override)) {
+    if (k === "__proto__" || k === "constructor" || k === "prototype") continue; // admin-supplied JSON must not reach the prototype
+    out[k] = deepMerge(base[k], v);
+  }
   return out;
 }
 

@@ -134,10 +134,15 @@ export async function displayState(display: DisplayRow) {
 
   const [voiceTemplates, packs] = await Promise.all([
     db()
-      .select({ event: messageTemplates.event, body: messageTemplates.body })
+      .select({ event: messageTemplates.event, body: messageTemplates.body, cityId: messageTemplates.cityId })
       .from(messageTemplates)
       .where(
-        and(eq(messageTemplates.organizationId, org), eq(messageTemplates.channel, "voice"), eq(messageTemplates.isActive, true)),
+        and(
+          eq(messageTemplates.organizationId, org),
+          eq(messageTemplates.channel, "voice"),
+          eq(messageTemplates.isActive, true),
+          or(isNull(messageTemplates.cityId), eq(messageTemplates.cityId, branch.cityId)),
+        ),
       ),
     voice.provider === "pack"
       ? db()
@@ -204,7 +209,10 @@ export async function displayState(display: DisplayRow) {
         callLanguages: config.voice.callLanguages ?? voice.callLanguages,
         repeat: config.voice.repeat ?? voice.repeat,
       },
-      templates: Object.fromEntries(voiceTemplates.map((t) => [t.event, t.body])),
+      templates: Object.fromEntries(
+        // A city's own wording is listed last so it wins over the organization's for the same event.
+        [...voiceTemplates].sort((a, b) => Number(a.cityId !== null) - Number(b.cityId !== null)).map((t) => [t.event, t.body]),
+      ),
       packs: Object.fromEntries(packs.map((p) => [p.locale, p.manifest])),
     },
   };

@@ -3,11 +3,11 @@ import { cookies } from "next/headers";
 import { cache } from "react";
 import { can, type Permission } from "@/domain/rbac/permissions";
 import { redirect } from "@/i18n/navigation";
-import { SESSION_COOKIE, validateSessionToken, type AuthContext } from "./session";
+import { sessionCookieName, validateSessionToken, type AuthContext } from "./session";
 
 /** Session of the current request (memoized per request). */
 export const getAuth = cache(async (): Promise<AuthContext | null> => {
-  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  const token = (await cookies()).get(sessionCookieName())?.value;
   if (!token) return null;
   try {
     return await validateSessionToken(token);

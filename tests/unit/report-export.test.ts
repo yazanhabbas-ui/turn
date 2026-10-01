@@ -43,6 +43,10 @@ function sampleReport(): Report {
       { branchId: "b1", name: { ar: "الفرع الرئيسي", en: "Main branch" }, visitors: 80, served: 70, avgWaitMin: 3.9 },
       { branchId: "b2", name: { ar: "فرع الشمال", en: "North branch" }, visitors: 40, served: 34, avgWaitMin: 5.1 },
     ],
+    bySource: [
+      { source: "reception", visitors: 90, served: 80, avgWaitMin: 4.4 },
+      { source: "kiosk", visitors: 30, served: 24, avgWaitMin: 5.2 },
+    ],
     byReason: [
       {
         reasonId: "r1",

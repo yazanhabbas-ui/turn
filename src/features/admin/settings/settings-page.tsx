@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { ErrorState, PageHeader } from "@/components/admin/form";
 import { useApiQuery } from "@/components/admin/use-api";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,7 +16,9 @@ import { PrioritiesSection } from "./sections/priorities-section";
 import { PrivacySection } from "./sections/privacy-section";
 import { ReceptionSection } from "./sections/reception-section";
 import { RegionalSection } from "./sections/regional-section";
-import { sectionsFor, type SectionId } from "./sections/registry";
+import { sectionsFor, SECTIONS, type SectionId } from "./sections/registry";
+import { SelfCheckinSection } from "./sections/self-checkin-section";
+import { RetentionSection } from "./sections/retention-section";
 import { ReportsSection } from "./sections/reports-section";
 import { SecuritySection } from "./sections/security-section";
 import { TicketingSection } from "./sections/ticketing-section";
@@ -23,7 +26,10 @@ import type { AllSettings } from "./sections/types";
 import { VisitorStatusSection } from "./sections/visitor-status-section";
 import { WallboardSection } from "./sections/wallboard-section";
 import { WifiSection } from "./sections/wifi-section";
+import { defaultScope, ScopeSwitcher, scopeAllowed, type ScopeAccess } from "./scope-switcher";
+import { ScopedSection, useSourceLabel, type Sources } from "./scoped-section";
 import { SETTINGS } from "./setting-form";
+import { parseScope, scopeParam, scopeQuery, SettingsScopeContext, type SettingsScope } from "./settings-context";
 import { SettingsShell } from "./settings-shell";
 import { WaitEstimateTab } from "./wait-estimate-tab";
 
@@ -52,12 +58,67 @@ function SettingsSkeleton() {
 }
 
 /**
- * Admin, Settings. `organization` is true for organization-wide admins; a city or branch admin only gets the sections
- * a branch may own (Wi-Fi, waiting time). The layout, search and save bar live in `SettingsShell`.
+ * Admin, Settings. Values are inherited organization, then city, then branch; the scope switcher at the top picks the
+ * level being edited (`?scope=organization | city:<id> | branch:<id>`). Organization-wide admins can edit every level,
+ * a city admin their city and its branches, a branch manager their branches. The layout, search and save bar live
+ * in `SettingsShell`; each section is wrapped in `ScopedSection` (source badge, override toggle, inheritance).
  */
-export function SettingsPage({ organization = true }: { organization?: boolean }) {
-  const settings = useApiQuery<AllSettings>(SETTINGS);
+export function SettingsPage({
+  organization = true,
+  cityIds = "all",
+  branchIds = "all",
+}: {
+  organization?: boolean;
+  cityIds?: string[] | "all";
+  branchIds?: string[] | "all";
+}) {
   const lookups = useLookups();
+  const access: ScopeAccess = {
+    organization,
+    cityIds: organization ? "all" : cityIds,
+    branchIds: organization ? "all" : branchIds,
+  };
+  const [picked, setPicked] = useState<SettingsScope | null>(() =>
+    typeof window === "undefined" ? null : parseScope(new URLSearchParams(window.location.search).get("scope")),
+  );
+  if (lookups.isLoading) return <SettingsSkeleton />;
+  if (lookups.isError || !lookups.data) return <ErrorState onRetry={() => lookups.refetch()} />;
+  const l = lookups.data;
+  const scope: SettingsScope =
+    picked && scopeAllowed(access, picked, l.cities, l.branches) ? picked : defaultScope(access, l.cities, l.branches);
+  return (
+    <ScopedSettings
+      key={scopeParam(scope)}
+      scope={scope}
+      onScope={(next) => {
+        setPicked(next);
+        const url = new URL(window.location.href);
+        url.searchParams.set("scope", scopeParam(next));
+        window.history.replaceState(window.history.state, "", url);
+      }}
+      access={access}
+      organization={organization}
+    />
+  );
+}
+
+function ScopedSettings({
+  scope,
+  onScope,
+  access,
+  organization,
+}: {
+  scope: SettingsScope;
+  onScope: (s: SettingsScope) => void;
+  access: ScopeAccess;
+  organization: boolean;
+}) {
+  const query = scopeQuery(scope);
+  const settings = useApiQuery<AllSettings>(`${SETTINGS}${query}`);
+  const sourcesQuery = useApiQuery<{ sources: Sources }>(scope.kind === "organization" ? null : `${SETTINGS}/sources${query}`);
+  const lookups = useLookups();
+  const sourceLabel = useSourceLabel(lookups.data?.cities ?? [], lookups.data?.branches ?? []);
+  const t = useTranslations("settings.scope");
   if (settings.isLoading || lookups.isLoading) return <SettingsSkeleton />;
   if (settings.isError || !settings.data || !lookups.data) return <ErrorState onRetry={() => settings.refetch()} />;
   const s = settings.data;
@@ -73,14 +134,16 @@ export function SettingsPage({ organization = true }: { organization?: boolean }
         return <TicketingSection initial={s.ticketing} />;
       case "reception":
         return <ReceptionSection initial={s.reception} />;
+      case "selfCheckin":
+        return <SelfCheckinSection initial={s.selfCheckin} />;
       case "wifi":
-        return <WifiSection defaults={s.wifi} branches={l.branches} organization={organization} />;
+        return <WifiSection initial={s.wifi} />;
       case "waitEstimate":
-        return <WaitEstimateTab defaults={s.waitEstimate} branches={l.branches} organization={organization} />;
+        return <WaitEstimateTab initial={s.waitEstimate} />;
       case "visitorStatus":
         return <VisitorStatusSection initial={s.visitorStatus} />;
       case "feedback":
-        return <FeedbackSection defaults={s.feedback} branches={l.branches} organization={organization} />;
+        return <FeedbackSection initial={s.feedback} />;
       case "priorities":
         return <PrioritiesSection items={l.priorities} />;
       case "agents":
@@ -97,10 +160,43 @@ export function SettingsPage({ organization = true }: { organization?: boolean }
         return <AlertsSection initial={s.alerts} />;
       case "security":
         return <SecuritySection initial={s.security} roles={l.roles} />;
+      case "retention":
+        return <RetentionSection initial={s.privacy} />;
       case "privacy":
         return <PrivacySection initial={s.privacy} />;
     }
   };
 
-  return <SettingsShell sections={sectionsFor(organization)} render={render} />;
+  const scoped = (id: SectionId): React.ReactNode => (
+    <ScopedSection
+      section={SECTIONS.find((x) => x.id === id)!}
+      scope={scope}
+      sources={sourcesQuery.data?.sources}
+      values={s}
+      cities={l.cities}
+      branches={l.branches}
+    >
+      {render(id)}
+    </ScopedSection>
+  );
+
+  const meta = (section: (typeof SECTIONS)[number]): string => {
+    if (scope.kind === "organization")
+      return t(
+        section.scope === "organization" ? "appliesOrganization" : section.scope === "city" ? "appliesCity" : "appliesBranch",
+      );
+    const info = section.keys.length ? sourcesQuery.data?.sources[section.keys[0]!] : undefined;
+    return info?.overridable ? sourceLabel(info.source) : t("sourceOrganization");
+  };
+
+  return (
+    <SettingsScopeContext.Provider value={scope}>
+      <SettingsShell
+        sections={sectionsFor(organization)}
+        render={scoped}
+        meta={meta}
+        topBar={<ScopeSwitcher scope={scope} onChange={onScope} access={access} cities={l.cities} branches={l.branches} />}
+      />
+    </SettingsScopeContext.Provider>
+  );
 }

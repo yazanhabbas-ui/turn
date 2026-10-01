@@ -15,7 +15,16 @@ export type AuditEntry = {
   userAgent?: string | null;
 };
 
-const SECRET_FIELDS = new Set(["passwordHash", "totpSecretEnc", "tokenHash", "keyHash", "secret"]);
+const SECRET_FIELDS = new Set([
+  "passwordHash",
+  "totpSecretEnc",
+  "tokenHash",
+  "keyHash",
+  "secret",
+  "pairingCode",
+  "password",
+  "token",
+]);
 
 /** Strips secrets before a snapshot is stored in the audit trail. */
 function scrub(value: unknown): unknown {

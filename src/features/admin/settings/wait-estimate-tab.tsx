@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import type { SettingValue } from "@/server/settings/registry";
 import type { L } from "../types";
 import { useText } from "../use-lookups";
+import { scopeQuery, useSettingsScope, type SettingsScope } from "./settings-context";
 
 type WaitSettings = SettingValue<"waitEstimate">;
 type Stats = {
@@ -103,65 +104,36 @@ function Num({
 
 /**
  * Waiting time shown to visitors: how long one visitor takes (fixed, per reason, or learned from real data), how it
- * is rounded, and how it is worded on the ticket. An organization default plus an own value per branch.
+ * is rounded, and how it is worded on the ticket. The level it applies to is picked at the top of the page.
  */
-export function WaitEstimateTab({
-  defaults,
-  branches,
-  organization,
-}: {
-  defaults: WaitSettings;
-  branches: { id: string; name: L }[];
-  organization: boolean;
-}) {
+export function WaitEstimateTab({ initial }: { initial: WaitSettings }) {
   const t = useTranslations("settings");
-  const text = useText();
-  const [branchId, setBranchId] = useState(organization ? "" : (branches[0]?.id ?? ""));
-  const scoped = useApiQuery<{ waitEstimate: WaitSettings }>(branchId ? `${SETTINGS}?branchId=${branchId}` : null);
-  const clear = useApiMutation(() => api(`${SETTINGS}/waitEstimate?branchId=${branchId}`, { method: "DELETE" }), {
-    invalidate: [[SETTINGS], [`${SETTINGS}?branchId=${branchId}`], ["/api/v1/admin/wait-analytics"]],
-    success: t("weInherited"),
-  });
-  const value = branchId ? scoped.data?.waitEstimate : defaults;
+  const scope = useSettingsScope();
 
   return (
     <div className="max-w-4xl space-y-4">
       <p className="text-muted-foreground text-sm">{t("weIntro")}</p>
-      {branches.length > 0 && (
-        <Field label={t("wifiScope")} htmlFor="we-scope" className="max-w-sm">
-          <NativeSelect id="we-scope" value={branchId} onChange={(e) => setBranchId(e.target.value)}>
-            {organization && <option value="">{t("wifiAllBranches")}</option>}
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {text(b.name)}
-              </option>
-            ))}
-          </NativeSelect>
-        </Field>
-      )}
-      {value ? <WaitForm key={branchId} initial={value} branchId={branchId || null} /> : <LoadingRows rows={4} />}
-      {branchId && (
-        <Button variant="outline" size="sm" disabled={clear.isPending} onClick={() => clear.mutate(undefined)}>
-          {t("wifiUseDefault")}
-        </Button>
-      )}
+      <WaitForm initial={initial} scope={scope} />
     </div>
   );
 }
 
-function WaitForm({ initial, branchId }: { initial: WaitSettings; branchId: string | null }) {
+function WaitForm({ initial, scope }: { initial: WaitSettings; scope: SettingsScope }) {
+  const branchId = scope.kind === "branch" ? scope.id : null;
   const t = useTranslations("settings");
   const tu = useTranslations("ui");
   const [v, setV] = useState(initial);
   useEffect(() => setV(initial), [initial]);
   const set = (patch: Partial<WaitSettings>) => setV((d) => ({ ...d, ...patch }));
-  const save = useApiMutation(
-    () => api(`${SETTINGS}/waitEstimate${branchId ? `?branchId=${branchId}` : ""}`, { method: "PUT", body: v }),
-    {
-      invalidate: [[SETTINGS], [`${SETTINGS}?branchId=${branchId}`], ["/api/v1/admin/wait-analytics"]],
-      success: t("saved"),
-    },
-  );
+  const save = useApiMutation(() => api(`${SETTINGS}/waitEstimate${scopeQuery(scope)}`, { method: "PUT", body: v }), {
+    invalidate: [
+      [SETTINGS],
+      [`${SETTINGS}${scopeQuery(scope)}`],
+      [`${SETTINGS}/sources${scopeQuery(scope)}`],
+      ["/api/v1/admin/wait-analytics"],
+    ],
+    success: t("saved"),
+  });
 
   return (
     <form

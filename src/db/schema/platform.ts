@@ -1,10 +1,12 @@
-import { boolean, index, integer, jsonb, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, index, integer, jsonb, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createdAt, id, ts, updatedAt } from "./_common";
 import { users } from "./identity";
-import { branches, organizations } from "./tenancy";
+import { branches, cities, organizations } from "./tenancy";
 
 /**
- * Key/value settings. `branch_id` null = organization-wide; a branch row overrides the organization value.
+ * Key/value settings in three levels: organization default (no city, no branch) ← city override (`city_id`) ←
+ * branch override (`branch_id`); the most specific wins. A row never has both a city and a branch.
  * Keys and value shapes are declared in src/server/settings/registry.ts.
  */
 export const settings = pgTable(
@@ -15,13 +17,17 @@ export const settings = pgTable(
       .notNull()
       .references(() => organizations.id),
     branchId: uuid("branch_id").references(() => branches.id),
+    cityId: uuid("city_id").references(() => cities.id),
     key: text("key").notNull(),
     value: jsonb("value").notNull(),
     updatedByUserId: uuid("updated_by_user_id").references(() => users.id),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [unique("settings_scope_key_uq").on(t.organizationId, t.branchId, t.key).nullsNotDistinct()],
+  (t) => [
+    unique("settings_scope_key_uq").on(t.organizationId, t.cityId, t.branchId, t.key).nullsNotDistinct(),
+    check("settings_one_scope_ck", sql`${t.cityId} is null or ${t.branchId} is null`),
+  ],
 );
 
 export const auditLogs = pgTable(
@@ -118,3 +124,31 @@ export const idempotencyKeys = pgTable("idempotency_keys", {
   response: jsonb("response"),
   createdAt: createdAt(),
 });
+
+/**
+ * Data-subject requests handled by staff (access export or erasure) and staff-account anonymisations.
+ * No personal data is stored: `subject_ref` is a keyed hash of the visitor (or user) id, `note` is the reason given
+ * by the administrator and `summary` holds counts only.
+ */
+export const privacyRequests = pgTable(
+  "privacy_requests",
+  {
+    id: id(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    /** `access` (export of the data held) or `erasure` (anonymise now). */
+    type: text("type").notNull(),
+    /** `completed` or `failed`. */
+    status: text("status").notNull().default("completed"),
+    /** `visitor` or `user`. */
+    subjectKind: text("subject_kind").notNull().default("visitor"),
+    subjectRef: text("subject_ref").notNull(),
+    requestedAt: ts("requested_at").notNull().defaultNow(),
+    completedAt: ts("completed_at"),
+    performedBy: uuid("performed_by").references(() => users.id),
+    note: text("note"),
+    summary: jsonb("summary").$type<Record<string, unknown>>().notNull().default({}),
+  },
+  (t) => [index("privacy_requests_org_requested_idx").on(t.organizationId, t.requestedAt)],
+);

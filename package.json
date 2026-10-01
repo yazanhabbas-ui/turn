@@ -13,6 +13,9 @@
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "load:smoke": "tsx scripts/load/run.ts --profile smoke",
+    "load:full": "tsx scripts/load/run.ts --profile full",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed/index.ts",
@@ -21,7 +24,12 @@
     "voice:install-arabic": "tsx scripts/install-arabic-voice.ts",
     "local": "tsx scripts/local.ts",
     "voice:build-clips": "node scripts/build-arabic-voice-clips.mjs",
-    "voice:check-clips": "node scripts/check-arabic-voice-clips.mjs"
+    "voice:check-clips": "node scripts/check-arabic-voice-clips.mjs",
+    "verify:deploy": "node scripts/verify-deploy-files.mjs",
+    "admin:create": "tsx src/db/bootstrap-admin.ts",
+    "backup": "node scripts/db-backup.mjs backup",
+    "backup:verify": "node scripts/db-backup.mjs verify",
+    "restore": "node scripts/db-backup.mjs restore"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

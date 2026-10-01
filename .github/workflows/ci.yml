@@ -5,9 +5,26 @@ on:
     branches: [main]
   pull_request:
 
+# Least privilege: jobs only read the repository. Nothing here pushes images or writes to the repo.
+permissions:
+  contents: read
+
+# A newer push to the same branch/PR cancels the run in progress.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Deterministic, non-secret values: the CI databases hold nothing but test data.
+  APP_ENCRYPTION_KEY: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=
+  PHONE_HASH_KEY: ci-phone-hash-key-0123456789
+  NEXT_TELEMETRY_DISABLED: "1"
+
 jobs:
+  # (a) format, lint, typecheck, deployment files, migrations, unit + integration tests, production build.
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     services:
       postgres:
         image: postgres:16-alpine
@@ -21,8 +38,56 @@ jobs:
     env:
       DATABASE_URL: postgres://dor:dor@localhost:5432/dor_test
       TEST_DATABASE_URL: postgres://dor:dor@localhost:5432/dor_test
-      APP_ENCRYPTION_KEY: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=
-      PHONE_HASH_KEY: ci-phone-hash-key-0123456789
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'messages/**', 'next.config.ts') }}
+          restore-keys: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run verify:deploy
+      - run: npm run db:migrate
+      - run: npm test
+      - run: npm run build
+      # The e2e job reuses this production build.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: next-build
+          path: .next
+          include-hidden-files: true
+          retention-days: 1
+          if-no-files-found: error
+
+  # (b) Playwright end-to-end suite (tests/e2e). Skipped while the suite does not exist in the repository.
+  e2e:
+    needs: check
+    if: hashFiles('tests/e2e/**') != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: dor
+          POSTGRES_PASSWORD: dor
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U dor" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      # The suite creates and drops this database itself and starts its own app instance on E2E_PORT.
+      E2E_DATABASE_URL: postgres://dor:dor@localhost:5432/dor_e2e
+      E2E_DIST_DIR: .next
+      CI: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,9 +95,118 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run format:check
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run db:migrate
-      - run: npm test
-      - run: npm run build
+      - uses: actions/download-artifact@v4
+        with:
+          name: next-build
+          path: .next
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # (c) Builds the image and runs the production compose file end to end: migrations, first-admin bootstrap, health,
+  # login, backup with restore test, restore, graceful shutdown. This is the only place compose is exercised.
+  docker:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      COMPOSE_FILE: docker-compose.yml:docker-compose.prod.yml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          push: false
+          tags: dor-queue:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: The production file refuses to start without secrets
+        run: |
+          if docker compose --env-file /dev/null config >/dev/null 2>err.txt; then
+            echo "compose accepted missing secrets"; exit 1
+          fi
+          grep -q "required variable" err.txt
+      - name: Create a throw-away production .env
+        run: |
+          umask 077
+          {
+            echo "APP_URL=http://localhost:3000"
+            echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)"
+            echo "APP_ENCRYPTION_KEY=$(openssl rand -base64 32)"
+            echo "PHONE_HASH_KEY=$(openssl rand -hex 24)"
+            echo "ADMIN_EMAIL=owner@example.com"
+            echo "ADMIN_PASSWORD=Ci-Smoke-Passw0rd-$(openssl rand -hex 4)"
+          } > .env
+          mkdir -p backups
+      - name: Start the stack
+        run: docker compose up -d --no-build
+      - name: Wait until ready
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:3000/api/ready >/dev/null 2>&1; then echo "ready after $i tries"; exit 0; fi
+            sleep 2
+          done
+          docker compose logs --no-color app | tail -80
+          exit 1
+      - name: Smoke test
+        run: |
+          curl -fsS http://localhost:3000/api/health
+          curl -fsS http://localhost:3000/api/ready
+          curl -fsS -o /dev/null -w "login page: %{http_code}\n" http://localhost:3000/ar/login
+          . ./.env
+          code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST http://localhost:3000/api/v1/auth/login \
+            -H "Content-Type: application/json" -H "Origin: http://localhost:3000" \
+            -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}")
+          echo "bootstrap admin login: HTTP $code"
+          [ "$code" = "200" ]
+      - name: Backup with restore test, then restore
+        env:
+          BACKUP_VERIFY_RESTORE: "1"
+        run: |
+          sh scripts/backup.sh
+          test -s backups/last-success.json
+          f=$(ls backups/dor-*.dump | head -1)
+          sh scripts/restore.sh "$f" --yes
+          for i in $(seq 1 60); do
+            curl -fsS http://localhost:3000/api/ready >/dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          docker compose logs --no-color app | tail -50
+          exit 1
+      - name: Graceful shutdown
+        run: |
+          docker compose stop -t 30 app
+          code=$(docker inspect --format '{{.State.ExitCode}}' "$(docker compose ps -aq app)")
+          docker compose logs --no-color app | tail -15
+          [ "$code" = "0" ]
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail=200
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+  # (d) Known vulnerabilities in production dependencies. Reported as a warning, never blocks a merge
+  # (a fix often needs an upstream release); read the log and act on "high" and "critical" items.
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm audit --omit=dev --audit-level=high

@@ -92,6 +92,27 @@
       "when": 1790800300000,
       "tag": "0013_visitor_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790800400000,
+      "tag": "0014_privacy_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1790843627219,
+      "tag": "0016_city_configuration",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790900000000,
+      "tag": "0017_kiosk_self_service",
+      "breakpoints": true
     }
   ]
 }

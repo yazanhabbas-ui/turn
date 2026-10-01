@@ -1,11 +1,11 @@
-import { and, asc, eq, isNull, ne } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, or } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { agentProfiles, shifts } from "@/db/schema";
+import { agentProfiles, branches, cities, shifts } from "@/db/schema";
 import { localizedText, timeOfDay } from "@/domain/validation";
 import { audit } from "../audit";
 import { AppError } from "../http/errors";
-import { auditMeta, orgOf, requireOrgWide, requirePermission, type Actor } from "./actor";
+import { allowedCities, auditMeta, orgOf, requireCityAccess, requireOrgWide, requirePermission, type Actor } from "./actor";
 
 export const shiftInput = z
   .object({
@@ -19,16 +19,46 @@ export const shiftInput = z
     startsAt: timeOfDay,
     endsAt: timeOfDay,
     sortOrder: z.number().int().min(0).max(99).default(0),
+    /** Null = an organization-wide shift (every agent may use it); a city id = only that city's agents. */
+    cityId: z.string().uuid().nullable().default(null),
   })
   .refine((s) => s.startsAt !== s.endsAt, { message: "same_time" });
 
+/**
+ * Organization-wide shifts plus the shifts of the cities the actor can see (all of them for organization-wide
+ * administrators), so a city admin never sees another city's shifts.
+ */
 export async function listShifts(actor: Actor) {
   requirePermission(actor, "admin.access");
+  const scope = allowedCities(actor, "admin.access");
+  const own = scope === "all" ? [] : scope;
+  // A branch-level manager's city is reachable through the branches they can see.
+  const viaBranches =
+    scope === "all"
+      ? []
+      : (await db().select({ cityId: branches.cityId, id: branches.id }).from(branches)).filter((b) =>
+          actor.auth.grants.some((g) => g.permissions.includes("admin.access") && g.branchId === b.id),
+        );
+  const cityIds = [...new Set([...own, ...viaBranches.map((b) => b.cityId)])];
   return db()
     .select()
     .from(shifts)
-    .where(and(eq(shifts.organizationId, orgOf(actor)), isNull(shifts.archivedAt)))
+    .where(
+      and(
+        eq(shifts.organizationId, orgOf(actor)),
+        isNull(shifts.archivedAt),
+        scope === "all" ? undefined : or(isNull(shifts.cityId), cityIds.length ? inArray(shifts.cityId, cityIds) : undefined),
+      ),
+    )
     .orderBy(asc(shifts.sortOrder), asc(shifts.startsAt));
+}
+
+/** Organization shifts need organization-wide settings rights; a city's shift needs city-wide branch management. */
+async function requireShiftWrite(actor: Actor, cityId: string | null) {
+  if (!cityId) return requireOrgWide(actor, "settings.manage");
+  const [c] = await db().select({ organizationId: cities.organizationId }).from(cities).where(eq(cities.id, cityId));
+  if (!c || c.organizationId !== orgOf(actor)) throw new AppError("not_found");
+  requireCityAccess(actor, "branches.manage", cityId);
 }
 
 async function load(actor: Actor, id: string) {
@@ -40,9 +70,12 @@ async function load(actor: Actor, id: string) {
   return s;
 }
 
-/** Shifts are defined once for the organization (super admin); city admins assign their agents to them. */
+/**
+ * Shifts are defined once for the organization (super admin, `cityId` null); a city admin may also define shifts that
+ * belong to their city. Agents pick from the organization's shifts and their own city's.
+ */
 export async function createShift(actor: Actor, input: z.infer<typeof shiftInput>) {
-  requireOrgWide(actor, "settings.manage");
+  await requireShiftWrite(actor, input.cityId);
   const [dup] = await db()
     .select({ id: shifts.id })
     .from(shifts)
@@ -57,8 +90,10 @@ export async function createShift(actor: Actor, input: z.infer<typeof shiftInput
 }
 
 export async function updateShift(actor: Actor, id: string, input: z.infer<typeof shiftInput>) {
-  requireOrgWide(actor, "settings.manage");
   const before = await load(actor, id);
+  // A shift cannot move between the organization and cities, or between cities: archive and recreate instead.
+  if ((input.cityId ?? null) !== before.cityId) throw new AppError("validation", { field: "cityId" });
+  await requireShiftWrite(actor, before.cityId);
   const [dup] = await db()
     .select({ id: shifts.id })
     .from(shifts)
@@ -73,8 +108,8 @@ export async function updateShift(actor: Actor, id: string, input: z.infer<typeo
 }
 
 export async function archiveShift(actor: Actor, id: string) {
-  requireOrgWide(actor, "settings.manage");
   const before = await load(actor, id);
+  await requireShiftWrite(actor, before.cityId);
   const [inUse] = await db()
     .select({ id: agentProfiles.userId })
     .from(agentProfiles)

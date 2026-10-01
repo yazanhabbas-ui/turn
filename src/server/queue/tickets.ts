@@ -20,9 +20,11 @@ import { orderTickets } from "@/domain/distribution/ordering";
 import { nameSkeleton, normalizeArabic } from "@/domain/i18n/arabic-normalize";
 import { formatTicketNumber } from "@/domain/i18n/digits";
 import { nextNumber } from "@/domain/tickets/numbering";
+import { isReasonHiddenInCity } from "./city-reasons";
 import { minutesSinceEnd, shiftState } from "@/domain/shifts/window";
 import { normalizePhone } from "@/domain/tickets/phone";
 import {
+  ACTIVE_WITH_AGENT,
   EVENT_TYPE,
   InvalidTransitionError,
   transition,
@@ -45,8 +47,8 @@ import { loadBranchContext, lockBranch, type BranchContext } from "./snapshot";
 
 type TicketRow = typeof tickets.$inferSelect;
 /** Who performed a queue operation: a signed-in user, or the system (timers). */
-export type QueueActor = Actor | { system: true };
-const isSystem = (a: QueueActor): a is { system: true } => "system" in a;
+export type QueueActor = Actor | { system: true; deviceId?: string };
+const isSystem = (a: QueueActor): a is { system: true; deviceId?: string } => "system" in a;
 
 type Ctx = { tx: Tx; bctx: BranchContext; events: QueueEvent[]; actor: QueueActor; notify: NotifyRequest[] };
 
@@ -211,7 +213,7 @@ export const issueInput = z.object({
   /** Manual mode: the receptionist picks the agent. */
   assignToAgentId: uuid.nullable().optional(),
   appointmentId: uuid.nullable().optional(),
-  source: z.enum(["reception", "kiosk", "appointment", "api"]).default("reception"),
+  source: z.enum(["reception", "agent", "kiosk", "appointment", "api"]).default("reception"),
   idempotencyKey: z.string().min(8).max(100).optional(),
 });
 export type IssueInput = z.infer<typeof issueInput>;
@@ -269,9 +271,27 @@ async function upsertVisitor(ctx: Ctx, orgId: string, fields: Record<string, str
   return row;
 }
 
+/** Extra rules for the ways a ticket is issued other than at the reception desk (D61). */
+export type IssueOptions = {
+  /** Agent walk-in "serve now": the issuing agent takes the new ticket at once (their capacity and skills apply). */
+  serve?: { agentId: string; deskId: string };
+  /** Self check-in: a phone number that already has a waiting ticket in the branch gets that ticket back. */
+  dedupePhone?: boolean;
+  /** Self check-in: refuse a new ticket when this many visitors are already waiting in the branch (0 or unset = no limit). */
+  maxWaiting?: number;
+  /** A device (kiosk) is not a person: it names its organization so retries with the same idempotency key are recognised. */
+  organizationId?: string;
+};
+
+/** Reception issuing (needs `tickets.issue`). Agents and kiosks go through `issueTicketWith`. */
 export async function issueTicket(actor: QueueActor, input: IssueInput): Promise<IssuedTicket> {
   if (!isSystem(actor) && !can(actor.auth.grants, "tickets.issue", input.branchId)) throw new AppError("forbidden");
-  const orgId = isSystem(actor) ? null : actor.auth.user.organizationId;
+  return issueTicketWith(actor, input, {});
+}
+
+/** The issuing service without the reception permission check: callers check their own permission or device. */
+export async function issueTicketWith(actor: QueueActor, input: IssueInput, opts: IssueOptions): Promise<IssuedTicket> {
+  const orgId = isSystem(actor) ? (opts.organizationId ?? null) : actor.auth.user.organizationId;
 
   if (input.idempotencyKey && orgId) {
     const [dup] = await db()
@@ -294,7 +314,8 @@ export async function issueTicket(actor: QueueActor, input: IssueInput): Promise
       .select()
       .from(queues)
       .where(and(eq(queues.branchId, bctx.branch.id), eq(queues.reasonId, reason.id)));
-    if (!queue || !queue.isActive) throw new AppError("validation", { field: "reasonId" });
+    if (!queue || !queue.isActive || (await isReasonHiddenInCity(bctx.branch.cityId, reason.id, tx)))
+      throw new AppError("validation", { field: "reasonId" });
 
     // Data minimisation: only fields configured for this reason are accepted; required ones must be present.
     const allowed = new Map(reason.intakeFields.map((f) => [f.key, f]));
@@ -316,6 +337,31 @@ export async function issueTicket(actor: QueueActor, input: IssueInput): Promise
     const privacy = await getSetting(org, "privacy", bctx.branch.id, tx);
     if (privacy.requireConsent && Object.keys(fields).length > 0 && !input.consent)
       throw new AppError("validation", { reason: "consent_required" });
+
+    if (opts.maxWaiting && opts.maxWaiting > 0) {
+      const waiting = bctx.snapshot.tickets.filter((x) => x.status === "WAITING").length;
+      if (waiting >= opts.maxWaiting) throw new AppError("conflict", { reason: "queue_full" });
+    }
+    if (opts.dedupePhone && fields.phone) {
+      const { phoneCountryCode } = await getSetting(org, "regional", bctx.branch.id, tx);
+      const phone = normalizePhone(fields.phone, phoneCountryCode);
+      if (phone) {
+        const [dup] = await tx
+          .select({ ticket: tickets })
+          .from(tickets)
+          .innerJoin(visitors, eq(visitors.id, tickets.visitorId))
+          .where(
+            and(
+              eq(tickets.branchId, bctx.branch.id),
+              eq(tickets.status, "WAITING"),
+              eq(visitors.organizationId, org),
+              eq(visitors.phoneHash, hashPhone(phone)),
+            ),
+          )
+          .limit(1);
+        if (dup) return { ...positionIn(bctx, dup.ticket), ticket: await toView(tx, dup.ticket), duplicate: true };
+      }
+    }
 
     // Number: atomic per (branch, prefix, service day).
     const prefix = queue.prefix || reason.prefix;
@@ -384,7 +430,12 @@ export async function issueTicket(actor: QueueActor, input: IssueInput): Promise
     await recordEvent(ctx, t, {
       type: "ISSUED",
       to: "WAITING",
-      payload: { source: input.source, appointmentAt: appointmentAt?.toISOString() },
+      payload: {
+        source: input.source,
+        appointmentAt: appointmentAt?.toISOString(),
+        ...(isSystem(actor) && actor.deviceId ? { deviceId: actor.deviceId } : {}),
+        ...(opts.serve ? { serveNow: true } : {}),
+      },
     });
     if (input.appointmentId) {
       await tx.update(appointments).set({ status: "CHECKED_IN", ticketId: t.id }).where(eq(appointments.id, input.appointmentId));
@@ -400,10 +451,54 @@ export async function issueTicket(actor: QueueActor, input: IssueInput): Promise
       await recordEvent(ctx, row, { type: "ASSIGNED", agentId: input.assignToAgentId, payload: { via: "manual" } });
     }
 
+    if (opts.serve) await serveNow(ctx, t, opts.serve);
+
     ctx.events.push({ type: "queue.updated", branchId: t.branchId, cause: "issued", ticketId: t.id });
     await rebalance(ctx);
     const [latest] = await tx.select().from(tickets).where(eq(tickets.id, t.id));
     return { ...positionIn(ctx.bctx, latest), ticket: await toView(tx, latest), duplicate: false };
+  });
+}
+
+/**
+ * Agent walk-in "serve now": the ticket that was just issued goes straight to the issuing agent (called, then
+ * serving) without announcing it on the screens, since the visitor is standing at the desk. Nobody else's place in
+ * the line changes, and the agent's own capacity (several visitors at once) is respected.
+ */
+async function serveNow(ctx: Ctx, t: TicketRow, serve: { agentId: string; deskId: string }) {
+  const agent = ctx.bctx.snapshot.agents.find((a) => a.id === serve.agentId);
+  if (!agent || !agent.skills.has(t.reasonId))
+    throw new AppError("validation", { reason: "agent_cannot_serve", field: "reasonId" });
+  const busy = ctx.bctx.snapshot.tickets.filter((x) => x.servingAgentId === agent.id && ACTIVE_WITH_AGENT.has(x.status)).length;
+  if (busy >= agent.maxConcurrent) throw new AppError("conflict", { reason: "at_capacity" });
+  if (agent.status !== "AVAILABLE" || (await agentProfile(ctx.tx, agent.id)).currentDeskId !== serve.deskId) {
+    await setStatusInTx(ctx, agent.id, "AVAILABLE", { deskId: serve.deskId });
+  }
+  const now = new Date(ctx.bctx.now);
+  const called = await guardedUpdate(ctx, t, {
+    status: next(t, "call"),
+    servingAgentId: agent.id,
+    assignedAgentId: agent.id,
+    assignedAt: now,
+    deskId: serve.deskId,
+    calledAt: now,
+    recallCount: 0,
+  });
+  await recordEvent(ctx, called, {
+    type: "CALLED",
+    from: t.status,
+    to: called.status,
+    agentId: agent.id,
+    deskId: serve.deskId,
+    payload: { serveNow: true },
+  });
+  const serving = await guardedUpdate(ctx, called, { status: next(called, "start"), startedAt: now });
+  await recordEvent(ctx, serving, {
+    type: EVENT_TYPE.start,
+    from: called.status,
+    to: serving.status,
+    agentId: agent.id,
+    deskId: serve.deskId,
   });
 }
 
@@ -430,7 +525,7 @@ function positionIn(
   return { ahead, estimatedWaitMinutes: e.minutes, waitLow: e.low, waitHigh: e.high };
 }
 
-async function describePosition(t: TicketRow): Promise<Omit<IssuedTicket, "duplicate">> {
+export async function describePosition(t: TicketRow): Promise<Omit<IssuedTicket, "duplicate">> {
   return db().transaction(async (tx) => {
     const bctx = await loadBranchContext(tx, t.branchId);
     return { ...positionIn(bctx, t), ticket: await toView(tx, t) };
@@ -753,7 +848,8 @@ export async function ticketAction(actor: QueueActor, ticketId: string, input: T
             .select()
             .from(queues)
             .where(and(eq(queues.branchId, t.branchId), eq(queues.reasonId, input.toReasonId)));
-          if (!q || !q.isActive) throw new AppError("validation", { field: "toReasonId" });
+          if (!q || !q.isActive || (await isReasonHiddenInCity(ctx.bctx.branch.cityId, q.reasonId, ctx.tx)))
+            throw new AppError("validation", { field: "toReasonId" });
           queueId = q.id;
           reasonId = q.reasonId;
         }

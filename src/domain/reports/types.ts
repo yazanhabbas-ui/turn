@@ -24,6 +24,8 @@ export type TicketFact = {
   visitorId: string | null;
   /** SLA target of the ticket's reason, in minutes. */
   slaTargetMinutes: number;
+  /** How the ticket was issued: reception, agent, kiosk, appointment or api (unset = reception). */
+  source?: string;
 };
 
 /** One row of `agent_status_log`: the agent entered `status` at `at`. */
@@ -187,6 +189,8 @@ export type ReportData = {
   byHour: { hour: number; visitors: number; served: number; avgWaitMin: number }[];
   byWeekday: { weekday: number; visitors: number }[];
   byBranch: { branchId: string; name: Record<string, string>; visitors: number; served: number; avgWaitMin: number }[];
+  /** Tickets by how they were issued (reception, agent, kiosk, appointment, api), only sources that occur. */
+  bySource: { source: string; visitors: number; served: number; avgWaitMin: number }[];
   byReason: ReasonReport[];
   /** Visitors by the shift in whose hours they arrived (a last row with shiftId null = outside every shift). */
   byShift: ShiftReport[];

@@ -2,6 +2,7 @@ import {
   BellRing,
   Coffee,
   ConciergeBell,
+  DatabaseZap,
   Flag,
   Hourglass,
   Languages,
@@ -11,6 +12,7 @@ import {
   MonitorPlay,
   Palette,
   ChartColumn,
+  ScanLine,
   ShieldCheck,
   Smartphone,
   Ticket,
@@ -18,6 +20,7 @@ import {
   Wifi,
   type LucideIcon,
 } from "lucide-react";
+import type { SettingKey } from "@/server/settings/registry";
 
 /**
  * The single list of settings sections: navigation, permission gating and the search index all read it.
@@ -31,6 +34,7 @@ export type SectionId =
   | "regional"
   | "ticketing"
   | "reception"
+  | "selfCheckin"
   | "wifi"
   | "waitEstimate"
   | "visitorStatus"
@@ -43,6 +47,7 @@ export type SectionId =
   | "reports"
   | "alerts"
   | "security"
+  | "retention"
   | "privacy";
 
 export type GroupId = "general" | "visitors" | "service" | "screens" | "security";
@@ -53,10 +58,14 @@ export type SectionDef = {
   id: SectionId;
   group: GroupId;
   icon: LucideIcon;
-  /** Shown as the "Applies to" badge: the organization default, or the organization default overridable per branch. */
-  scope: "organization" | "branch";
-  /** Sections a city or branch admin may open. Everything else needs organization-wide settings rights. */
-  branchLevel?: boolean;
+  /**
+   * The lowest level that may hold its own value: "organization" (never overridden), "city" (a city may override it)
+   * or "branch" (a city or one of its branches may). Mirrors CITY_OVERRIDABLE / BRANCH_OVERRIDABLE on the server,
+   * which enforce it; the API's `sources` answer is what the page trusts at run time.
+   */
+  scope: "organization" | "city" | "branch";
+  /** The setting groups this section edits (empty = it edits other data, such as priority levels). */
+  keys: SettingKey[];
   fields: FieldRef[];
   keywords?: string[];
 };
@@ -69,6 +78,7 @@ export const SECTIONS: SectionDef[] = [
     group: "general",
     icon: Palette,
     scope: "organization",
+    keys: ["branding"],
     keywords: ["logo", "brand", "colour", "color", "theme", "شعار", "لوغو", "هوية", "لون", "خط"],
     fields: [
       { key: "companyName", anchor: "br-name" },
@@ -85,7 +95,8 @@ export const SECTIONS: SectionDef[] = [
     id: "regional",
     group: "general",
     icon: Languages,
-    scope: "organization",
+    scope: "city",
+    keys: ["regional"],
     keywords: ["arabic", "english", "digits", "numerals", "hijri", "calendar", "تقويم", "أرقام", "هجري"],
     fields: [
       { key: "digitsScreen", anchor: "rg-ds" },
@@ -100,7 +111,8 @@ export const SECTIONS: SectionDef[] = [
     id: "ticketing",
     group: "visitors",
     icon: Ticket,
-    scope: "organization",
+    scope: "city",
+    keys: ["ticketing"],
     keywords: ["number", "prefix", "counter", "qr", "رقم", "تذكرة", "تصفير"],
     fields: [
       { key: "numberPad", anchor: "tk-pad" },
@@ -113,7 +125,8 @@ export const SECTIONS: SectionDef[] = [
     id: "reception",
     group: "visitors",
     icon: ConciergeBell,
-    scope: "organization",
+    scope: "branch",
+    keys: ["reception"],
     keywords: ["issue", "print", "kiosk", "desk", "طباعة", "استقبال", "إصدار"],
     fields: [
       { key: "oneTapIssue", anchor: "rc-onetap" },
@@ -122,6 +135,41 @@ export const SECTIONS: SectionDef[] = [
       { key: "askLanguage", anchor: "rc-ask-lang" },
       { key: "afterIssue", anchor: "rc-after" },
       { key: "defaultLanguage", anchor: "rc-lang" },
+      { key: "agentIssuing", anchor: "rc-agent" },
+    ],
+  },
+  {
+    id: "selfCheckin",
+    group: "visitors",
+    icon: ScanLine,
+    scope: "branch",
+    keys: ["selfCheckin"],
+    keywords: [
+      "kiosk",
+      "self service",
+      "self-service",
+      "check in",
+      "check-in",
+      "tablet",
+      "touch",
+      "walk-in",
+      "no receptionist",
+      "كشك",
+      "تسجيل ذاتي",
+      "خدمة ذاتية",
+      "جهاز لوحي",
+      "بدون موظف استقبال",
+    ],
+    fields: [
+      { key: "selfCheckinEnabled", anchor: "sc-enabled" },
+      { key: "selfCheckinPrint", anchor: "sc-print" },
+      { key: "selfCheckinShowWait", anchor: "sc-wait" },
+      { key: "selfCheckinShowQr", anchor: "sc-qr" },
+      { key: "selfCheckinIdle", anchor: "sc-idle" },
+      { key: "selfCheckinMaxWaiting", anchor: "sc-max" },
+      { key: "selfCheckinRate", anchor: "sc-rate" },
+      { key: "selfCheckinReasons", anchor: "sc-reasons" },
+      { key: "selfCheckinWelcome", anchor: "sc-welcome-ar" },
     ],
   },
   {
@@ -129,10 +177,9 @@ export const SECTIONS: SectionDef[] = [
     group: "visitors",
     icon: Wifi,
     scope: "branch",
-    branchLevel: true,
+    keys: ["wifi"],
     keywords: ["wifi", "wi fi", "wireless", "internet", "network", "password", "شبكة", "انترنت", "إنترنت"],
     fields: [
-      { key: "wifiScope", anchor: "wf-scope" },
       { key: "wifiEnabled", anchor: "wf-enabled" },
       { key: "wifiSsid", anchor: "wf-ssid" },
       { key: "wifiPassword", anchor: "wf-pass" },
@@ -145,7 +192,7 @@ export const SECTIONS: SectionDef[] = [
     group: "visitors",
     icon: Hourglass,
     scope: "branch",
-    branchLevel: true,
+    keys: ["waitEstimate"],
     keywords: ["wait", "estimate", "eta", "analytics", "انتظار", "تقدير", "مدة"],
     fields: [
       { key: "weMode" },
@@ -168,7 +215,8 @@ export const SECTIONS: SectionDef[] = [
     id: "visitorStatus",
     group: "visitors",
     icon: Smartphone,
-    scope: "organization",
+    scope: "city",
+    keys: ["visitorStatus"],
     keywords: ["status page", "notification", "phone", "صفحة الزائر", "إشعار"],
     fields: [
       { key: "visitorStatusEnabled", anchor: "vs-enabled" },
@@ -180,7 +228,7 @@ export const SECTIONS: SectionDef[] = [
     group: "visitors",
     icon: MessageSquareHeart,
     scope: "branch",
-    branchLevel: true,
+    keys: ["feedback"],
     keywords: [
       "feedback",
       "csat",
@@ -198,7 +246,6 @@ export const SECTIONS: SectionDef[] = [
       "تعليق",
     ],
     fields: [
-      { key: "feedbackScope", anchor: "fb-scope" },
       { key: "feedbackEnabled", anchor: "fb-enabled" },
       { key: "feedbackOnPage", anchor: "fb-page" },
       { key: "feedbackStyle", anchor: "fb-style" },
@@ -216,6 +263,7 @@ export const SECTIONS: SectionDef[] = [
     group: "visitors",
     icon: Flag,
     scope: "organization",
+    keys: [],
     keywords: ["vip", "lane", "weight", "أولوية", "مسار"],
     fields: [{ key: "addPriority" }, { key: "priorityWeight" }, { key: "isLane" }],
   },
@@ -223,7 +271,8 @@ export const SECTIONS: SectionDef[] = [
     id: "agents",
     group: "service",
     icon: UsersRound,
-    scope: "organization",
+    scope: "city",
+    keys: ["agentWork"],
     keywords: ["shift", "workload", "parallel", "دوام", "موظف", "وردية"],
     fields: [
       { key: "multipleVisitors", anchor: "aw-multi" },
@@ -238,7 +287,8 @@ export const SECTIONS: SectionDef[] = [
     id: "breakLimit",
     group: "service",
     icon: Coffee,
-    scope: "organization",
+    scope: "city",
+    keys: ["breaks"],
     keywords: ["simultaneous", "concurrent", "استراحة", "حد"],
     fields: [
       { key: "breakLimitEnabled", anchor: "bl-enabled" },
@@ -251,6 +301,7 @@ export const SECTIONS: SectionDef[] = [
     group: "service",
     icon: ListChecks,
     scope: "organization",
+    keys: [],
     keywords: ["lunch", "prayer break", "استراحة", "غداء"],
     fields: [{ key: "addBreak" }, { key: "maxMinutes" }, { key: "productive" }],
   },
@@ -258,7 +309,8 @@ export const SECTIONS: SectionDef[] = [
     id: "wallboard",
     group: "screens",
     icon: MonitorPlay,
-    scope: "organization",
+    scope: "branch",
+    keys: ["wallboard", "displayTheme"],
     keywords: ["tv", "dashboard", "screen", "شاشة", "لوحة"],
     fields: [
       { key: "displayTheme", anchor: "dt-theme" },
@@ -276,7 +328,8 @@ export const SECTIONS: SectionDef[] = [
     id: "reports",
     group: "screens",
     icon: ChartColumn,
-    scope: "organization",
+    scope: "city",
+    keys: ["reports"],
     keywords: ["sla", "kpi", "service level", "forecast", "utilisation", "utilization", "تقارير", "مستوى الخدمة"],
     fields: [
       { key: "serviceLevelMinutes", anchor: "rp-slm" },
@@ -289,7 +342,8 @@ export const SECTIONS: SectionDef[] = [
     id: "alerts",
     group: "screens",
     icon: BellRing,
-    scope: "organization",
+    scope: "branch",
+    keys: ["alerts"],
     keywords: ["email", "notify", "threshold", "no-show", "تنبيه", "بريد", "غياب"],
     fields: [
       { key: "alertsEnabled", anchor: "al-enabled" },
@@ -310,6 +364,7 @@ export const SECTIONS: SectionDef[] = [
     group: "security",
     icon: ShieldCheck,
     scope: "organization",
+    keys: ["security"],
     keywords: ["login", "lockout", "2fa", "two-step", "mfa", "كلمة المرور", "قفل", "تحقق"],
     fields: [
       { key: "passwordPolicy", anchor: "sc-policy" },
@@ -325,20 +380,50 @@ export const SECTIONS: SectionDef[] = [
     ],
   },
   {
+    id: "retention",
+    group: "security",
+    icon: DatabaseZap,
+    scope: "organization",
+    keys: ["privacy"],
+    keywords: [
+      "pdpl",
+      "gdpr",
+      "retention",
+      "anonymize",
+      "anonymise",
+      "delete",
+      "erase",
+      "purge",
+      "احتفاظ",
+      "حذف",
+      "إخفاء",
+      "مدة",
+      "بيانات",
+    ],
+    fields: [
+      { key: "retentionDays", anchor: "pv-ret" },
+      { key: "ticketDataDays", anchor: "pv-tickets" },
+      { key: "commentDays", anchor: "pv-comments" },
+      { key: "notificationDays", anchor: "pv-notif" },
+      { key: "auditDays", anchor: "pv-audit" },
+      { key: "credentialDays", anchor: "pv-cred" },
+    ],
+  },
+  {
     id: "privacy",
     group: "security",
     icon: Lock,
     scope: "organization",
-    keywords: ["pdpl", "gdpr", "retention", "consent", "delete", "خصوصية", "موافقة", "حذف"],
+    keys: ["privacy"],
+    keywords: ["pdpl", "gdpr", "consent", "خصوصية", "موافقة"],
     fields: [
-      { key: "retentionDays", anchor: "pv-ret" },
       { key: "consentText", anchor: "pv-consent-ar" },
       { key: "requireConsent", anchor: "pv-require" },
     ],
   },
 ];
 
-/** A city or branch admin only manages what a branch may own; organization settings are for org-wide admins. */
+/** Organization-wide admins see every section; city and branch admins only those a city or branch may override. */
 export function sectionsFor(organization: boolean): SectionDef[] {
-  return organization ? SECTIONS : SECTIONS.filter((s) => s.branchLevel);
+  return organization ? SECTIONS : SECTIONS.filter((s) => s.scope !== "organization");
 }

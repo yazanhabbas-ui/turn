@@ -40,6 +40,8 @@ export const users = pgTable(
     failedLoginCount: integer("failed_login_count").notNull().default(0),
     lockedUntil: ts("locked_until"),
     lastLoginAt: ts("last_login_at"),
+    /** Set when a deactivated account's personal data was removed (name, email, phone, picture). */
+    anonymizedAt: ts("anonymized_at"),
     archivedAt: archivedAt(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

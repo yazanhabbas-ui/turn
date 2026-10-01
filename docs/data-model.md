@@ -81,13 +81,14 @@ erDiagram
 
 ## Tickets
 
-| Table            | Purpose                                                                                                                                                                                                                       |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `visitors`       | Minimal PII (name, phone, company), normalized/transliterated name, **phone HMAC hash**, visit count, last agent, `anonymized_at`                                                                                             |
-| `appointments`   | Pre-booked visits with a lookup code, check-in → ticket                                                                                                                                                                       |
-| `tickets`        | Number/prefix/`display_number`, `service_day`, status, priority, language, `public_token` (status page), assigned/serving agent, desk, `arrived_at` (kept on transfer), timestamps, intake values, idempotency key, `version` |
-| `ticket_events`  | Append-only: every transition, with from/to status, actor, agent, desk, queue, payload. **Reports read from here.**                                                                                                           |
-| `csat_responses` | One per completed ticket (unique): agent, reason, score 1–5, optional NPS 0–10, comment (max 500, personal data, erased with the visit), channel (`status_page`, `link`, `kiosk`), language, `at`. See D53                    |
+| Table              | Purpose                                                                                                                                                                                                                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `visitors`         | Minimal PII (name, phone, company), normalized/transliterated name, **phone HMAC hash**, visit count, last agent, `anonymized_at`                                                                                                                                               |
+| `appointments`     | Pre-booked visits with a lookup code, check-in → ticket                                                                                                                                                                                                                         |
+| `tickets`          | Number/prefix/`display_number`, `service_day`, status, priority, language, `public_token` (status page), assigned/serving agent, desk, `arrived_at` (kept on transfer), timestamps, intake values, idempotency key, `version`                                                   |
+| `ticket_events`    | Append-only: every transition, with from/to status, actor, agent, desk, queue, payload. **Reports read from here.**                                                                                                                                                             |
+| `csat_responses`   | One per completed ticket (unique): agent, reason, score 1–5, optional NPS 0–10, comment (max 500, personal data, erased with the visit), channel (`status_page`, `link`, `kiosk`), language, `at`. See D53                                                                      |
+| `privacy_requests` | Data-subject requests and staff anonymisations (D56): `type` access or erasure, `status`, `subject_kind` visitor or user, `subject_ref` (keyed hash of the id, never a name or number), `requested_at`, `completed_at`, `performed_by`, `note` (the reason), `summary` (counts) |
 
 **Ticket states:** `APPOINTMENT_PENDING`, `WAITING`, `CALLED`, `SERVING`, `ON_HOLD`, `COMPLETED`, `NO_SHOW`, `CANCELLED`. A transfer is an event (`TRANSFERRED`) that returns the ticket to `WAITING` in another queue with its original `arrived_at`.
 
@@ -95,7 +96,7 @@ erDiagram
 
 | Table               | Purpose                                                                                                                                                                                                                                                                                  |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `displays`          | Paired device: hashed token, pairing code, layout, config (languages, voice overrides: enabled/volume/rate/callLanguages/repeat, ticker, `theme`: `default`/`dark`/`light`/`brand`), last seen, `revoked_at`                                                                             |
+| `displays`          | Paired device: hashed token, pairing code, kind (`display` or `kiosk`, D61), layout, config (languages, voice overrides: enabled/volume/rate/callLanguages/repeat, ticker, `theme`: `default`/`dark`/`light`/`brand`), last seen, `revoked_at`                                           |
 | `announcements`     | Ticker lines and slides, scheduled                                                                                                                                                                                                                                                       |
 | `message_templates` | Per channel (voice, sms, whatsapp, email, ticket_print, display) x event, bilingual body with placeholders; `provider_template` = approved WhatsApp template name                                                                                                                        |
 | `notifications_log` | Outbound messages: masked recipient, status (`queued`, `sending`, `sent`, `failed`, `skipped` with the reason in `error`), `attempts`, `next_attempt_at` (due time and lease), unique `dedupe_key` (`<ticket>:<event>`), `payload` (non-personal variables, channel chain, retry cursor) |
@@ -103,11 +104,34 @@ erDiagram
 
 ## Platform
 
-| Table              | Purpose                                                    |
-| ------------------ | ---------------------------------------------------------- |
-| `settings`         | Typed key/value per organization, optional branch override |
-| `audit_logs`       | Actor, action, entity, before/after (secrets scrubbed), IP |
-| `alerts`           | Anomaly alerts with dedupe key and acknowledgement         |
-| `report_schedules` | Scheduled report emails                                    |
-| `webhooks`         | Outbound integration hooks                                 |
-| `idempotency_keys` | Stored responses for retried POSTs                         |
+| Table              | Purpose                                                                                                                               |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `settings`         | Typed key/value: organization default, optional `city_id` override or `branch_id` override (never both); the most specific wins (D60) |
+| `city_reasons`     | Reasons a city has switched off (`enabled = false`); no row = enabled (D60)                                                           |
+| `audit_logs`       | Actor, action, entity, before/after (secrets scrubbed), IP                                                                            |
+| `alerts`           | Anomaly alerts with dedupe key and acknowledgement                                                                                    |
+| `report_schedules` | Scheduled report emails                                                                                                               |
+| `webhooks`         | Outbound integration hooks                                                                                                            |
+| `idempotency_keys` | Stored responses for retried POSTs                                                                                                    |
+
+## Retention and anonymisation (D56)
+
+What the nightly job, an erasure request and a staff anonymisation do. All periods are in settings group `privacy`; 0 keeps forever.
+
+| Data                                                                                             | After                                                 | Action                                                                                                                                             |
+| ------------------------------------------------------------------------------------------------ | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `visitors` name, `name_search`, `name_translit`, `phone`, `phone_hash`, company, `last_agent_id` | last visit, `retentionDays` (365)                     | set to null, `anonymized_at` stamped. Row, `visit_count`, `last_visit_at` stay; the person can no longer be re-linked (a later visit is a new row) |
+| `tickets.intake`, `tickets.notes`, `appointments.notes`                                          | finished ticket / appointment, `ticketDataDays` (365) | `{}` / null. Ticket, status, times, outcome, tags stay                                                                                             |
+| `csat_responses.comment`                                                                         | `commentDays` (365)                                   | null. Score, NPS, channel stay                                                                                                                     |
+| `notifications_log.recipient_masked`, `payload`                                                  | `notificationDays` (90), not queued/sending           | null / `{}`. Status, channel, event, times stay                                                                                                    |
+| `audit_logs`                                                                                     | `auditDays` (365)                                     | deleted; security-critical actions never before 365 days, others never before 30                                                                   |
+| `sessions`, `invites`, `password_reset_tokens`, `displays.pairing_code`                          | `credentialDays` (30) after expiry                    | deleted (pairing code and expiry cleared)                                                                                                          |
+| `idempotency_keys`                                                                               | 24 hours                                              | deleted                                                                                                                                            |
+
+Staff: `users.anonymized_at` marks a deactivated account whose email, name, phone, password, 2FA secret, picture, OIDC links and sessions were removed. The row, id, grants, shifts, served tickets and audit entries (without name/email snapshots, IP and browser) stay.
+
+Shifts (`shifts.city_id`) and message templates (`message_templates.city_id`) are organization-wide when `city_id` is null and belong to one city otherwise (D60).
+
+## Self check-in (D61)
+
+`visit_reasons.requires_staff` (boolean, default false) hides a reason from the kiosk ("please ask the agent"). Intake fields (JSON on the reason) may carry `selfService` (boolean; unset = default by key). `tickets.source` takes `reception`, `agent`, `kiosk`, `appointment` or `api`. Settings `reception.agentIssuing` and the `selfCheckin` group resolve organization, city, branch like other settings. Permission `tickets.issue_self`.

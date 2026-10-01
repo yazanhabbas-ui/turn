@@ -67,6 +67,7 @@ async function reportBranches(actor: Actor, permission: "reports.view" | "wallbo
 export async function reportMeta(actor: Actor) {
   const bs = await reportBranches(actor, "reports.view");
   const org = orgOf(actor);
+  const branchIds = bs.map((b) => b.id);
   const [reasons, agents] = await Promise.all([
     db()
       .select({ id: visitReasons.id, name: visitReasons.name, color: visitReasons.color })
@@ -76,7 +77,16 @@ export async function reportMeta(actor: Actor) {
     db()
       .select({ id: users.id, name: users.displayName })
       .from(users)
-      .where(and(eq(users.organizationId, org), sql`exists (select 1 from agent_profiles p where p.user_id = ${users.id})`)),
+      // Only the agents of the branches this person may report on, not the whole organization.
+      .where(
+        and(
+          eq(users.organizationId, org),
+          sql`exists (select 1 from agent_profiles p where p.user_id = ${users.id} and p.branch_id in (${sql.join(
+            branchIds.map((id) => sql`${id}`),
+            sql`, `,
+          )}))`,
+        ),
+      ),
   ]);
   return { branches: bs.map((b) => ({ id: b.id, name: b.name, timezone: b.timezone })), reasons, agents };
 }
@@ -133,8 +143,9 @@ async function buildReportForBranches(org: string, bs: (typeof branches.$inferSe
     returning: boolean;
     visitor_id: string | null;
     transfers: string[] | null;
+    source: string;
   }>(sql`
-    select t.id, t.branch_id, t.reason_id, t.visitor_id, t.serving_agent_id as agent_id, t.arrived_at,
+    select t.id, t.branch_id, t.reason_id, t.visitor_id, t.source, t.serving_agent_id as agent_id, t.arrived_at,
       (select min(e.at) from ticket_events e where e.ticket_id = t.id and e.type = 'CALLED') as first_called_at,
       t.started_at, t.finished_at, t.status, t.recall_count,
       (t.visitor_id is not null and exists (
@@ -170,6 +181,7 @@ async function buildReportForBranches(org: string, bs: (typeof branches.$inferSe
     returning: !!r.returning,
     visitorId: r.visitor_id,
     slaTargetMinutes: reasons.get(r.reason_id)?.slaTargetWaitMinutes ?? 15,
+    source: r.source,
   }));
 
   // Filters that depend on the arrival time in the branch's own time zone, and on the serving agent.

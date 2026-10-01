@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, lt, lte, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lt, lte, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { branches, messageTemplates, notificationsLog } from "@/db/schema";
@@ -26,7 +26,7 @@ export async function notificationTemplates(actor: Actor) {
   const stored = await db()
     .select()
     .from(messageTemplates)
-    .where(eq(messageTemplates.organizationId, orgOf(actor)));
+    .where(and(eq(messageTemplates.organizationId, orgOf(actor)), isNull(messageTemplates.cityId)));
   return DEFAULT_TEMPLATES.map((d) => {
     const row = stored.find((r) => r.channel === d.channel && r.event === d.event);
     return {
@@ -42,14 +42,16 @@ export async function notificationTemplates(actor: Actor) {
   });
 }
 
+const validDate = (v: string) => !Number.isNaN(new Date(v).getTime());
+
 export const logFilter = z.object({
   status: z.enum(["queued", "sending", "sent", "failed", "skipped"]).optional(),
   channel: z.enum(NOTIFICATION_CHANNELS).optional(),
   event: z.string().max(40).optional(),
   branchId: z.string().uuid().optional(),
-  from: z.string().optional(),
-  to: z.string().optional(),
-  before: z.string().optional(),
+  from: z.string().max(40).refine(validDate).optional(),
+  to: z.string().max(40).refine(validDate).optional(),
+  before: z.string().max(40).refine(validDate).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
 });
 
@@ -156,6 +158,7 @@ export async function sendTestMessage(actor: Actor, input: z.infer<typeof testIn
         eq(messageTemplates.organizationId, org),
         eq(messageTemplates.channel, input.channel),
         eq(messageTemplates.event, "ticket_issued"),
+        isNull(messageTemplates.cityId),
       ),
     );
   const body = stored?.body ?? sample.body;

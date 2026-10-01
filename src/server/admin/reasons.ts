@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { agentGroups, queues, reasonAssignments, users, visitReasons } from "@/db/schema";
@@ -6,7 +6,7 @@ import { hexColor, localizedText, ticketPrefix, uuid } from "@/domain/validation
 import { audit } from "../audit";
 import { AppError } from "../http/errors";
 import { ensureQueues } from "./branches";
-import { auditMeta, orgOf, requireOrgWide, requirePermission, type Actor } from "./actor";
+import { allowedBranches, auditMeta, orgOf, requireOrgWide, requirePermission, type Actor } from "./actor";
 
 /** Built-in intake field keys; custom keys carry their own label. */
 export const BUILTIN_INTAKE_FIELDS = ["name", "phone", "company", "national_id_last4", "email", "notes"] as const;
@@ -21,6 +21,8 @@ const intakeField = z.object({
   label: localizedText({ max: 80, required: false }).optional(),
   type: z.enum(["text", "phone", "number", "email"]).optional(),
   required: z.boolean(),
+  /** May a visitor type this at a self check-in kiosk? Unset = the built-in default (see domain/kiosk/self-service). */
+  selfService: z.boolean().optional(),
 });
 
 export const reasonInput = z.object({
@@ -43,6 +45,8 @@ export const reasonInput = z.object({
     .max(12)
     .refine((f) => new Set(f.map((x) => x.key)).size === f.length, { message: "duplicate_key" }),
   allowAppointments: z.boolean(),
+  /** A kiosk shows this reason as "please ask the agent" instead of issuing a ticket. */
+  requiresStaff: z.boolean().optional(),
   isFeatured: z.boolean(),
   shortcutKey: z.string().trim().max(1).nullable().optional(),
   sortOrder: z.number().int().default(0),
@@ -177,7 +181,11 @@ export async function setReasonArchived(actor: Actor, id: string, archived: bool
   });
 }
 
-/** Replaces the list of agents / groups who can serve this reason. */
+/**
+ * Replaces the list of agents / groups who can serve this reason. A reason belongs to the whole organization, so a
+ * branch- or city-limited manager may only replace the assignments of their own branches (each entry names one of
+ * them); the assignments of other branches and the organization-wide ones stay exactly as they are.
+ */
 export async function setAssignments(actor: Actor, reasonId: string, input: z.infer<typeof assignmentsInput>) {
   requirePermission(actor, "reasons.manage");
   await loadReason(actor, reasonId);
@@ -200,11 +208,19 @@ export async function setAssignments(actor: Actor, reasonId: string, input: z.in
   }
   const keys = input.map((a) => `${a.userId ?? ""}:${a.groupId ?? ""}:${a.branchId ?? ""}`);
   if (new Set(keys).size !== keys.length) throw new AppError("validation", { reason: "duplicate_assignment" });
-  for (const a of input) if (a.branchId) requirePermission(actor, "reasons.manage", a.branchId);
+  const scope = allowedBranches(actor, "reasons.manage");
+  for (const a of input) {
+    if (a.branchId) requirePermission(actor, "reasons.manage", a.branchId);
+    else if (scope !== "all") throw new AppError("forbidden", { reason: "branch_scope" });
+  }
+  const mine = scope === "all" ? undefined : scope.length ? inArray(reasonAssignments.branchId, scope) : sql`false`;
 
   await db().transaction(async (tx) => {
-    const before = await tx.select().from(reasonAssignments).where(eq(reasonAssignments.reasonId, reasonId));
-    await tx.delete(reasonAssignments).where(eq(reasonAssignments.reasonId, reasonId));
+    const before = await tx
+      .select()
+      .from(reasonAssignments)
+      .where(and(eq(reasonAssignments.reasonId, reasonId), mine));
+    await tx.delete(reasonAssignments).where(and(eq(reasonAssignments.reasonId, reasonId), mine));
     if (input.length) {
       await tx.insert(reasonAssignments).values(
         input.map((a) => ({

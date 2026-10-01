@@ -2,7 +2,7 @@ import { boolean, date, index, integer, jsonb, pgTable, primaryKey, text, unique
 import { archivedAt, createdAt, id, updatedAt, type LocalizedText } from "./_common";
 import { agentGroups } from "./agents";
 import { users } from "./identity";
-import { branches, organizations } from "./tenancy";
+import { branches, cities, organizations } from "./tenancy";
 
 /** Priority lanes / flags (VIP, Sheikh/guest, elderly, disabled, pregnant, urgent, ladies/family). Data, not an enum. */
 export const priorityLevels = pgTable(
@@ -34,6 +34,8 @@ export type IntakeField = {
   label?: LocalizedText;
   type?: "text" | "phone" | "number" | "email";
   required: boolean;
+  /** May a visitor enter this at a self check-in kiosk? Unset = yes for name, phone, company, email, notes; no otherwise. */
+  selfService?: boolean;
 };
 
 /** Visit reason (service). Defines the ticket prefix and service expectations. */
@@ -56,6 +58,8 @@ export const visitReasons = pgTable(
     slaTargetWaitMinutes: integer("sla_target_wait_minutes").notNull().default(15),
     intakeFields: jsonb("intake_fields").$type<IntakeField[]>().notNull().default([]),
     allowAppointments: boolean("allow_appointments").notNull().default(false),
+    /** The visitor must be helped by staff: a self check-in kiosk shows this reason as "please ask the agent". */
+    requiresStaff: boolean("requires_staff").notNull().default(false),
     /** Shown first on the reception screen for two-tap issuing. */
     isFeatured: boolean("is_featured").notNull().default(false),
     shortcutKey: text("shortcut_key"),
@@ -65,6 +69,30 @@ export const visitReasons = pgTable(
     updatedAt: updatedAt(),
   },
   (t) => [uniqueIndex("visit_reasons_org_code_uq").on(t.organizationId, t.code)],
+);
+
+/**
+ * Per-city enablement of an organization reason. A city without a row for a reason has it enabled (the default), so
+ * reasons added later appear everywhere; a row with `enabled = false` hides the reason in every branch of the city.
+ */
+export const cityReasons = pgTable(
+  "city_reasons",
+  {
+    id: id(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    cityId: uuid("city_id")
+      .notNull()
+      .references(() => cities.id),
+    reasonId: uuid("reason_id")
+      .notNull()
+      .references(() => visitReasons.id, { onDelete: "cascade" }),
+    enabled: boolean("enabled").notNull().default(true),
+    updatedByUserId: uuid("updated_by_user_id").references(() => users.id),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("city_reasons_city_reason_uq").on(t.cityId, t.reasonId)],
 );
 
 /** Who can serve a reason: an individual agent or a whole group, with proficiency and primary/backup flag. */

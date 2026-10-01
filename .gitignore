@@ -51,3 +51,7 @@ next-env.d.ts
 /.next-prod/
 voice-samples/
 /.next-dev/
+
+# e2e / load tests
+/.next-e2e/
+/load-results/

@@ -15,6 +15,12 @@ export function SignOutButton() {
       size="sm"
       onClick={async () => {
         await api("/api/v1/auth/logout", { body: {} }).catch(() => undefined);
+        // The offline page copies kept by the service worker belong to the person who just left this device.
+        if ("caches" in window)
+          await caches
+            .keys()
+            .then((keys) => Promise.all(keys.filter((k) => k.endsWith("-pages")).map((k) => caches.delete(k))))
+            .catch(() => undefined);
         router.replace("/login");
         router.refresh();
       }}

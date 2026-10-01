@@ -6,6 +6,7 @@ import "@fontsource/cairo/700.css";
 import "@fontsource/tajawal/400.css";
 import "@fontsource/tajawal/700.css";
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -44,6 +45,7 @@ export default async function LocaleLayout({
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) notFound();
   setRequestLocale(locale);
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   const auth = await getAuth();
   const branding = await getBranding(auth?.user.organizationId);
   const dir = dirOf(locale);
@@ -57,7 +59,9 @@ export default async function LocaleLayout({
     <html lang={locale} dir={dir} style={style} suppressHydrationWarning>
       <body className="bg-background text-foreground min-h-dvh font-sans antialiased">
         <NextIntlClientProvider>
-          <Providers dir={dir}>{children}</Providers>
+          <Providers dir={dir} nonce={nonce}>
+            {children}
+          </Providers>
         </NextIntlClientProvider>
       </body>
     </html>

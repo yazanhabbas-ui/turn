@@ -63,6 +63,11 @@ async function startJobsOnce(): Promise<void> {
   logger.info("background jobs started");
 }
 
+/** True while the pg-boss worker is running in this process (false in tests/scripts and if it could not start). */
+export function jobsRunning(): boolean {
+  return g.__dorBoss !== undefined;
+}
+
 export async function stopJobs(): Promise<void> {
   await g.__dorBoss?.stop({ graceful: true, timeout: 10_000 });
   g.__dorBoss = undefined;

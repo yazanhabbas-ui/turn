@@ -1,11 +1,18 @@
-import { and, eq, gt, inArray, isNull } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, ne } from "drizzle-orm";
 import { db, type DbOrTx } from "@/db/client";
 import { branches, cities, rolePermissions, roles, sessions, userRoles, users } from "@/db/schema";
 import { NO_BRANCH, type Grant } from "@/domain/rbac/permissions";
 import { randomToken, sha256Hex } from "../crypto";
-import { env } from "../env";
+import { cookieSecure, env } from "../env";
+import { disconnectSessionSockets, disconnectUserSockets, io } from "../realtime";
 
 export const SESSION_COOKIE = "dor_session";
+
+/**
+ * Cookie name in use. Over https the `__Host-` prefix makes browsers accept the cookie only if it is Secure, has
+ * path "/" and no Domain, so a sibling subdomain cannot plant or overwrite a session cookie.
+ */
+export const sessionCookieName = () => (cookieSecure() ? `__Host-${SESSION_COOKIE}` : SESSION_COOKIE);
 
 /** Sessions are extended when less than half of their lifetime remains (sliding expiry). */
 const ttlMs = () => env().SESSION_TTL_HOURS * 3600_000;
@@ -141,9 +148,23 @@ export async function markSessionTwoFactorVerified(sessionId: string): Promise<v
 
 export async function invalidateSession(sessionId: string): Promise<void> {
   await db().delete(sessions).where(eq(sessions.id, sessionId));
+  disconnectSessionSockets(sessionId);
 }
 
 /** Force logout everywhere (admin action, password change, deactivation). */
 export async function invalidateUserSessions(userId: string, tx: DbOrTx = db()): Promise<void> {
   await tx.delete(sessions).where(eq(sessions.userId, userId));
+  // Open realtime connections were authenticated by the sessions just ended.
+  disconnectUserSockets(userId);
+}
+
+/** Ends every session of a user except one (the current device keeps working after a security change). */
+export async function invalidateOtherSessions(userId: string, keepSessionId: string, tx: DbOrTx = db()): Promise<void> {
+  await tx.delete(sessions).where(and(eq(sessions.userId, userId), ne(sessions.id, keepSessionId)));
+  const hub = io();
+  if (hub) {
+    // Sockets of the kept session carry its own room; every other session's sockets are dropped.
+    for (const socket of await hub.in(`user:${userId}`).fetchSockets())
+      if (!socket.rooms.has(`session:${keepSessionId}`)) socket.disconnect(true);
+  }
 }

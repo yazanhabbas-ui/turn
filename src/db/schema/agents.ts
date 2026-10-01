@@ -13,7 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { archivedAt, createdAt, id, ts, updatedAt, type LocalizedText } from "./_common";
 import { users } from "./identity";
-import { branches, desks, organizations } from "./tenancy";
+import { branches, cities, desks, organizations } from "./tenancy";
 
 export const agentStatus = pgEnum("agent_status", ["AVAILABLE", "BUSY", "ON_BREAK", "AWAY", "OFFLINE"]);
 export type AgentStatus = (typeof agentStatus.enumValues)[number];
@@ -29,6 +29,8 @@ export const shifts = pgTable(
     organizationId: uuid("organization_id")
       .notNull()
       .references(() => organizations.id),
+    /** Null = an organization-wide shift every agent may use; set = a shift only that city's agents may use. */
+    cityId: uuid("city_id").references(() => cities.id),
     code: text("code").notNull(),
     name: jsonb("name").$type<LocalizedText>().notNull(),
     startsAt: text("starts_at").notNull(),

@@ -1,7 +1,7 @@
 import { and, asc, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { announcements, branches, displays, messageTemplates, ttsAudioPacks } from "@/db/schema";
+import { announcements, branches, cities, displays, messageTemplates, ttsAudioPacks } from "@/db/schema";
 import { DISPLAY_LAYOUTS, displayConfigSchema, parseDisplayConfig } from "@/domain/display/config";
 import { localizedText, uuid } from "@/domain/validation";
 import { audit } from "../audit";
@@ -10,7 +10,7 @@ import { issuePairingCode } from "../display/device";
 import { getSetting, putSetting } from "../settings/service";
 import { AppError } from "../http/errors";
 import { io } from "../realtime";
-import { allowedBranches, auditMeta, orgOf, requireOrgWide, requirePermission, type Actor } from "./actor";
+import { allowedBranches, auditMeta, orgOf, requireCityAccess, requireOrgWide, requirePermission, type Actor } from "./actor";
 
 const ONLINE_WINDOW_MS = 60_000;
 
@@ -24,13 +24,23 @@ const localMedia = (prefix: "image" | "audio") =>
   z
     .string()
     .max(2_000_000)
-    .refine((v) => v.startsWith("/") || v.startsWith(`data:${prefix}/`), { message: "local_media_only" });
+    // "//host/x" and "/\host/x" start with a slash but point at another site, so they are not local.
+    .refine(
+      (v) =>
+        (v.startsWith("/") && !v.startsWith("//") && !v.startsWith("/\\")) ||
+        (v.startsWith(`data:${prefix}/`) && !v.startsWith("data:image/svg")),
+      {
+        message: "local_media_only",
+      },
+    );
 
 /* ---------- Screens (display devices) ---------- */
 
 export const displayInput = z.object({
   name: z.string().trim().min(1).max(80),
   branchId: uuid,
+  /** display = waiting-room screen; kiosk = self check-in tablet (D61). The kind of an existing device cannot change. */
+  kind: z.enum(["display", "kiosk"]).optional(),
   layout: z.enum(DISPLAY_LAYOUTS),
   config: displayConfigSchema.prefault({}),
 });
@@ -93,6 +103,7 @@ export async function createDisplay(actor: Actor, input: z.infer<typeof displayI
       organizationId: orgOf(actor),
       branchId: input.branchId,
       name: input.name,
+      kind: input.kind ?? "display",
       layout: input.layout,
       config: input.config,
     })
@@ -292,14 +303,30 @@ export const templateInput = z.object({
   /** WhatsApp: name of the pre-approved template used for business-initiated messages (empty = plain text). */
   providerTemplate: z.string().trim().max(100).nullable().optional(),
   isActive: z.boolean().default(true),
+  /** Null/absent = the organization template; a city id = that city's own wording for its branches. */
+  cityId: z.string().uuid().nullable().optional(),
 });
 
-export async function listTemplates(actor: Actor) {
-  requireOrgWide(actor, "templates.manage");
+/** Organization templates need organization-wide rights; a city's own templates need city-wide branch management. */
+async function requireTemplateScope(actor: Actor, cityId: string | null | undefined) {
+  if (!cityId) return requireOrgWide(actor, "templates.manage");
+  const [c] = await db().select({ organizationId: cities.organizationId }).from(cities).where(eq(cities.id, cityId));
+  if (!c || c.organizationId !== orgOf(actor)) throw new AppError("not_found");
+  requireCityAccess(actor, "branches.manage", cityId);
+}
+
+/** The organization's templates, or with `cityId` only that city's own overrides. */
+export async function listTemplates(actor: Actor, cityId: string | null = null) {
+  await requireTemplateScope(actor, cityId);
   const rows = await db()
     .select()
     .from(messageTemplates)
-    .where(eq(messageTemplates.organizationId, orgOf(actor)))
+    .where(
+      and(
+        eq(messageTemplates.organizationId, orgOf(actor)),
+        cityId ? eq(messageTemplates.cityId, cityId) : isNull(messageTemplates.cityId),
+      ),
+    )
     .orderBy(asc(messageTemplates.channel), asc(messageTemplates.event));
   return rows.map((t) => ({
     id: t.id,
@@ -315,7 +342,8 @@ export async function listTemplates(actor: Actor) {
 
 /** Creates or replaces the template for a channel + event. */
 export async function saveTemplate(actor: Actor, input: z.infer<typeof templateInput>) {
-  requireOrgWide(actor, "templates.manage");
+  const cityId = input.cityId ?? null;
+  await requireTemplateScope(actor, cityId);
   const org = orgOf(actor);
   const [before] = await db()
     .select()
@@ -325,6 +353,7 @@ export async function saveTemplate(actor: Actor, input: z.infer<typeof templateI
         eq(messageTemplates.organizationId, org),
         eq(messageTemplates.channel, input.channel),
         eq(messageTemplates.event, input.event),
+        cityId ? eq(messageTemplates.cityId, cityId) : isNull(messageTemplates.cityId),
       ),
     );
   const values = {
@@ -342,7 +371,7 @@ export async function saveTemplate(actor: Actor, input: z.infer<typeof templateI
   } else {
     const [t] = await db()
       .insert(messageTemplates)
-      .values({ ...values, organizationId: org, channel: input.channel, event: input.event })
+      .values({ ...values, organizationId: org, cityId, channel: input.channel, event: input.event })
       .returning();
     id = t.id;
   }
@@ -356,6 +385,31 @@ export async function saveTemplate(actor: Actor, input: z.infer<typeof templateI
   });
   refreshScreens(org);
   return { id };
+}
+
+/** Removes a city's own template so its branches use the organization's wording again. */
+export async function deleteCityTemplate(actor: Actor, cityId: string, channel: string, event: string) {
+  await requireTemplateScope(actor, cityId);
+  const [removed] = await db()
+    .delete(messageTemplates)
+    .where(
+      and(
+        eq(messageTemplates.organizationId, orgOf(actor)),
+        eq(messageTemplates.cityId, cityId),
+        eq(messageTemplates.channel, channel),
+        eq(messageTemplates.event, event),
+      ),
+    )
+    .returning();
+  if (!removed) throw new AppError("not_found");
+  await audit({
+    ...auditMeta(actor),
+    action: "template.city_override_cleared",
+    entityType: "message_template",
+    entityId: removed.id,
+    before: removed,
+  });
+  refreshScreens(orgOf(actor));
 }
 
 /* ---------- Pre-recorded voice packs ---------- */

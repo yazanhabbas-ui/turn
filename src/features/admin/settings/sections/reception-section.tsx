@@ -67,6 +67,19 @@ export function ReceptionSection({ initial }: { initial: SettingValue<"reception
               </NativeSelect>
             </Field>
           </SettingCard>
+          <SettingCard title={t("cards.agentIssuing")} description={t("agentIssuingIntro")}>
+            <Field label={t("agentIssuing")} htmlFor="rc-agent" hint={t("agentIssuingHint")}>
+              <NativeSelect
+                id="rc-agent"
+                value={v.agentIssuing}
+                onChange={(e) => set({ agentIssuing: e.target.value as typeof v.agentIssuing })}
+              >
+                <option value="off">{t("agentIssuingOff")}</option>
+                <option value="when_no_reception">{t("agentIssuingWhenNone")}</option>
+                <option value="always">{t("agentIssuingAlways")}</option>
+              </NativeSelect>
+            </Field>
+          </SettingCard>
           <p className="text-muted-foreground text-sm">{t("receptionDataHint")}</p>
         </>
       )}

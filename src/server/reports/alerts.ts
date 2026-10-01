@@ -253,7 +253,7 @@ export async function listAlerts(actor: Actor, opts: { openOnly?: boolean; limit
     .from(alerts)
     .where(and(eq(alerts.organizationId, orgOf(actor)), opts.openOnly ? isNull(alerts.acknowledgedAt) : undefined))
     .orderBy(desc(alerts.createdAt))
-    .limit(Math.min(opts.limit ?? 50, 200));
+    .limit(Math.min(Math.max(Number.isFinite(opts.limit) ? Math.trunc(opts.limit!) : 50, 1), 200));
   return rows
     .filter((a) => allowed === "all" || (a.branchId !== null && allowed.includes(a.branchId)))
     .map((a) => ({

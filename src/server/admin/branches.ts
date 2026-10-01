@@ -227,6 +227,16 @@ export async function archiveFloor(actor: Actor, id: string) {
   });
 }
 
+/** A desk's floor must be a live floor of the desk's own branch (never one from another branch or organization). */
+async function assertFloorInBranch(tx: DbOrTx, branchId: string, floorId: string | null | undefined) {
+  if (!floorId) return;
+  const [f] = await tx
+    .select({ id: floors.id })
+    .from(floors)
+    .where(and(eq(floors.id, floorId), eq(floors.branchId, branchId), isNull(floors.archivedAt)));
+  if (!f) throw new AppError("validation", { field: "floorId" });
+}
+
 async function assertDeskNumberFree(tx: DbOrTx, branchId: string, number: string, exceptId?: string) {
   const rows = await tx
     .select({ id: desks.id })
@@ -238,6 +248,7 @@ async function assertDeskNumberFree(tx: DbOrTx, branchId: string, number: string
 export async function createDesk(actor: Actor, branchId: string, input: z.infer<typeof deskInput>) {
   const b = await loadBranch(actor, branchId);
   return db().transaction(async (tx) => {
+    await assertFloorInBranch(tx, branchId, input.floorId);
     await assertDeskNumberFree(tx, branchId, input.number);
     // An archived desk may hold the same number; free it so the unique index allows reuse.
     await tx
@@ -266,6 +277,7 @@ async function loadDesk(actor: Actor, id: string) {
 export async function updateDesk(actor: Actor, id: string, input: z.infer<typeof deskInput>) {
   const before = await loadDesk(actor, id);
   await db().transaction(async (tx) => {
+    await assertFloorInBranch(tx, before.branchId, input.floorId);
     await assertDeskNumberFree(tx, before.branchId, input.number, id);
     const [after] = await tx
       .update(desks)

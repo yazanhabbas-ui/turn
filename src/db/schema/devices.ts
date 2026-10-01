@@ -1,7 +1,7 @@
-import { boolean, index, integer, jsonb, pgTable, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, text, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { archivedAt, createdAt, id, ts, updatedAt, type LocalizedText } from "./_common";
 import { users } from "./identity";
-import { branches, organizations } from "./tenancy";
+import { branches, cities, organizations } from "./tenancy";
 
 /**
  * Display screen (a device, not a person). Paired with a short code, then authenticated by a long-lived
@@ -69,6 +69,8 @@ export const messageTemplates = pgTable(
     organizationId: uuid("organization_id")
       .notNull()
       .references(() => organizations.id),
+    /** Null = the organization template; set = this city's own wording (wins for its branches). */
+    cityId: uuid("city_id").references(() => cities.id),
     channel: text("channel").notNull(),
     event: text("event").notNull(),
     subject: jsonb("subject").$type<LocalizedText>(),
@@ -80,7 +82,7 @@ export const messageTemplates = pgTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [uniqueIndex("message_templates_uq").on(t.organizationId, t.channel, t.event)],
+  (t) => [unique("message_templates_uq").on(t.organizationId, t.cityId, t.channel, t.event).nullsNotDistinct()],
 );
 
 export const notificationsLog = pgTable(

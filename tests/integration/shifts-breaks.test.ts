@@ -80,7 +80,14 @@ describe.runIf(available)("shifts, break limits and repeat visitors (database)",
     });
 
     it("only the super admin defines shifts, a shift in use cannot be archived", async () => {
-      const mine = { code: "night", name: { ar: "ليلي", en: "Night" }, startsAt: "22:00", endsAt: "06:00", sortOrder: 2 };
+      const mine = {
+        code: "night",
+        name: { ar: "ليلي", en: "Night" },
+        startsAt: "22:00",
+        endsAt: "06:00",
+        sortOrder: 2,
+        cityId: null,
+      };
       await expectCode(createShift(supervisor, mine), "forbidden");
       const { id } = await createShift(admin, mine);
       await expectCode(createShift(admin, mine), "conflict");

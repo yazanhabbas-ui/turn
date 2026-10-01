@@ -27,28 +27,40 @@ export function randomCode(length = 6): string {
   return out;
 }
 
-function encryptionKey(): Buffer {
-  const key = Buffer.from(env().APP_ENCRYPTION_KEY, "base64");
+/** Decodes a base64 AES-256 key; refuses anything that is not exactly 32 bytes. */
+export function parseEncryptionKey(base64: string): Buffer {
+  const key = Buffer.from(base64, "base64");
   if (key.length !== 32) throw new Error("APP_ENCRYPTION_KEY must be 32 bytes encoded as base64");
   return key;
 }
 
-/** AES-256-GCM. Output: base64(iv | tag | ciphertext). */
-export function encrypt(plain: Uint8Array | string): string {
+function encryptionKey(): Buffer {
+  return parseEncryptionKey(env().APP_ENCRYPTION_KEY);
+}
+
+/** AES-256-GCM with a fresh random 96-bit nonce per call. Output: base64(iv | tag | ciphertext). */
+export function encryptWithKey(key: Buffer, plain: Uint8Array | string): string {
   const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
   const data = Buffer.concat([cipher.update(typeof plain === "string" ? Buffer.from(plain) : plain), cipher.final()]);
   return Buffer.concat([iv, cipher.getAuthTag(), data]).toString("base64");
 }
 
-export function decrypt(payload: string): Buffer {
+export function decryptWithKey(key: Buffer, payload: string): Buffer {
   const raw = Buffer.from(payload, "base64");
-  const decipher = createDecipheriv("aes-256-gcm", encryptionKey(), raw.subarray(0, 12));
+  const decipher = createDecipheriv("aes-256-gcm", key, raw.subarray(0, 12));
   decipher.setAuthTag(raw.subarray(12, 28));
   return Buffer.concat([decipher.update(raw.subarray(28)), decipher.final()]);
 }
 
+export const encrypt = (plain: Uint8Array | string): string => encryptWithKey(encryptionKey(), plain);
+export const decrypt = (payload: string): Buffer => decryptWithKey(encryptionKey(), payload);
+
 /** Keyed hash of a normalized phone number. */
 export function hashPhone(normalizedPhone: string): string {
-  return createHmac("sha256", env().PHONE_HASH_KEY).update(normalizedPhone).digest("hex");
+  return hashPhoneWithKey(env().PHONE_HASH_KEY, normalizedPhone);
+}
+
+export function hashPhoneWithKey(key: string, normalizedPhone: string): string {
+  return createHmac("sha256", key).update(normalizedPhone).digest("hex");
 }

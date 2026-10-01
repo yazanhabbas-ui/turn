@@ -10,6 +10,7 @@ export const PERMISSION_GROUPS = {
   tickets: [
     "tickets.view",
     "tickets.issue",
+    "tickets.issue_self",
     "tickets.edit",
     "tickets.cancel",
     "tickets.reprint",
@@ -63,7 +64,8 @@ export const SYSTEM_ROLES: Record<SystemRoleKey, Permission[]> = {
     "appointments.manage",
     "reasons.view",
   ],
-  agent: ["agent.serve", "tickets.view", "reasons.view"],
+  /** `tickets.issue_self`: issue a walk-in ticket from the agent screen when the branch allows it (D61). */
+  agent: ["agent.serve", "tickets.view", "tickets.issue_self", "reasons.view"],
 };
 
 /** Example custom role seeded for demos: reports + reassign tickets, but no settings. */

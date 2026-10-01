@@ -216,6 +216,20 @@ export function buildExportDoc(
       rows: data.byBranch.map((b) => [name(b.name), b.visitors, b.served, round1(b.avgWaitMin)]),
     });
   }
+  if (want ? want.has("bySource") : data.bySource.length > 1) {
+    tables.push({
+      id: "bySource",
+      title: t.sections.bySource,
+      columns: [c.source, c.visitors, c.served, c.avgWait],
+      kinds: ["text", ...nums(3)],
+      rows: data.bySource.map((x) => [
+        t.sources[x.source as keyof typeof t.sources] ?? x.source,
+        x.visitors,
+        x.served,
+        round1(x.avgWaitMin),
+      ]),
+    });
+  }
   if (want ? want.has("byShift") : data.byShift.length) {
     tables.push({
       id: "byShift",

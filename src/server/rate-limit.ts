@@ -1,6 +1,7 @@
 /**
- * Fixed-window rate limiter. The in-memory store is the single-node default; a Redis store is plugged in
- * automatically when REDIS_URL is set (see src/server/redis.ts, added with the realtime milestone).
+ * Fixed-window rate limiter. Counters live in this process's memory, so limits are per node and reset on restart; a
+ * shared store can be plugged in with `setRateLimitStore` (none ships yet: REDIS_URL is not used, see the security
+ * review). The system is designed as a single node.
  */
 export interface RateLimitStore {
   /** Increments the counter for `key` in the current window and returns the new count and window reset time. */
