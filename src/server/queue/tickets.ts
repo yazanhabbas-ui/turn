@@ -564,7 +564,12 @@ export async function setStatusInTx(
   let hallId = opts.hallId !== undefined ? opts.hallId : p.currentHallId;
   if (opts.hallId) deskId = null;
   else if (opts.deskId) hallId = null;
-  if (p.status === status && deskId === p.currentDeskId && hallId === p.currentHallId && (opts.breakTypeId ?? null) === p.breakTypeId)
+  if (
+    p.status === status &&
+    deskId === p.currentDeskId &&
+    hallId === p.currentHallId &&
+    (opts.breakTypeId ?? null) === p.breakTypeId
+  )
     return;
   await ctx.tx
     .update(agentProfiles)
@@ -611,7 +616,10 @@ export async function assertHallSignIn(
     .from(hallSessions)
     .where(and(eq(hallSessions.hostAgentId, userId), inArray(hallSessions.status, ["OPEN", "IN_SESSION"])));
   const leaving = input.status === "OFFLINE" || input.status === "ON_BREAK" || input.status === "AWAY";
-  if (live && (leaving || (input.deskId && input.deskId !== p.currentDeskId) || (input.hallId && input.hallId !== p.currentHallId)))
+  if (
+    live &&
+    (leaving || (input.deskId && input.deskId !== p.currentDeskId) || (input.hallId && input.hallId !== p.currentHallId))
+  )
     throw new AppError("conflict", { reason: "hall_session_open" });
   if (!input.hallId) return;
   if (!ctx.bctx.hallSettings.enabled) throw new AppError("conflict", { reason: "halls_disabled" });
@@ -620,9 +628,7 @@ export async function assertHallSignIn(
   const [other] = await ctx.tx
     .select({ id: agentProfiles.userId })
     .from(agentProfiles)
-    .where(
-      and(eq(agentProfiles.currentHallId, hall.id), ne(agentProfiles.userId, userId), ne(agentProfiles.status, "OFFLINE")),
-    );
+    .where(and(eq(agentProfiles.currentHallId, hall.id), ne(agentProfiles.userId, userId), ne(agentProfiles.status, "OFFLINE")));
   if (other) throw new AppError("conflict", { reason: "hall_taken" });
 }
 
@@ -999,7 +1005,8 @@ export async function ticketAction(actor: QueueActor, ticketId: string, input: T
     if (t.hallSessionId && input.action !== "edit" && input.action !== "no_show") await syncHallTicket(syncOf(ctx), t, row);
     ctx.events.push({ type: "queue.updated", branchId: row.branchId, cause: input.action, ticketId: row.id });
     await rebalance(ctx);
-    return { ticket: await toView(ctx.tx, await loadTicket(ctx.tx, row.organizationId, row.id)) };
+    // A hall visitor's row changed after the action (left the session), so read it again.
+    return { ticket: await toView(ctx.tx, t.hallSessionId ? await loadTicket(ctx.tx, row.organizationId, row.id) : row) };
   });
 }
 

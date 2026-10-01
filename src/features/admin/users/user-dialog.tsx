@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { LOCALE_CODES, LOCALES } from "@/i18n/locales";
+import { cn } from "@/lib/utils";
 import type { AgentProfile, Grant, L, Lookups, UserRow } from "../types";
 import { LOOKUPS, useText } from "../use-lookups";
 
@@ -77,6 +78,11 @@ export function UserDialog({
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
   const invalidate = [[USERS], [LOOKUPS]];
+  // "Works at": a desk or a hall are alternatives; the one not chosen is cleared on save (D62).
+  const [worksAt, setWorksAt] = useState<"desk" | "hall">(user?.agent?.defaultHallId ? "hall" : "desk");
+  useEffect(() => {
+    if (open) setWorksAt(user?.agent?.defaultHallId ? "hall" : "desk");
+  }, [open, user]);
 
   const save = useApiMutation(
     (body: Form) => {
@@ -86,7 +92,14 @@ export function UserDialog({
         phone: body.phone || null,
         locale: body.locale || null,
         grants: body.grants.filter((g) => g.roleId).map((g) => ({ ...g, cityId: g.cityId ?? null })),
-        agent: body.agent ? { ...body.agent, shiftId: body.agent.shiftId ?? null } : null,
+        agent: body.agent
+          ? {
+              ...body.agent,
+              shiftId: body.agent.shiftId ?? null,
+              defaultDeskId: worksAt === "hall" ? null : (body.agent.defaultDeskId ?? null),
+              defaultHallId: worksAt === "hall" ? (body.agent.defaultHallId ?? null) : null,
+            }
+          : null,
         groupIds: body.groupIds,
         ...(user ? {} : { password: body.password || undefined }),
       };
@@ -117,7 +130,9 @@ export function UserDialog({
     },
   );
 
-  const deskOptions = lookups.branches.find((b) => b.id === form.agent?.branchId)?.desks ?? [];
+  const agentBranch = lookups.branches.find((b) => b.id === form.agent?.branchId);
+  const deskOptions = agentBranch?.desks ?? [];
+  const hallOptions = agentBranch?.halls ?? [];
   const groups = lookups.groups;
 
   return (
@@ -275,6 +290,7 @@ export function UserDialog({
                             maxConcurrent: null,
                             weight: 1,
                             defaultDeskId: null,
+                            defaultHallId: null,
                             shiftId: null,
                           }
                         : null,
@@ -290,7 +306,7 @@ export function UserDialog({
                     <NativeSelect
                       id="a-branch"
                       value={form.agent.branchId}
-                      onChange={(e) => set("agent", { ...form.agent!, branchId: e.target.value, defaultDeskId: null })}
+                      onChange={(e) => set("agent", { ...form.agent!, branchId: e.target.value, defaultDeskId: null, defaultHallId: null })}
                     >
                       {lookups.branches.map((b) => (
                         <option key={b.id} value={b.id}>
@@ -299,20 +315,58 @@ export function UserDialog({
                       ))}
                     </NativeSelect>
                   </Field>
+                  {(hallOptions.length > 0 || worksAt === "hall") && (
+                    <div className="sm:col-span-2" role="group" aria-label={t("worksAt")}>
+                      <div className="mb-1 text-sm font-medium">{t("worksAt")}</div>
+                      <div className="inline-flex rounded-lg border p-0.5">
+                        {(["desk", "hall"] as const).map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            aria-pressed={worksAt === m}
+                            onClick={() => setWorksAt(m)}
+                            className={cn(
+                              "rounded-md px-3 py-1 text-sm",
+                              worksAt === m ? "bg-brand text-white" : "text-muted-foreground hover:bg-muted",
+                            )}
+                          >
+                            {t(m === "desk" ? "worksAtDesk" : "worksAtHall")}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {worksAt === "hall" ? (
+                    <Field label={t("defaultHall")} htmlFor="a-hall" hint={t("defaultHallHint")}>
+                      <NativeSelect
+                        id="a-hall"
+                        value={form.agent.defaultHallId ?? ""}
+                        onChange={(e) => set("agent", { ...form.agent!, defaultHallId: e.target.value || null })}
+                      >
+                        <option value="">{t("noHall")}</option>
+                        {hallOptions.map((h) => (
+                          <option key={h.id} value={h.id}>
+                            {text(h.name)} ({h.capacity})
+                          </option>
+                        ))}
+                      </NativeSelect>
+                    </Field>
+                  ) : (
                   <Field label={t("defaultDesk")} htmlFor="a-desk">
-                    <NativeSelect
-                      id="a-desk"
-                      value={form.agent.defaultDeskId ?? ""}
-                      onChange={(e) => set("agent", { ...form.agent!, defaultDeskId: e.target.value || null })}
-                    >
-                      <option value="">{t("noDesk")}</option>
-                      {deskOptions.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {text(d.name)}
-                        </option>
-                      ))}
-                    </NativeSelect>
-                  </Field>
+                      <NativeSelect
+                        id="a-desk"
+                        value={form.agent.defaultDeskId ?? ""}
+                        onChange={(e) => set("agent", { ...form.agent!, defaultDeskId: e.target.value || null })}
+                      >
+                        <option value="">{t("noDesk")}</option>
+                        {deskOptions.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {text(d.name)}
+                          </option>
+                        ))}
+                      </NativeSelect>
+                    </Field>
+                  )}
                   <Field label={t("shift")} htmlFor="a-shift" hint={t("shiftHint")}>
                     <NativeSelect
                       id="a-shift"

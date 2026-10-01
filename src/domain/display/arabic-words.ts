@@ -70,7 +70,26 @@ export const ARABIC_THOUSAND = "ألف";
 export const ARABIC_PHRASES = {
   number: "رقم",
   desk: "تفضل إلى المكتب",
+  // Group calls to a hall (D62). Clip keys are `ar.phrase.<key>`; a pack without them falls back to the browser voice.
+  group_numbers: "الأرقام",
+  please_go_to_hall: "تفضلوا إلى القاعة",
+  please_go_to_hall_single: "تفضل إلى القاعة",
+  and: "و",
+  next_group: "المجموعة التالية",
+  range_from: "من",
+  range_to: "إلى",
 } as const;
+
+/** The phrases added for halls, in the order the clip generator builds them. */
+export const ARABIC_HALL_PHRASE_KEYS = [
+  "group_numbers",
+  "please_go_to_hall",
+  "please_go_to_hall_single",
+  "and",
+  "next_group",
+  "range_from",
+  "range_to",
+] as const;
 
 /** How an Arabic speaker names the Latin letters of a ticket prefix. */
 export const ARABIC_LATIN_LETTERS: Readonly<Record<string, string>> = {

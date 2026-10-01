@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { announcements, branches, desks, messageTemplates, ttsAudioPacks, tickets, visitReasons } from "@/db/schema";
+import { announcements, branches, desks, hallSessions, halls, messageTemplates, ttsAudioPacks, tickets, visitReasons } from "@/db/schema";
 import { resolveSurfaceTheme } from "@/domain/branding/surface-theme";
 import { parseDisplayConfig } from "@/domain/display/config";
 import { now as clockNow } from "../clock";
@@ -49,6 +49,8 @@ export async function displayState(display: DisplayRow) {
       displayNumber: tickets.displayNumber,
       status: tickets.status,
       deskId: tickets.deskId,
+      hallId: tickets.hallId,
+      hallSessionId: tickets.hallSessionId,
     })
     .from(tickets)
     .where(and(eq(tickets.branchId, display.branchId), inArray(tickets.status, ["CALLED", "SERVING"])))
@@ -59,6 +61,8 @@ export async function displayState(display: DisplayRow) {
       displayNumber: tickets.displayNumber,
       status: tickets.status,
       deskId: tickets.deskId,
+      hallId: tickets.hallId,
+      hallSessionId: tickets.hallSessionId,
       calledAt: tickets.calledAt,
     })
     .from(tickets)
@@ -67,15 +71,15 @@ export async function displayState(display: DisplayRow) {
         eq(tickets.branchId, display.branchId),
         or(eq(tickets.serviceDay, bctx.serviceDay), inArray(tickets.status, ["CALLED", "SERVING"])),
         sql`${tickets.calledAt} is not null`,
-        sql`${tickets.deskId} is not null`,
+        or(sql`${tickets.deskId} is not null`, sql`${tickets.hallId} is not null`),
       ),
     )
     .orderBy(desc(tickets.calledAt))
-    .limit(RECENT_CALLS + 10);
+    .limit(RECENT_CALLS * 12);
 
   // An agent may have several visitors at once: every ticket at a desk is shown on it.
   const byDesk = new Map<string, typeof active>();
-  for (const t of active) if (t.deskId) byDesk.set(t.deskId, [...(byDesk.get(t.deskId) ?? []), t]);
+  for (const t of active) if (t.deskId && !t.hallId) byDesk.set(t.deskId, [...(byDesk.get(t.deskId) ?? []), t]);
   const deskList = shownDesks.map((d) => {
     const here = byDesk.get(d.id) ?? [];
     const t = here[0];
@@ -90,6 +94,41 @@ export async function displayState(display: DisplayRow) {
       otherNumbers: here.slice(1).map((x) => x.displayNumber),
       ticketId: t?.id ?? null,
     };
+  });
+
+  // Halls (D62): only when the branch has halls and the feature is on, so a desks-only branch is unchanged.
+  const hallsOn = bctx.hallSettings.enabled && bctx.halls.length > 0;
+  const hallRows = hallsOn
+    ? await db()
+        .select()
+        .from(halls)
+        .where(and(eq(halls.branchId, display.branchId), isNull(halls.archivedAt)))
+        .orderBy(asc(halls.sortOrder), asc(halls.number))
+    : [];
+  const shownHalls = config.zones.length ? hallRows.filter((h) => h.zone && config.zones.includes(h.zone)) : hallRows;
+  const hallIds = new Set(shownHalls.map((h) => h.id));
+  const liveSessions = hallsOn
+    ? await db()
+        .select({ id: hallSessions.id, hallId: hallSessions.hallId, status: hallSessions.status })
+        .from(hallSessions)
+        .where(and(eq(hallSessions.branchId, display.branchId), inArray(hallSessions.status, ["OPEN", "IN_SESSION"])))
+    : [];
+  const sessionByHall = new Map(liveSessions.map((s) => [s.hallId, s]));
+  const hallList = shownHalls.map((h) => {
+    const here = active.filter((t) => t.hallId === h.id).reverse();
+    const session = sessionByHall.get(h.id);
+    return {
+      id: h.id,
+      number: h.number,
+      name: h.name,
+      zone: h.zone,
+      capacity: h.capacity,
+      status: !session ? "free" : session.status === "IN_SESSION" ? "in_session" : "called",
+      /** The visitors called to the hall or inside it, in the order they were called. */
+      numbers: here.map((t) => t.displayNumber),
+      occupied: here.length,
+      sessionId: session?.id ?? null,
+    } as const;
   });
 
   const waitingByReason = new Map<string, number>();
@@ -153,14 +192,29 @@ export async function displayState(display: DisplayRow) {
   ]);
 
   const deskById = new Map(deskRows.map((d) => [d.id, d]));
+  const hallById = new Map(hallRows.map((h) => [h.id, h]));
+  // A group call counts once: the last RECENT_CALLS calls (a desk call or a whole hall group), every ticket of each.
+  const seenCalls = new Set<string>();
   const recent = recentRows
-    .filter((t) => (config.zones.length ? deskIds.has(t.deskId!) : true))
-    .slice(0, RECENT_CALLS)
+    .filter((t) => {
+      if (t.hallId) return hallsOn && (config.zones.length ? hallIds.has(t.hallId) : true);
+      return config.zones.length ? deskIds.has(t.deskId!) : true;
+    })
+    .filter((t) => {
+      const key = t.hallSessionId ?? t.id;
+      if (seenCalls.has(key)) return true;
+      if (seenCalls.size >= RECENT_CALLS) return false;
+      seenCalls.add(key);
+      return true;
+    })
     .map((t) => ({
       ticketId: t.id,
       displayNumber: t.displayNumber,
       status: t.status,
-      deskNumber: deskById.get(t.deskId!)?.number ?? null,
+      deskNumber: t.hallId ? null : (deskById.get(t.deskId!)?.number ?? null),
+      hallId: t.hallId ?? null,
+      hallSessionId: t.hallSessionId ?? null,
+      hallNumber: t.hallId ? (hallById.get(t.hallId)?.number ?? null) : null,
       calledAt: t.calledAt?.toISOString() ?? null,
     }));
 
@@ -191,6 +245,9 @@ export async function displayState(display: DisplayRow) {
       showHijri: regional.showHijri,
     },
     desks: deskList,
+    halls: hallList,
+    /** How the screen announces and shows a group call (the branch's `halls` setting). */
+    hallsConfig: { enabled: hallsOn, announceMode: bctx.hallSettings.announceMode, maxAnnounced: bctx.hallSettings.maxAnnounced },
     recent,
     reasons,
     waitingTotal: [...waitingByReason.values()].reduce((a, b) => a + b, 0),

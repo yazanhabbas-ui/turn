@@ -7,6 +7,7 @@ import {
   branches,
   cities,
   desks,
+  halls,
   passwordResetTokens,
   rolePermissions,
   roles,
@@ -35,6 +36,8 @@ export const grantInput = z
 export const agentInput = z.object({
   branchId: uuid,
   defaultDeskId: uuid.nullable().optional(),
+  /** The hall this agent usually hosts (D62). */
+  defaultHallId: uuid.nullable().optional(),
   maxConcurrent: z.number().int().min(1).max(20).nullable().default(null),
   /** The agent's shift (morning, evening…); null = none. */
   shiftId: uuid.nullable().default(null),
@@ -119,6 +122,7 @@ export async function listUsers(
         ? {
             branchId: p.branchId,
             defaultDeskId: p.defaultDeskId,
+            defaultHallId: p.defaultHallId,
             maxConcurrent: p.maxConcurrent,
             shiftId: p.shiftId,
             weight: p.weight,
@@ -284,6 +288,13 @@ async function writeAgentAndGroups(tx: Tx, actor: Actor, userId: string, input: 
           .where(and(eq(desks.id, input.agent.defaultDeskId), isNull(desks.archivedAt)));
         if (!d || d.branchId !== input.agent.branchId) throw new AppError("validation", { field: "agent.defaultDeskId" });
       }
+      if (input.agent.defaultHallId) {
+        const [h] = await tx
+          .select({ branchId: halls.branchId })
+          .from(halls)
+          .where(and(eq(halls.id, input.agent.defaultHallId), isNull(halls.archivedAt)));
+        if (!h || h.branchId !== input.agent.branchId) throw new AppError("validation", { field: "agent.defaultHallId" });
+      }
       if (input.agent.shiftId) {
         const [sh] = await tx
           .select({ id: shifts.id, cityId: shifts.cityId })
@@ -299,6 +310,7 @@ async function writeAgentAndGroups(tx: Tx, actor: Actor, userId: string, input: 
       const values = {
         branchId: input.agent.branchId,
         defaultDeskId: input.agent.defaultDeskId ?? null,
+        defaultHallId: input.agent.defaultHallId ?? null,
         maxConcurrent: input.agent.maxConcurrent,
         shiftId: input.agent.shiftId,
         weight: input.agent.weight,

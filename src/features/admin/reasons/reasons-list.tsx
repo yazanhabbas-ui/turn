@@ -81,6 +81,7 @@ export function ReasonsList({ canManage }: { canManage: boolean }) {
                           {r.isFeatured && (
                             <Star className="text-brand-accent size-3.5 fill-current" aria-label={t("featured")} />
                           )}
+                          {r.delivery === "hall" && <Badge variant="outline">{t("deliveryHall")}</Badge>}
                           {r.archivedAt && <Badge variant="outline">{tu("archived")}</Badge>}
                         </div>
                         <div className="text-muted-foreground text-xs" dir="ltr">

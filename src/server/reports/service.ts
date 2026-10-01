@@ -1,9 +1,11 @@
 import { and, asc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { agentProfiles, agentStatusLog, branches, shifts, tickets, users, visitReasons, visitors } from "@/db/schema";
+import { agentProfiles, agentStatusLog, branches, halls, shifts, tickets, users, visitReasons, visitors } from "@/db/schema";
 import type { FeedbackFact } from "@/domain/feedback/csat";
 import { computeForecast, computeReport } from "@/domain/reports/compute";
+import type { HallSessionFact } from "@/domain/reports/halls";
+import type { HallTicketStatus } from "@/domain/halls/state";
 import type { StatusEntry, TicketFact } from "@/domain/reports/types";
 import { zonedParts, zonedToUtc } from "@/domain/schedule/time";
 import { isoDate, uuid } from "@/domain/validation";
@@ -22,6 +24,8 @@ export const reportFilters = z.object({
   branchId: uuid.optional(),
   reasonId: uuid.optional(),
   agentId: uuid.optional(),
+  /** Only visitors received in this hall, and its group sessions (D62). */
+  hallId: uuid.optional(),
   /** Arrival weekdays to include (0 = Sunday). */
   weekdays: z.array(z.number().int().min(0).max(6)).max(7).optional(),
   /** Arrival hours to include, inclusive (0-23). */
@@ -39,6 +43,7 @@ export function filtersFromQuery(q: URLSearchParams): ReportFilters {
     branchId: q.get("branchId") || undefined,
     reasonId: q.get("reasonId") || undefined,
     agentId: q.get("agentId") || undefined,
+    hallId: q.get("hallId") || undefined,
     weekdays: q.get("weekdays") ? q.get("weekdays")!.split(",").map(Number) : undefined,
     hourFrom: num("hourFrom"),
     hourTo: num("hourTo"),
@@ -68,7 +73,7 @@ export async function reportMeta(actor: Actor) {
   const bs = await reportBranches(actor, "reports.view");
   const org = orgOf(actor);
   const branchIds = bs.map((b) => b.id);
-  const [reasons, agents] = await Promise.all([
+  const [reasons, agents, hallRows] = await Promise.all([
     db()
       .select({ id: visitReasons.id, name: visitReasons.name, color: visitReasons.color })
       .from(visitReasons)
@@ -87,8 +92,19 @@ export async function reportMeta(actor: Actor) {
           )}))`,
         ),
       ),
+    // Halls (D62): the filter is offered only when the organization has some.
+    db()
+      .select({ id: halls.id, branchId: halls.branchId, number: halls.number, name: halls.name })
+      .from(halls)
+      .where(and(eq(halls.organizationId, org), isNull(halls.archivedAt), inArray(halls.branchId, branchIds)))
+      .orderBy(asc(halls.sortOrder), asc(halls.number)),
   ]);
-  return { branches: bs.map((b) => ({ id: b.id, name: b.name, timezone: b.timezone })), reasons, agents };
+  return {
+    branches: bs.map((b) => ({ id: b.id, name: b.name, timezone: b.timezone })),
+    reasons,
+    agents,
+    halls: hallRows,
+  };
 }
 
 function daysBetween(from: string, to: string): number {
@@ -144,8 +160,9 @@ async function buildReportForBranches(org: string, bs: (typeof branches.$inferSe
     visitor_id: string | null;
     transfers: string[] | null;
     source: string;
+    hall_id: string | null;
   }>(sql`
-    select t.id, t.branch_id, t.reason_id, t.visitor_id, t.source, t.serving_agent_id as agent_id, t.arrived_at,
+    select t.id, t.branch_id, t.reason_id, t.visitor_id, t.source, t.hall_id, t.serving_agent_id as agent_id, t.arrived_at,
       (select min(e.at) from ticket_events e where e.ticket_id = t.id and e.type = 'CALLED') as first_called_at,
       t.started_at, t.finished_at, t.status, t.recall_count,
       (t.visitor_id is not null and exists (
@@ -160,6 +177,7 @@ async function buildReportForBranches(org: string, bs: (typeof branches.$inferSe
       )})
       and t.service_day between ${f.from} and ${f.to}
       ${f.reasonId ? sql`and t.reason_id = ${f.reasonId}` : sql``}
+      ${f.hallId ? sql`and t.hall_id = ${f.hallId}` : sql``}
   `);
 
   const reasonRows = await db().select().from(visitReasons).where(eq(visitReasons.organizationId, org));
@@ -182,6 +200,7 @@ async function buildReportForBranches(org: string, bs: (typeof branches.$inferSe
     visitorId: r.visitor_id,
     slaTargetMinutes: reasons.get(r.reason_id)?.slaTargetWaitMinutes ?? 15,
     source: r.source,
+    hallId: r.hall_id,
   }));
 
   // Filters that depend on the arrival time in the branch's own time zone, and on the serving agent.
@@ -269,6 +288,12 @@ async function buildReportForBranches(org: string, bs: (typeof branches.$inferSe
     .from(agentProfiles)
     .where(eq(agentProfiles.organizationId, org));
 
+  const hallSessions = await hallSessionFacts(branchIds, f, fromMs, toMs, tzOf, tz);
+  const hallRows = await db()
+    .select({ id: halls.id, number: halls.number, name: halls.name, branchId: halls.branchId })
+    .from(halls)
+    .where(and(eq(halls.organizationId, org), inArray(halls.branchId, branchIds)));
+
   const data = computeReport({
     facts,
     statusLog,
@@ -280,6 +305,8 @@ async function buildReportForBranches(org: string, bs: (typeof branches.$inferSe
     now,
     serviceLevel: { minutes: settings.serviceLevelMinutes, targetPct: settings.serviceLevelTargetPct },
     feedback,
+    hallSessions,
+    halls: new Map(hallRows.map((h) => [h.id, { number: h.number, name: h.name, branchId: h.branchId }])),
     lowScoreThreshold: feedbackSettings.lowScoreThreshold,
     shifts: shiftRows.map((x) => ({ id: x.id, name: x.name, startsAt: x.startsAt, endsAt: x.endsAt })),
     agentShift: new Map(profileShifts.filter((p) => p.shiftId).map((p) => [p.userId, p.shiftId!])),
@@ -287,6 +314,70 @@ async function buildReportForBranches(org: string, bs: (typeof branches.$inferSe
   await describeVisitors(data.repeat.top, fullPhone);
   await describeVisitors(data.csat.lowComments, fullPhone);
   return { filters: f, timezone: tz, generatedAt: new Date(now).toISOString(), data };
+}
+
+/**
+ * Group sessions of the period (called within it) with the status of every visitor called into them. The hall,
+ * agent (as host), reason (members of that reason only) and weekday/hour filters apply like they do to tickets.
+ */
+export async function hallSessionFacts(
+  branchIds: string[],
+  f: Pick<ReportFilters, "hallId" | "agentId" | "reasonId" | "weekdays" | "hourFrom" | "hourTo">,
+  fromMs: number,
+  toMs: number,
+  tzOf: Map<string, string>,
+  fallbackTz: string,
+): Promise<HallSessionFact[]> {
+  const rows = await db().execute<{
+    id: string;
+    hall_id: string;
+    branch_id: string;
+    host_agent_id: string;
+    status: HallSessionFact["status"];
+    capacity: number;
+    called_at: Date;
+    started_at: Date | null;
+    closed_at: Date | null;
+    members: HallTicketStatus[] | null;
+  }>(sql`
+    select s.id, s.hall_id, s.branch_id, s.host_agent_id, s.status, s.capacity, s.called_at, s.started_at, s.closed_at,
+      (select array_agg(m.status::text) from hall_session_tickets m join tickets t on t.id = m.ticket_id
+         where m.session_id = s.id ${f.reasonId ? sql`and t.reason_id = ${f.reasonId}` : sql``}) as members
+    from hall_sessions s
+    where s.branch_id in (${sql.join(
+      branchIds.map((id) => sql`${id}`),
+      sql`, `,
+    )})
+      and s.called_at >= ${new Date(fromMs)} and s.called_at < ${new Date(toMs)}
+      ${f.hallId ? sql`and s.hall_id = ${f.hallId}` : sql``}
+      ${f.agentId ? sql`and s.host_agent_id = ${f.agentId}` : sql``}
+  `);
+  let out: HallSessionFact[] = rows.rows
+    .filter((r) => !f.reasonId || (r.members?.length ?? 0) > 0)
+    .map((r) => ({
+      sessionId: r.id,
+      hallId: r.hall_id,
+      branchId: r.branch_id,
+      hostAgentId: r.host_agent_id,
+      status: r.status,
+      capacity: r.capacity,
+      calledAt: new Date(r.called_at).getTime(),
+      startedAt: r.started_at ? new Date(r.started_at).getTime() : null,
+      closedAt: r.closed_at ? new Date(r.closed_at).getTime() : null,
+      members: r.members ?? [],
+    }));
+  if (f.weekdays || f.hourFrom !== undefined || f.hourTo !== undefined) {
+    out = out.filter((s) => {
+      const p = zonedParts(s.calledAt, tzOf.get(s.branchId) ?? fallbackTz);
+      const hour = Math.floor(p.minutes / 60);
+      return (
+        (!f.weekdays || f.weekdays.includes(p.weekday)) &&
+        (f.hourFrom === undefined || hour >= f.hourFrom) &&
+        (f.hourTo === undefined || hour <= f.hourTo)
+      );
+    });
+  }
+  return out;
 }
 
 /** Expected volume for the next week and tomorrow's staffing, from the recent history of the branch. */

@@ -87,6 +87,10 @@ export function buildExportDoc(
   filters.push([t.filterReason, f.reasonId ? (reason ? name(reason.name) : f.reasonId.slice(0, 8)) : t.all]);
   const agent = f.agentId ? data.agents.find((a) => a.agentId === f.agentId) : undefined;
   filters.push([t.filterAgent, f.agentId ? (agent ? name(agent.name) : f.agentId.slice(0, 8)) : t.all]);
+  if (f.hallId) {
+    const hall = data.byHall.find((h) => h.hallId === f.hallId);
+    filters.push([t.filterHall, hall ? `${hall.number} ${name(hall.name)}`.trim() : f.hallId.slice(0, 8)]);
+  }
   if (f.weekdays?.length) filters.push([t.filterWeekdays, f.weekdays.map(weekday).join(", ")]);
   if (f.hourFrom !== undefined || f.hourTo !== undefined) {
     filters.push([t.filterHours, renderTemplate(t.hoursValue, { from: pad(f.hourFrom ?? 0), to: pad(f.hourTo ?? 23) })]);
@@ -227,6 +231,24 @@ export function buildExportDoc(
         x.visitors,
         x.served,
         round1(x.avgWaitMin),
+      ]),
+    });
+  }
+  if (want ? want.has("byHall") : data.byHall.length) {
+    tables.push({
+      id: "byHall",
+      title: t.sections.byHall,
+      columns: [c.hall, c.sessions, c.hallVisitors, c.avgGroupSize, c.occupancy, c.avgSessionMin, c.noShow, c.noShowRate],
+      kinds: ["text", ...nums(7)],
+      rows: data.byHall.map((h) => [
+        `${h.number} ${name(h.name)}`.trim(),
+        h.sessions,
+        h.visitors,
+        round1(h.avgGroupSize),
+        round1(h.occupancyPct),
+        round1(h.avgSessionMin),
+        h.noShow,
+        round1(h.noShowRatePct),
       ]),
     });
   }

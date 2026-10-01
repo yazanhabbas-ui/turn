@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { agentGroups, queues, reasonAssignments, users, visitReasons } from "@/db/schema";
+import { agentGroups, queues, reasonAssignments, tickets, users, visitReasons } from "@/db/schema";
 import { hexColor, localizedText, ticketPrefix, uuid } from "@/domain/validation";
 import { audit } from "../audit";
 import { AppError } from "../http/errors";
@@ -47,6 +47,8 @@ export const reasonInput = z.object({
   allowAppointments: z.boolean(),
   /** A kiosk shows this reason as "please ask the agent" instead of issuing a ticket. */
   requiresStaff: z.boolean().optional(),
+  /** desk = one visitor at a desk (default); hall = a group together in a hall, never auto-assigned to desks (D62). */
+  delivery: z.enum(["desk", "hall"]).optional(),
   isFeatured: z.boolean(),
   shortcutKey: z.string().trim().max(1).nullable().optional(),
   sortOrder: z.number().int().default(0),
@@ -146,6 +148,12 @@ export async function updateReason(actor: Actor, id: string, input: z.infer<type
   await validateRefs(actor, input, id);
   await db().transaction(async (tx) => {
     const [after] = await tx.update(visitReasons).set(values(input)).where(eq(visitReasons.id, id)).returning();
+    // Switching to hall delivery: waiting visitors reserved for a desk agent go back to the shared line (D62).
+    if (after.delivery === "hall" && before.delivery !== "hall")
+      await tx
+        .update(tickets)
+        .set({ assignedAgentId: null, assignedAt: null })
+        .where(and(eq(tickets.reasonId, id), eq(tickets.status, "WAITING")));
     await audit({ ...auditMeta(actor), action: "reason.updated", entityType: "visit_reason", entityId: id, before, after }, tx);
   });
 }

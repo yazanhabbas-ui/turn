@@ -163,7 +163,8 @@
     "minutes": "{count} دقيقة",
     "noWait": "بدون انتظار",
     "fullscreen": "ملء الشاشة",
-    "exitFullscreen": "الخروج من ملء الشاشة"
+    "exitFullscreen": "الخروج من ملء الشاشة",
+    "hall": "القاعة"
   },
   "permissionGroups": {
     "admin": "الإدارة",
@@ -1582,7 +1583,8 @@
       "theme": "مظهر الشاشة",
       "callLanguages": "لغة النداء",
       "repeat": "التكرار (مرات)",
-      "repeatHint": "من 1 إلى 5. فارغ = يرث الإعداد العام."
+      "repeatHint": "من 1 إلى 5. فارغ = يرث الإعداد العام.",
+      "showHallOccupancy": "عدد الحاضرين في القاعة (٣ / ٨)"
     },
     "ann": {
       "add": "إضافة إعلان",

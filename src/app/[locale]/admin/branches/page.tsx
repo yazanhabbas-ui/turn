@@ -12,5 +12,5 @@ export default async function Page({ params }: { params: Promise<{ locale: strin
   const { locale } = await params;
   setRequestLocale(locale);
   const { auth } = await requireAuth(locale, "admin.access");
-  return <BranchesPage canManage={can(auth.grants, "branches.manage")} />;
+  return <BranchesPage canManage={can(auth.grants, "branches.manage")} canManageHalls={can(auth.grants, "halls.manage")} />;
 }

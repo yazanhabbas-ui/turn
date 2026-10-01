@@ -20,6 +20,7 @@ export type DisplayConfig = {
   showSlides: boolean;
   showWaiting: boolean;
   showClock: boolean;
+  showHallOccupancy: boolean;
   theme: DisplayThemeChoice;
   voice: DisplayVoice;
 };
@@ -75,6 +76,7 @@ export const DEFAULT_CONFIG: DisplayConfig = {
   showSlides: true,
   showWaiting: true,
   showClock: true,
+  showHallOccupancy: true,
   theme: "default",
   voice: {},
 };

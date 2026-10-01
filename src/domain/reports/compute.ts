@@ -1,4 +1,5 @@
 import { averageScore, satisfiedPct, summarizeCsat, type FeedbackFact } from "../feedback/csat";
+import { computeHallReport } from "./halls";
 import { zonedParts } from "../schedule/time";
 import { minuteInShift } from "../shifts/window";
 import type {
@@ -479,6 +480,7 @@ export function computeReport(input: ReportInput): ReportData {
     byBranch,
     bySource,
     byReason,
+    byHall: computeHallReport(input.hallSessions ?? [], input.halls ?? new Map()),
     byShift: shiftRows,
     repeat: repeatVisitors(facts),
     csat: computeCsat(input, (f) => input.shifts?.find((x) => minuteInShift(x, partsOf(f).minutes))?.id ?? null),

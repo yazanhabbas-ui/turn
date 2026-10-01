@@ -1,12 +1,12 @@
 "use client";
 
-import { DeskList, Header, NowServing, RecentCalls, Slides, Ticker, WaitingBoard, type LayoutProps } from "./parts";
+import { Header, Places, NowServing, RecentCalls, Slides, Ticker, WaitingBoard, type LayoutProps } from "./parts";
 
 /** Classic bank board: a row per desk on one side, the latest call and waiting counts on the other. */
 function Classic(p: LayoutProps) {
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[1.35fr_1fr] gap-[2vw] px-[3vw] pb-[2vh]">
-      <DeskList {...p} />
+      <Places {...p} />
       <div className="grid min-h-0 grid-rows-[41vh_1fr] gap-[1.6vh]">
         <div className="min-h-0">
           <NowServing {...p} />
@@ -38,7 +38,7 @@ function Multi(p: LayoutProps) {
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[1.1fr_1fr] grid-rows-[1fr_1fr] gap-[1.6vh_2vw] px-[3vw] pb-[2vh]">
       <NowServing {...p} />
-      <DeskList {...p} />
+      <Places {...p} />
       <Slides state={p.state} lang={p.lang} />
       <div className="grid min-h-0 content-start gap-[1.6vh] overflow-hidden">
         <RecentCalls {...p} />

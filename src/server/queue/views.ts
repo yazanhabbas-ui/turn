@@ -25,6 +25,7 @@ import { getSetting } from "../settings/service";
 import { pickByCity } from "../settings/templates";
 import { hiddenReasonIds } from "./city-reasons";
 import { breakStatus } from "./breaks";
+import { hallConsole } from "../halls/views";
 import { agentIssuingState } from "./reception-status";
 import { loadBranchContext } from "./snapshot";
 import { canOfferUpdates } from "../notifications/optin";
@@ -415,6 +416,8 @@ export async function agentWorkspace(actor: Actor) {
         breakTypeId: profile.breakTypeId,
         currentDeskId: profile.currentDeskId,
         defaultDeskId: profile.defaultDeskId,
+        currentHallId: profile.currentHallId,
+        defaultHallId: profile.defaultHallId,
         maxConcurrent: self?.maxConcurrent ?? 1,
         servedToday: today?.served ?? 0,
       },
@@ -435,7 +438,10 @@ export async function agentWorkspace(actor: Actor) {
         serves: myReasons.includes(r.id),
       })),
       visitHistory,
-      active: views.filter((v) => v.status === "CALLED" || v.status === "SERVING"),
+      /** Visitors at the agent's desk; visitors of a hall session are in `hall.session` instead (D62). */
+      active: views.filter((v) => (v.status === "CALLED" || v.status === "SERVING") && !v.hallSessionId),
+      /** The hall console (D62): null while halls are off in this branch. */
+      hall: await hallConsole(tx, bctx, profile),
       reserved: views.filter((v) => v.status === "WAITING").map((v) => ({ ...v, position: positions.get(v.id) ?? null })),
       onHold: views.filter((v) => v.status === "ON_HOLD"),
       queues: myReasons.map((reasonId) => {

@@ -1,4 +1,6 @@
+import { planHallAnnouncement } from "@/domain/display/hall-speech";
 import { planAnnouncement, type PlannedStep } from "@/domain/display/plan";
+import type { AnnounceMode } from "@/domain/halls/announce";
 import type { CallLanguages } from "@/domain/display/speech";
 import type { DigitSystem } from "@/domain/i18n/digits";
 import type { SettingValue } from "@/server/settings/registry";
@@ -44,10 +46,38 @@ export function planCall(input: PlanInput): PlannedStep[] {
   });
 }
 
+/** A group call to a hall (D62): the numbers of everyone called, announced as configured for the branch. */
+export type HallPlanInput = Omit<PlanInput, "displayNumber" | "deskNumber"> & {
+  hallNumber: string;
+  displayNumbers: string[];
+  announce: { mode: AnnounceMode; maxAnnounced: number };
+};
+export type HallCallInput = HallPlanInput & { id: string };
+
+export function planHallCall(input: HallPlanInput): PlannedStep[] {
+  const v = input.settings;
+  return planHallAnnouncement({
+    settings: { callLanguages: input.callLanguages ?? v.callLanguages, ticketReading: v.ticketReading },
+    hallNumber: input.hallNumber,
+    displayNumbers: input.displayNumbers,
+    announce: input.announce,
+    ticketLanguage: input.ticketLanguage,
+    digits: input.digits,
+  });
+}
+
+/** The job for a group call. A recorded pack that lacks the group phrases cannot say it, so the browser voice does. */
+export function buildHallVoiceJob(input: HallCallInput): VoiceJob | null {
+  return jobFrom(input, planHallCall(input));
+}
+
 /** The job the voice engine plays; null when nothing can be said. Used by the TV screen and the admin preview alike. */
 export function buildVoiceJob(input: CallInput): VoiceJob | null {
+  return jobFrom(input, planCall(input));
+}
+
+function jobFrom(input: { id: string; settings: VoiceSettings; packs: PlanInput["packs"]; repeat?: number }, steps: PlannedStep[]): VoiceJob | null {
   const v = input.settings;
-  const steps = planCall(input);
   if (!steps.length) return null;
   const browser = new BrowserTts();
   const pack = new PackTts(input.packs);

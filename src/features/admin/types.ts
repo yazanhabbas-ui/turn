@@ -25,6 +25,7 @@ export type Shift = {
 export type AgentProfile = {
   branchId: string;
   defaultDeskId?: string | null;
+  defaultHallId?: string | null;
   maxConcurrent: number | null;
   weight: number;
   shiftId?: string | null;
@@ -66,6 +67,18 @@ export type Desk = {
   zone: string | null;
   sortOrder: number;
 };
+export type Hall = {
+  id: string;
+  branchId: string;
+  number: string;
+  name: L;
+  capacity: number;
+  floorId: string | null;
+  zone: string | null;
+  sortOrder: number;
+  /** Hall-delivery reasons this hall accepts; empty = all of them. */
+  reasonIds: string[];
+};
 export type Floor = { id: string; branchId: string; name: L; sortOrder: number };
 export type Branch = {
   id: string;
@@ -78,6 +91,7 @@ export type Branch = {
   isDefault: boolean;
   floors: Floor[];
   desks: Desk[];
+  halls: Hall[];
 };
 
 export type Group = { id: string; name: L; branchId: string | null; supervisorUserId: string | null; memberIds: string[] };
@@ -123,6 +137,8 @@ export type Reason = {
   intakeFields: IntakeField[];
   allowAppointments: boolean;
   requiresStaff: boolean;
+  /** Served one by one at a desk, or called in groups into a hall. */
+  delivery?: "desk" | "hall";
   isFeatured: boolean;
   shortcutKey: string | null;
   sortOrder: number;

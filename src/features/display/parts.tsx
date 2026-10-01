@@ -3,13 +3,22 @@
 import { Building2, Volume2, VolumeX, Wifi, WifiOff } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { logoForTheme } from "@/domain/branding/surface-theme";
+import { HALL_MAX_SHOWN } from "@/domain/display/config";
 import { applyDigits, toWesternDigits } from "@/domain/i18n/digits";
 import { pickText } from "@/i18n/locales";
 import { cn } from "@/lib/utils";
 import type { T } from "./text";
 import type { ConnectionState, DisplayState } from "./use-display";
 
-export type Call = { ticketId: string; displayNumber: string; deskNumber: string | null; at: number; recall: boolean };
+export type Call = {
+  ticketId: string;
+  displayNumber: string;
+  deskNumber: string | null;
+  at: number;
+  recall: boolean;
+  /** A group call to a hall: every number called and the hall (the single `displayNumber` is then the first). */
+  hall?: { id: string; number: string; numbers: string[] };
+};
 
 export type LayoutProps = {
   state: DisplayState;
@@ -132,6 +141,31 @@ export function NowServing({
   const latest = state.recent[0];
   const number = call?.displayNumber ?? latest?.displayNumber ?? null;
   const desk = call ? call.deskNumber : (latest?.deskNumber ?? null);
+  // A group called to a hall is shown as one card: the hall and every number.
+  const hall = call ? call.hall : hallOfRecent(state, latest);
+  if (number && hall) {
+    return (
+      <section
+        aria-live="polite"
+        className={cn(
+          "border-dsp-line bg-dsp-surface flex h-full flex-col items-center justify-center rounded-[2vh] border-2 p-[2vh] text-center transition-colors",
+          flashing && "dor-flash border-dsp-hot-line bg-dsp-hot-bg",
+        )}
+      >
+        <p className="text-dsp-muted text-[3vh] font-medium">{t("nowServing")}</p>
+        <p className={cn("font-bold", size === "xl" ? "mt-[2vh] text-[9vh]" : "mt-[1vh] text-[5vh]")}>
+          {t("hall")} <span className="text-dsp-accent tabular-nums">{num(hall.number, state)}</span>
+        </p>
+        <HallNumbers
+          key={call?.at ?? "idle"}
+          state={state}
+          numbers={hall.numbers}
+          hot={flashing}
+          className={size === "xl" ? "my-[3vh] text-[min(14vh,10vw)]" : "my-[1vh] text-[min(8vh,6vw)]"}
+        />
+      </section>
+    );
+  }
   return (
     <section
       aria-live="polite"
@@ -217,27 +251,149 @@ export function DeskList({ state, lang, t, call, flashing }: Pick<LayoutProps, "
   );
 }
 
+/** The numbers of the latest call when it went to a hall (the hall's current group, or just that ticket). */
+function hallOfRecent(state: DisplayState, latest: DisplayState["recent"][number] | undefined) {
+  if (!latest?.hallId || !latest.hallNumber) return null;
+  const h = (state.halls ?? []).find((x) => x.id === latest.hallId);
+  const numbers = h?.numbers.length ? h.numbers : [latest.displayNumber];
+  return { id: latest.hallId, number: latest.hallNumber, numbers };
+}
+
+/** A group's numbers on one wrapping line: at most HALL_MAX_SHOWN, then "+k". */
+function HallNumbers({
+  state,
+  numbers,
+  hot,
+  className,
+}: {
+  state: DisplayState;
+  numbers: string[];
+  hot?: boolean;
+  className?: string;
+}) {
+  const shown = numbers.slice(0, HALL_MAX_SHOWN);
+  const more = numbers.length - shown.length;
+  return (
+    <p
+      className={cn(
+        "flex flex-wrap items-baseline justify-center gap-x-[1.4vw] gap-y-[0.6vh] leading-tight font-black tabular-nums",
+        hot ? "dor-pop text-dsp-hot" : "text-dsp-strong",
+        className,
+      )}
+      dir="ltr"
+    >
+      {shown.map((n) => (
+        <span key={n}>{num(n, state)}</span>
+      ))}
+      {more > 0 && <span className="text-dsp-muted text-[0.6em]">+{num(more, state)}</span>}
+    </p>
+  );
+}
+
+/** One card per hall: hall number, the group called or inside, and (optionally) how full it is. */
+export function HallList({ state, lang, t, call, flashing }: Pick<LayoutProps, "state" | "lang" | "t" | "call" | "flashing">) {
+  const halls = state.halls ?? [];
+  if (!halls.length) return null;
+  const showOccupancy = state.display.config.showHallOccupancy !== false;
+  return (
+    <ul className="grid gap-[1vh]">
+      {halls.slice(0, 4).map((h) => {
+        const hot = flashing && call?.hall?.id === h.id;
+        const name = pickText(h.name, lang);
+        return (
+          <li
+            key={h.id}
+            className={cn(
+              "border-dsp-line bg-dsp-surface flex items-center gap-[2vw] rounded-[1.4vh] border px-[2vw] py-[1vh]",
+              h.status === "called" && "border-dsp-called",
+              hot && "dor-flash border-dsp-hot-line bg-dsp-hot-bg",
+            )}
+          >
+            <span className="text-dsp-soft min-w-[10vw] text-[3.4vh] font-semibold">
+              {t("hall")} <span className="text-dsp-strong tabular-nums">{num(h.number, state)}</span>
+              {name && digitsOf(name) !== digitsOf(h.number) && (
+                <span className="text-dsp-subtle block text-[2vh] font-normal">{name}</span>
+              )}
+            </span>
+            {h.numbers.length ? (
+              <HallNumbers
+                state={state}
+                numbers={h.numbers}
+                className={cn(
+                  "min-w-0 flex-1 justify-start text-[4.4vh]",
+                  h.status === "called" ? "text-dsp-hot" : "text-dsp-ok",
+                )}
+              />
+            ) : (
+              <span className="text-dsp-subtle flex-1 text-[2.4vh]">{t("free")}</span>
+            )}
+            {showOccupancy && h.numbers.length > 0 && (
+              <span className="text-dsp-muted text-[2.4vh] font-semibold tabular-nums" dir="ltr">
+                {num(h.occupied, state)} / {num(h.capacity, state)}
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** Desks, and under them the halls. A branch without halls shows exactly the desk list as before. */
+export function Places(p: Pick<LayoutProps, "state" | "lang" | "t" | "call" | "flashing">) {
+  if (!p.state.halls?.length) return <DeskList {...p} />;
+  return (
+    <div className="grid min-h-0 grid-rows-[1fr_auto] content-start gap-[1.4vh]">
+      <DeskList {...p} />
+      <HallList {...p} />
+    </div>
+  );
+}
+
+type RecentGroup = { key: string; numbers: string[]; deskNumber: string | null; hallNumber: string | null };
+
+/** Recent calls with a group call collapsed into one entry. */
+function recentGroups(recent: DisplayState["recent"]): RecentGroup[] {
+  const groups: RecentGroup[] = [];
+  for (const r of recent) {
+    const key = r.hallSessionId ?? `${r.ticketId}-${r.calledAt}`;
+    const g = groups.find((x) => x.key === key);
+    if (g) g.numbers.push(r.displayNumber);
+    else groups.push({ key, numbers: [r.displayNumber], deskNumber: r.deskNumber, hallNumber: r.hallNumber ?? null });
+  }
+  return groups;
+}
+
 export function RecentCalls({
   state,
   t,
   className,
   max = 4,
 }: Pick<LayoutProps, "state" | "t"> & { className?: string; max?: number }) {
-  const items = state.recent.slice(1, 1 + max);
+  // The first group is the one shown as "now serving".
+  const items = recentGroups(state.recent).slice(1, 1 + max);
   if (!items.length) return null;
   return (
     <section className={className}>
       <h2 className="text-dsp-muted mb-[1vh] text-[2.4vh] font-medium">{t("recent")}</h2>
       <ul className="flex flex-wrap gap-[1.2vh]">
         {items.map((r) => (
-          <li
-            key={`${r.ticketId}-${r.calledAt}`}
-            className="bg-dsp-surface rounded-[1.2vh] px-[1.6vw] py-[1vh] text-[3vh] font-bold tabular-nums"
-          >
-            <span dir="ltr">{num(r.displayNumber, state)}</span>
+          <li key={r.key} className="bg-dsp-surface rounded-[1.2vh] px-[1.6vw] py-[1vh] text-[3vh] font-bold tabular-nums">
+            <span dir="ltr">
+              {r.numbers
+                .slice(0, HALL_MAX_SHOWN)
+                .map((n) => num(n, state))
+                .join(" · ")}
+              {r.numbers.length > HALL_MAX_SHOWN && ` +${num(r.numbers.length - HALL_MAX_SHOWN, state)}`}
+            </span>
             {r.deskNumber && (
               <span className="text-dsp-muted ms-3 text-[2.2vh] font-medium">
                 {t("desk")} {num(r.deskNumber, state)}
+              </span>
+            )}
+            {r.hallNumber && (
+              <span className="text-dsp-muted ms-3 text-[2.2vh] font-medium">
+                {t("hall")} {num(r.hallNumber, state)}
               </span>
             )}
           </li>

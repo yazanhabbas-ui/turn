@@ -119,6 +119,9 @@ export type AgentWorkspace = {
     breakTypeId: string | null;
     currentDeskId: string | null;
     defaultDeskId: string | null;
+    /** The hall the agent hosts now / by default (D62). */
+    currentHallId: string | null;
+    defaultHallId: string | null;
     maxConcurrent: number;
     servedToday: number;
   };
@@ -157,8 +160,51 @@ export type AgentWorkspace = {
     onBreak: number;
     request: { status: "waiting" | "offered"; position: number; offerExpiresAt: string | null } | null;
   };
+  /** The hall console (D62); null while halls are off in this branch. */
+  hall: HallConsole | null;
   /** Up to 5 previous visits (latest first) per visitor id. */
   visitHistory: Record<string, VisitHistoryItem[]>;
+};
+
+export type HallMemberStatus = "CALLED" | "ENTERED" | "NO_SHOW" | "DONE" | "RELEASED";
+
+export type HallSession = {
+  id: string;
+  status: "OPEN" | "IN_SESSION" | "CLOSED" | "CANCELLED";
+  hallId: string;
+  hallNumber: string;
+  hallName: L;
+  hostAgentId: string;
+  capacity: number;
+  reasonId: string | null;
+  calledAt: string;
+  startedAt: string | null;
+  closedAt: string | null;
+  /** Visitors called or inside (they use seats). */
+  occupied: number;
+  tickets: {
+    status: HallMemberStatus;
+    enteredAt: string | null;
+    finishedAt: string | null;
+    outcome: string | null;
+    ticket: Ticket;
+  }[];
+};
+
+export type HallConsole = {
+  settings: {
+    groupMode: "same_reason" | "any_reason";
+    minGroup: number;
+    maxGroup: number;
+    allowTopUp: boolean;
+    autoStartWhenAllEntered: boolean;
+  };
+  halls: { id: string; number: string; name: L; capacity: number; zone: string | null; hostAgentId: string | null }[];
+  hall: { id: string; number: string; name: L; capacity: number } | null;
+  waiting: number;
+  callable: number;
+  maxCall: number;
+  session: HallSession | null;
 };
 
 export type VisitHistoryItem = {

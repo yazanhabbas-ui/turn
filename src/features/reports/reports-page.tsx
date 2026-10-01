@@ -46,6 +46,7 @@ import { ReportFilters } from "./report-filters";
 import {
   AgentsTable,
   CsatGroupTable,
+  HallsTable,
   LowCommentsTable,
   ReasonsTable,
   RepeatVisitorsTable,
@@ -69,6 +70,7 @@ function emptySections(d: ReportData | undefined): ExportSectionId[] {
   if (!d.agents.length) out.push("byAgent");
   if (d.byBranch.length <= 1) out.push("byBranch");
   if (d.bySource.length <= 1) out.push("bySource");
+  if (!d.byHall.length) out.push("byHall");
   if (!d.byShift.length) out.push("byShift");
   if (!d.repeat.uniqueVisitors) out.push("repeatSummary", "repeatDistribution");
   if (!d.repeat.top.length) out.push("repeatTop");
@@ -384,6 +386,12 @@ function ReportBody({
       {data.bySource.length > 1 && (
         <Section title={t("sections.sources")} description={t("sources.hint")} exports={["bySource"]}>
           <SourceTable rows={data.bySource} />
+        </Section>
+      )}
+
+      {data.byHall.length > 0 && (
+        <Section title={t("sections.halls")} description={t("halls.hint")} exports={["byHall"]}>
+          <HallsTable rows={data.byHall} />
         </Section>
       )}
 

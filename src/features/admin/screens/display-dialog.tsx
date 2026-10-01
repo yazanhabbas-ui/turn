@@ -201,6 +201,11 @@ export function DisplayDialog({
                     checked={f.config.showClock}
                     onChange={(showClock) => setConfig({ showClock })}
                   />
+                  <Check
+                    label={t("config.showHallOccupancy")}
+                    checked={f.config.showHallOccupancy}
+                    onChange={(showHallOccupancy) => setConfig({ showHallOccupancy })}
+                  />
                 </div>
               </fieldset>
               <fieldset className="space-y-3 rounded-lg border p-3">

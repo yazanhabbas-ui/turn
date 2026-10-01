@@ -3,6 +3,9 @@ import { DISPLAY_THEME_CHOICES } from "../branding/surface-theme";
 import { CALL_LANGUAGES } from "./speech";
 
 export const DISPLAY_LAYOUTS = ["classic", "single", "multi"] as const;
+/** Most ticket numbers written on a hall card; the rest are shown as "+k". */
+export const HALL_MAX_SHOWN = 12;
+
 export type DisplayLayout = (typeof DISPLAY_LAYOUTS)[number];
 
 /**
@@ -23,6 +26,8 @@ export const displayConfigSchema = z.object({
   showSlides: z.boolean().default(true),
   showWaiting: z.boolean().default(true),
   showClock: z.boolean().default(true),
+  /** Halls: show "3 / 8" (visitors in the hall / capacity) on each hall card. */
+  showHallOccupancy: z.boolean().default(true),
   /** Look of the screen; "default" follows the `displayTheme` setting (organization or branch). */
   theme: z.enum(DISPLAY_THEME_CHOICES).default("default"),
   voice: z

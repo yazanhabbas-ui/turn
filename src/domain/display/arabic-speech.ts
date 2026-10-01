@@ -129,20 +129,31 @@ export function buildArabicUnits(call: ArabicCall): SpeechUnit[] {
   const desk = (call.desk ?? "").trim();
   if (desk && call.includeDesk !== false) {
     units.push(leaf("ar.phrase.desk", ARABIC_PHRASES.desk, "desk"));
-    const d = splitTicket(desk);
-    if (!Number.isNaN(d.number)) {
-      let first = true;
-      for (const ch of d.prefix) {
-        const u = letterUnit(ch, first ? "inner" : "letter");
-        if (u) {
-          units.push(u);
-          first = false;
-        }
-      }
-      units.push(...numberUnits(d.number, first ? "inner" : "letter"));
-    }
+    units.push(...placeUnits(desk));
   }
   return units;
+}
+
+/** A desk or hall number after its phrase: optional prefix letters, then the number as words. */
+export function placeUnits(place: string): SpeechUnit[] {
+  const d = splitTicket(place);
+  if (Number.isNaN(d.number)) return [];
+  const units: SpeechUnit[] = [];
+  let first = true;
+  for (const ch of d.prefix) {
+    const u = letterUnit(ch, first ? "inner" : "letter");
+    if (u) {
+      units.push(u);
+      first = false;
+    }
+  }
+  units.push(...numberUnits(d.number, first ? "inner" : "letter"));
+  return units;
+}
+
+/** A fixed phrase as a unit (clip `ar.phrase.<key>`). */
+export function phraseUnit(key: keyof typeof ARABIC_PHRASES, gap: GapKind | null): SpeechUnit {
+  return leaf(`ar.phrase.${key}`, ARABIC_PHRASES[key], gap);
 }
 
 /**

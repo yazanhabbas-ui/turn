@@ -1,7 +1,7 @@
 "use client";
 
-import { ArrowLeftRight, Bell, CheckCircle2, Clock, Coffee, PauseCircle, Phone, Play, UserRoundX } from "lucide-react";
-import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
+import { ArrowLeftRight, Bell, CheckCircle2, Clock, Coffee, PauseCircle, Play, UserRoundX } from "lucide-react";
+import { useLocale, useNow, useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ErrorState, LoadingRows } from "@/components/admin/form";
@@ -20,8 +20,11 @@ import { Link } from "@/i18n/navigation";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ConnectionPill, Elapsed, formatElapsed, SlaTimer, StatusBadge } from "../queue/bits";
-import type { AgentWorkspace, BreakEvent, Ticket, VisitHistoryItem } from "../queue/types";
+import type { AgentWorkspace, BreakEvent, Ticket } from "../queue/types";
 import { useLiveQuery } from "../queue/use-queue";
+import { HallPanel } from "./hall-panel";
+import { OUTCOMES, workMode } from "./hall-helpers";
+import { VisitHistory, VisitorInfo } from "./visitor-detail";
 import { WalkInButton } from "./walk-in-panel";
 
 type Status = AgentWorkspace["profile"]["status"];
@@ -98,6 +101,8 @@ export function AgentWorkspaceView() {
   }, []);
   useEffect(() => setBranchId(ws.data?.branch.id ?? null), [ws.data?.branch.id]);
   const [busy, setBusy] = useState(false);
+  // Desk or hall (D62): what the agent picked on this screen; until then, what the server knows.
+  const [pickedMode, setPickedMode] = useState<"desk" | "hall" | null>(null);
   const [hint, setHint] = useState<string | null>(null);
   const [completeFor, setCompleteFor] = useState<Ticket | null>(null);
   const [transferFor, setTransferFor] = useState<Ticket | null>(null);
@@ -177,6 +182,8 @@ export function AgentWorkspaceView() {
   }, [ws.data, refresh, message, t]);
 
   const data = ws.data;
+  const serverMode = workMode(data?.profile, !!data?.hall);
+  const hallMode = !!data?.hall && (pickedMode ?? serverMode) === "hall";
   const active = data?.active ?? [];
   const current = active.find((x) => x.id === focusId) ?? active[0] ?? null;
   const maxVisitors = data?.profile.maxConcurrent ?? 1;
@@ -193,7 +200,7 @@ export function AgentWorkspaceView() {
   }, [activeKey, focusId]);
 
   const primary = useCallback(() => {
-    if (busy || !data) return;
+    if (busy || !data || hallMode) return;
     if (!current) return void callNext();
     if (current.status === "CALLED") return void action(current, { action: "start" });
     if (current.status === "SERVING") setCompleteFor(current);
@@ -202,7 +209,18 @@ export function AgentWorkspaceView() {
   // Keyboard / USB call button: Enter = primary action, R = recall.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (isTyping(e) || completeFor || transferFor || breakPicker || walkInOpen || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (
+        hallMode ||
+        isTyping(e) ||
+        completeFor ||
+        transferFor ||
+        breakPicker ||
+        walkInOpen ||
+        e.ctrlKey ||
+        e.metaKey ||
+        e.altKey
+      )
+        return;
       if (e.key === "Enter" || e.key === "NumpadEnter") {
         e.preventDefault();
         primary();
@@ -213,7 +231,7 @@ export function AgentWorkspaceView() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [primary, current, action, completeFor, transferFor, breakPicker, walkInOpen]);
+  }, [primary, current, action, completeFor, transferFor, breakPicker, walkInOpen, hallMode]);
 
   if (ws.isLoading) return <LoadingRows rows={6} />;
   if (ws.error instanceof ApiError && ws.error.details?.reason === "not_an_agent") return <NotAnAgent />;
@@ -221,6 +239,8 @@ export function AgentWorkspaceView() {
 
   const reasonOf = (id: string) => data.reasons.find((r) => r.id === id);
   const deskId = data.profile.currentDeskId ?? data.profile.defaultDeskId ?? "";
+  const signInStatus = data.profile.status === "OFFLINE" ? "AVAILABLE" : data.profile.status;
+  const sessionOpen = !!data.hall?.session;
   const breakType = data.breakTypes.find((b) => b.id === data.profile.breakTypeId);
 
   return (
@@ -268,158 +288,204 @@ export function AgentWorkspaceView() {
           </span>
         )}
         <div className="ms-auto flex items-center gap-2">
-          <Label htmlFor="agent-desk" className="text-sm">
-            {t("desk")}
-          </Label>
-          <NativeSelect
-            id="agent-desk"
-            className="h-10 w-40"
-            value={deskId}
-            onChange={(e) =>
-              void setStatus(data.profile.status === "OFFLINE" ? "AVAILABLE" : data.profile.status, { deskId: e.target.value })
-            }
-          >
-            {!deskId && <option value="">{t("chooseDesk")}</option>}
-            {data.desks.map((d) => (
-              <option key={d.id} value={d.id}>
-                {pickText(d.name, locale)}
-              </option>
-            ))}
-          </NativeSelect>
+          {data.hall && (
+            <div className="flex gap-1" role="radiogroup" aria-label={t("hall.workAt")}>
+              {(["desk", "hall"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="radio"
+                  aria-checked={(hallMode ? "hall" : "desk") === m}
+                  disabled={active.length > 0 || sessionOpen}
+                  title={active.length > 0 || sessionOpen ? t("hall.modeLocked") : undefined}
+                  onClick={() => setPickedMode(m)}
+                  className={cn(
+                    "h-10 rounded-full border px-3 text-sm font-medium transition disabled:opacity-60",
+                    (hallMode ? "hall" : "desk") === m ? "border-brand bg-brand/10 text-brand" : "hover:bg-muted",
+                  )}
+                >
+                  {t(m === "desk" ? "hall.modeDesk" : "hall.modeHall")}
+                </button>
+              ))}
+            </div>
+          )}
+          {hallMode && data.hall ? (
+            <>
+              <Label htmlFor="agent-hall" className="sr-only">
+                {t("hall.hall")}
+              </Label>
+              <NativeSelect
+                id="agent-hall"
+                className="h-10 w-44"
+                value={data.profile.currentHallId ?? ""}
+                disabled={sessionOpen}
+                onChange={(e) => void setStatus(signInStatus, { hallId: e.target.value }).then(() => setPickedMode(null))}
+              >
+                {!data.profile.currentHallId && <option value="">{t("hall.chooseHall")}</option>}
+                {data.hall.halls.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {pickText(h.name, locale)} · {h.number} ({h.capacity})
+                  </option>
+                ))}
+              </NativeSelect>
+            </>
+          ) : (
+            <>
+              <Label htmlFor="agent-desk" className="text-sm">
+                {t("desk")}
+              </Label>
+              <NativeSelect
+                id="agent-desk"
+                className="h-10 w-40"
+                value={deskId}
+                onChange={(e) => void setStatus(signInStatus, { deskId: e.target.value }).then(() => setPickedMode(null))}
+              >
+                {!deskId && <option value="">{t("chooseDesk")}</option>}
+                {data.desks.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {pickText(d.name, locale)}
+                  </option>
+                ))}
+              </NativeSelect>
+            </>
+          )}
           <WalkInButton ws={data} open={walkInOpen} onOpenChange={setWalkInOpen} onChanged={refresh} />
           <ConnectionPill state={ws.connection} />
         </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
-        {/* Current visitor */}
-        <section className="bg-card flex min-h-[26rem] flex-col rounded-2xl border p-5 shadow-sm" aria-label={t("current")}>
-          {maxVisitors > 1 && (
-            <div
-              className="mb-4 flex flex-wrap items-center gap-2"
-              role="tablist"
-              aria-label={t("visitorsNow", { count: active.length, max: maxVisitors })}
-            >
-              {active.map((x) => (
-                <button
-                  key={x.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={current?.id === x.id}
-                  onClick={() => setFocusId(x.id)}
-                  className={cn(
-                    "tabular flex h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold",
-                    current?.id === x.id ? "border-brand bg-brand/10 text-brand" : "hover:bg-muted",
-                  )}
-                >
-                  <span dir="ltr">{x.displayNumber}</span>
-                  <span className="text-muted-foreground text-xs font-normal">
-                    {t(x.status === "CALLED" ? "tabCalled" : "tabServing")}
-                  </span>
-                </button>
-              ))}
-              <span className="text-muted-foreground ms-auto text-xs">
-                {t("visitorsNow", { count: active.length, max: maxVisitors })}
-              </span>
-            </div>
-          )}
-          {current ? (
-            <CurrentTicket
-              ticket={current}
-              reason={reasonOf(current.reasonId)}
-              history={data.visitHistory}
-              reasons={data.reasons}
-            />
-          ) : (
-            <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 text-center">
-              <Bell className="size-12 opacity-40" aria-hidden />
-              <p className="text-lg">{t("empty")}</p>
-              {hint && (
-                <p role="status" className="text-foreground font-medium">
+        {hallMode && data.hall ? (
+          <HallPanel data={data} hall={data.hall} blocked={breakPicker || walkInOpen} onChanged={refresh} />
+        ) : (
+          <section className="bg-card flex min-h-[26rem] flex-col rounded-2xl border p-5 shadow-sm" aria-label={t("current")}>
+            {maxVisitors > 1 && (
+              <div
+                className="mb-4 flex flex-wrap items-center gap-2"
+                role="tablist"
+                aria-label={t("visitorsNow", { count: active.length, max: maxVisitors })}
+              >
+                {active.map((x) => (
+                  <button
+                    key={x.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={current?.id === x.id}
+                    onClick={() => setFocusId(x.id)}
+                    className={cn(
+                      "tabular flex h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold",
+                      current?.id === x.id ? "border-brand bg-brand/10 text-brand" : "hover:bg-muted",
+                    )}
+                  >
+                    <span dir="ltr">{x.displayNumber}</span>
+                    <span className="text-muted-foreground text-xs font-normal">
+                      {t(x.status === "CALLED" ? "tabCalled" : "tabServing")}
+                    </span>
+                  </button>
+                ))}
+                <span className="text-muted-foreground ms-auto text-xs">
+                  {t("visitorsNow", { count: active.length, max: maxVisitors })}
+                </span>
+              </div>
+            )}
+            {current ? (
+              <CurrentTicket
+                ticket={current}
+                reason={reasonOf(current.reasonId)}
+                history={data.visitHistory}
+                reasons={data.reasons}
+              />
+            ) : (
+              <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 text-center">
+                <Bell className="size-12 opacity-40" aria-hidden />
+                <p className="text-lg">{t("empty")}</p>
+                {hint && (
+                  <p role="status" className="text-foreground font-medium">
+                    {hint}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="mt-6 space-y-3">
+              <Button
+                className="h-20 w-full text-2xl font-bold shadow-md"
+                disabled={busy || (!current && !deskId)}
+                onClick={primary}
+              >
+                {!current ? (
+                  <>
+                    <Bell className="size-7" aria-hidden />
+                    {busy ? t("calling") : t("callNext")}
+                  </>
+                ) : current.status === "CALLED" ? (
+                  <>
+                    <Play className="size-7" aria-hidden />
+                    {t("start")}
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="size-7" aria-hidden />
+                    {t("complete")}
+                  </>
+                )}
+              </Button>
+              {canCallAnother && (
+                <Button variant="outline" className="h-12 w-full text-base" disabled={busy} onClick={() => void callNext()}>
+                  <Bell aria-hidden />
+                  {busy ? t("calling") : t("callAnother")}
+                </Button>
+              )}
+              {hint && current && (
+                <p role="status" className="text-muted-foreground text-center text-sm">
                   {hint}
                 </p>
               )}
-            </div>
-          )}
-
-          <div className="mt-6 space-y-3">
-            <Button
-              className="h-20 w-full text-2xl font-bold shadow-md"
-              disabled={busy || (!current && !deskId)}
-              onClick={primary}
-            >
-              {!current ? (
-                <>
-                  <Bell className="size-7" aria-hidden />
-                  {busy ? t("calling") : t("callNext")}
-                </>
-              ) : current.status === "CALLED" ? (
-                <>
-                  <Play className="size-7" aria-hidden />
-                  {t("start")}
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="size-7" aria-hidden />
-                  {t("complete")}
-                </>
+              {current && (
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {current.status === "CALLED" && (
+                    <>
+                      <Button
+                        variant="outline"
+                        className="h-12"
+                        disabled={busy}
+                        onClick={() => void action(current, { action: "recall" })}
+                      >
+                        <Bell aria-hidden />
+                        {t("recall")}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-12"
+                        disabled={busy}
+                        onClick={() =>
+                          void action(current, { action: "no_show" }, t("noShowDone", { number: current.displayNumber }), true)
+                        }
+                      >
+                        <UserRoundX aria-hidden />
+                        {t("noShow")}
+                      </Button>
+                    </>
+                  )}
+                  <Button
+                    variant="outline"
+                    className="h-12"
+                    disabled={busy}
+                    onClick={() => void action(current, { action: "hold" })}
+                  >
+                    <PauseCircle aria-hidden />
+                    {t("hold")}
+                  </Button>
+                  <Button variant="outline" className="h-12" disabled={busy} onClick={() => setTransferFor(current)}>
+                    <ArrowLeftRight aria-hidden />
+                    {t("transfer")}
+                  </Button>
+                </div>
               )}
-            </Button>
-            {canCallAnother && (
-              <Button variant="outline" className="h-12 w-full text-base" disabled={busy} onClick={() => void callNext()}>
-                <Bell aria-hidden />
-                {busy ? t("calling") : t("callAnother")}
-              </Button>
-            )}
-            {hint && current && (
-              <p role="status" className="text-muted-foreground text-center text-sm">
-                {hint}
-              </p>
-            )}
-            {current && (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {current.status === "CALLED" && (
-                  <>
-                    <Button
-                      variant="outline"
-                      className="h-12"
-                      disabled={busy}
-                      onClick={() => void action(current, { action: "recall" })}
-                    >
-                      <Bell aria-hidden />
-                      {t("recall")}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-12"
-                      disabled={busy}
-                      onClick={() =>
-                        void action(current, { action: "no_show" }, t("noShowDone", { number: current.displayNumber }), true)
-                      }
-                    >
-                      <UserRoundX aria-hidden />
-                      {t("noShow")}
-                    </Button>
-                  </>
-                )}
-                <Button
-                  variant="outline"
-                  className="h-12"
-                  disabled={busy}
-                  onClick={() => void action(current, { action: "hold" })}
-                >
-                  <PauseCircle aria-hidden />
-                  {t("hold")}
-                </Button>
-                <Button variant="outline" className="h-12" disabled={busy} onClick={() => setTransferFor(current)}>
-                  <ArrowLeftRight aria-hidden />
-                  {t("transfer")}
-                </Button>
-              </div>
-            )}
-            <p className="text-muted-foreground text-center text-xs">{t("shortcuts")}</p>
-          </div>
-        </section>
+              <p className="text-muted-foreground text-center text-xs">{t("shortcuts")}</p>
+            </div>
+          </section>
+        )}
 
         {/* Side: my queues, reserved, on hold */}
         <aside className="space-y-4">
@@ -670,63 +736,6 @@ function VisitBadges({ visitor }: { visitor: Ticket["visitor"] }) {
   );
 }
 
-function VisitHistory({
-  visitor,
-  history,
-  reasons,
-}: {
-  visitor: NonNullable<Ticket["visitor"]>;
-  history: VisitHistoryItem[];
-  reasons: AgentWorkspace["reasons"];
-}) {
-  const t = useTranslations("agent");
-  const tq = useTranslations("queue");
-  const tts = useTranslations("ticketStatus");
-  const locale = useLocale();
-  const format = useFormatter();
-  return (
-    <div>
-      <h3 className="text-muted-foreground mb-2 text-sm font-medium">{t("visitHistory")}</h3>
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="font-semibold">{t("visitNumber", { n: visitor.visitCount + 1 })}</span>
-        {visitor.returning ? (
-          <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 text-xs font-medium">{tq("returning")}</span>
-        ) : (
-          <span className="bg-muted rounded-full px-2 py-0.5 text-xs">{t("visitFirst")}</span>
-        )}
-        {visitor.lastVisitAt && (
-          <span className="text-muted-foreground">
-            {t("visitLast", { date: format.dateTime(new Date(visitor.lastVisitAt), { dateStyle: "medium" }) })}
-          </span>
-        )}
-      </div>
-      {history.length > 0 && (
-        <ul className="mt-2 divide-y rounded-xl border text-sm">
-          {history.map((v, i) => (
-            <li key={i} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 px-3 py-2">
-              <span className="tabular font-semibold" dir="ltr">
-                {v.displayNumber}
-              </span>
-              <span className="text-muted-foreground text-xs">
-                {format.dateTime(new Date(v.arrivedAt), { dateStyle: "medium", timeStyle: "short" })}
-              </span>
-              <span className="flex-1 truncate">{pickText(reasons.find((r) => r.id === v.reasonId)?.name, locale)}</span>
-              <span className="text-muted-foreground text-xs">
-                {v.outcome && t.has(`outcomes.${v.outcome}`)
-                  ? t(`outcomes.${v.outcome}`)
-                  : tts.has(v.status)
-                    ? tts(v.status)
-                    : v.status}
-                {v.agentName && <> · {t("visitServedBy", { name: pickText(v.agentName, locale) })}</>}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
 function CurrentTicket({
   ticket,
   reason,
@@ -741,12 +750,7 @@ function CurrentTicket({
   const t = useTranslations("agent");
   const tu = useTranslations("ui");
   const tq = useTranslations("queue");
-  const tr = useTranslations("reasons");
   const locale = useLocale();
-  const label = (key: string) => {
-    if (tr.has(`intakeFields.${key}`)) return tr(`intakeFields.${key}`);
-    return pickText(reason?.intakeFields.find((f) => f.key === key)?.label, locale, key);
-  };
   const waitedMs = new Date(ticket.calledAt ?? ticket.arrivedAt).getTime() - new Date(ticket.arrivedAt).getTime();
   const sla = reason?.slaTargetWaitMinutes ?? 15;
   const slaColor = waitedMs >= sla * 60_000 ? "text-sla-breach" : waitedMs >= sla * 48_000 ? "text-sla-warn" : "text-sla-ok";
@@ -790,58 +794,7 @@ function CurrentTicket({
         </div>
       </div>
 
-      <div>
-        <h3 className="text-muted-foreground mb-2 text-sm font-medium">{t("visitorInfo")}</h3>
-        {ticket.visitor?.name ||
-        ticket.visitor?.phone ||
-        ticket.visitor?.company ||
-        Object.keys(ticket.intake).length ||
-        ticket.notes ? (
-          <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-            {ticket.visitor?.name && (
-              <div>
-                <dt className="text-muted-foreground text-xs">{label("name")}</dt>
-                <dd className="text-base font-medium">{ticket.visitor.name}</dd>
-              </div>
-            )}
-            {ticket.visitor?.phone && (
-              <div>
-                <dt className="text-muted-foreground text-xs">{label("phone")}</dt>
-                <dd>
-                  <a
-                    href={`tel:${ticket.visitor.phone}`}
-                    className="text-brand inline-flex items-center gap-1 text-base"
-                    dir="ltr"
-                  >
-                    <Phone className="size-4" aria-hidden />
-                    {ticket.visitor.phone}
-                  </a>
-                </dd>
-              </div>
-            )}
-            {ticket.visitor?.company && (
-              <div>
-                <dt className="text-muted-foreground text-xs">{label("company")}</dt>
-                <dd>{ticket.visitor.company}</dd>
-              </div>
-            )}
-            {Object.entries(ticket.intake).map(([k, v]) => (
-              <div key={k}>
-                <dt className="text-muted-foreground text-xs">{label(k)}</dt>
-                <dd dir="auto">{v}</dd>
-              </div>
-            ))}
-            {ticket.notes && (
-              <div className="sm:col-span-2">
-                <dt className="text-muted-foreground text-xs">{label("notes")}</dt>
-                <dd className="whitespace-pre-wrap">{ticket.notes}</dd>
-              </div>
-            )}
-          </dl>
-        ) : (
-          <p className="text-muted-foreground text-sm">{t("noVisitorInfo")}</p>
-        )}
-      </div>
+      <VisitorInfo ticket={ticket} reason={reason} />
 
       {ticket.visitor && <VisitHistory visitor={ticket.visitor} history={history[ticket.visitor.id] ?? []} reasons={reasons} />}
     </div>
@@ -879,8 +832,6 @@ function BreakPicker({
     </Dialog>
   );
 }
-
-const OUTCOMES = ["resolved", "follow_up", "referred", "info"] as const;
 
 function CompleteDialog({
   ticket,

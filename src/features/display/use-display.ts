@@ -14,6 +14,18 @@ export type CallEvent = {
   reasonId: string;
   language: string;
   recall: boolean;
+  /** Set on the per-ticket events of a group call; the screen announces those from `hall.called` instead. */
+  hallId?: string | null;
+};
+
+/** A group call to a hall: one event for the whole group (D62). */
+export type HallCallEvent = {
+  hallId: string;
+  hallNumber: string;
+  hallName: { ar?: string; en?: string };
+  sessionId: string;
+  tickets: { ticketId: string; displayNumber: string; reasonId: string; language: string }[];
+  recall: boolean;
 };
 
 const TOKEN_KEY = "dor.display.token";
@@ -40,7 +52,7 @@ export const clearToken = () =>
  * ticket was called). Survives network drops: keeps showing the last state, retries with back-off, and polls
  * while the socket is down. A revoked token sends the screen back to the pairing page.
  */
-export function useDisplayState(token: string, handlers: { onCall: (e: CallEvent) => void; onRevoked: () => void }) {
+export function useDisplayState(token: string, handlers: { onCall: (e: CallEvent) => void; onHallCall: (e: HallCallEvent) => void; onRevoked: () => void }) {
   const [state, setState] = useState<DisplayState | null>(() => {
     const cached = safe(() => localStorage.getItem(CACHE_KEY));
     return cached ? safe(() => JSON.parse(cached) as DisplayState) : null;
@@ -102,7 +114,12 @@ export function useDisplayState(token: string, handlers: { onCall: (e: CallEvent
     socket.on("queue.updated", debounced);
     socket.on("display.refresh", debounced);
     socket.on("ticket.called", (e: CallEvent) => {
-      ref.current.onCall(e);
+      // A visitor called to a hall is announced once, with the group, from `hall.called`.
+      if (!e.hallId) ref.current.onCall(e);
+      debounced();
+    });
+    socket.on("hall.called", (e: HallCallEvent) => {
+      ref.current.onHallCall(e);
       debounced();
     });
     socket.on("display.revoked", () => ref.current.onRevoked());

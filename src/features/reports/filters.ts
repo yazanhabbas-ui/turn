@@ -8,6 +8,7 @@ export type ReportFilterState = {
   branchId: string;
   reasonId: string;
   agentId: string;
+  hallId: string;
   weekdays: number[];
   hourFrom: number | null;
   hourTo: number | null;
@@ -17,6 +18,8 @@ export type ReportMeta = {
   branches: { id: string; name: Record<string, string>; timezone: string }[];
   reasons: { id: string; name: Record<string, string>; color: string }[];
   agents: { id: string; name: Record<string, string> }[];
+  /** Halls of the visible branches (D62); empty when there are none. */
+  halls?: { id: string; branchId: string; number: string; name: Record<string, string> }[];
 };
 
 export type OverviewResponse = {
@@ -86,6 +89,7 @@ export function parseFilters(params: URLSearchParams): Omit<ReportFilterState, "
     branchId: params.get("branchId") ?? "",
     reasonId: params.get("reasonId") ?? "",
     agentId: params.get("agentId") ?? "",
+    hallId: params.get("hallId") ?? "",
     weekdays: (params.get("weekdays") ?? "")
       .split(",")
       .filter((s) => s !== "")
@@ -104,6 +108,7 @@ export function toQuery(f: ReportFilterState): string {
   if (f.branchId) q.set("branchId", f.branchId);
   if (f.reasonId) q.set("reasonId", f.reasonId);
   if (f.agentId) q.set("agentId", f.agentId);
+  if (f.hallId) q.set("hallId", f.hallId);
   if (f.weekdays.length && f.weekdays.length < 7) q.set("weekdays", [...f.weekdays].sort().join(","));
   if (f.hourFrom !== null) q.set("hourFrom", String(f.hourFrom));
   if (f.hourTo !== null) q.set("hourTo", String(f.hourTo));

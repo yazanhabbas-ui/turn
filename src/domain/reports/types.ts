@@ -1,5 +1,6 @@
 import type { AgentStatus } from "@/db/schema/agents";
 import type { CsatSummary, FeedbackFact } from "../feedback/csat";
+import type { HallInfo, HallReport, HallSessionFact } from "./halls";
 
 /** One ticket as the reports see it. Built from `tickets` + a few `ticket_events` by the report service. */
 export type TicketFact = {
@@ -26,6 +27,8 @@ export type TicketFact = {
   slaTargetMinutes: number;
   /** How the ticket was issued: reception, agent, kiosk, appointment or api (unset = reception). */
   source?: string;
+  /** The hall the ticket was received in (D62); null/unset for desk tickets. */
+  hallId?: string | null;
 };
 
 /** One row of `agent_status_log`: the agent entered `status` at `at`. */
@@ -51,6 +54,9 @@ export type ReportInput = {
   feedback?: FeedbackFact[];
   /** Scores at or below this are listed as low-score comments. */
   lowScoreThreshold?: number;
+  /** Hall group sessions of the period and the halls they belong to (D62). */
+  hallSessions?: HallSessionFact[];
+  halls?: Map<string, HallInfo>;
 };
 
 export type Spread = { avg: number; median: number; p90: number; max: number };
@@ -192,6 +198,8 @@ export type ReportData = {
   /** Tickets by how they were issued (reception, agent, kiosk, appointment, api), only sources that occur. */
   bySource: { source: string; visitors: number; served: number; avgWaitMin: number }[];
   byReason: ReasonReport[];
+  /** Group sessions per hall (D62); empty when no hall session took place. */
+  byHall: HallReport[];
   /** Visitors by the shift in whose hours they arrived (a last row with shiftId null = outside every shift). */
   byShift: ShiftReport[];
   repeat: RepeatReport;

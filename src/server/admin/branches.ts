@@ -5,6 +5,7 @@ import { branches, cities, desks, floors, queues, visitReasons } from "@/db/sche
 import { branchesFor } from "@/domain/rbac/permissions";
 import { localizedText, timezone, uuid, weekdays } from "@/domain/validation";
 import { audit } from "../audit";
+import { listHalls } from "../halls/admin";
 import { AppError } from "../http/errors";
 import { allowedBranches, auditMeta, orgOf, requireCityAccess, requirePermission, type Actor } from "./actor";
 
@@ -47,7 +48,7 @@ export async function visibleBranchIds(actor: Actor, permission: Parameters<type
 export async function listBranches(actor: Actor) {
   const ids = await visibleBranchIds(actor, "admin.access");
   if (!ids.length) return [];
-  const [rows, floorRows, deskRows] = await Promise.all([
+  const [rows, floorRows, deskRows, hallRows] = await Promise.all([
     db().select().from(branches).where(inArray(branches.id, ids)).orderBy(asc(branches.createdAt)),
     db()
       .select()
@@ -59,11 +60,13 @@ export async function listBranches(actor: Actor) {
       .from(desks)
       .where(and(inArray(desks.branchId, ids), isNull(desks.archivedAt)))
       .orderBy(asc(desks.sortOrder), asc(desks.number)),
+    listHalls(actor, ids),
   ]);
   return rows.map((b) => ({
     ...b,
     floors: floorRows.filter((f) => f.branchId === b.id),
     desks: deskRows.filter((d) => d.branchId === b.id),
+    halls: hallRows.filter((h) => h.branchId === b.id),
   }));
 }
 

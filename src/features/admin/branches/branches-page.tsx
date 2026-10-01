@@ -17,6 +17,7 @@ import type { Branch, City, Desk, Floor, L } from "../types";
 import { LOOKUPS, useLookups, useText } from "../use-lookups";
 import { useListJoin } from "../use-list";
 import { ReceptionBadge } from "../coverage/coverage";
+import { HallsBlock } from "./halls-block";
 
 const BRANCHES = "/api/v1/admin/branches";
 const invalidate = [[BRANCHES], [LOOKUPS]];
@@ -28,7 +29,7 @@ function presetOf(days: number[]): string {
   return Object.entries(WEEKEND_PRESETS).find(([, v]) => [...v].sort().join(",") === key)?.[0] ?? "custom";
 }
 
-export function BranchesPage({ canManage }: { canManage: boolean }) {
+export function BranchesPage({ canManage, canManageHalls = false }: { canManage: boolean; canManageHalls?: boolean }) {
   const t = useTranslations("branches");
   const text = useText();
   const branches = useApiQuery<{ items: Branch[] }>(BRANCHES);
@@ -87,7 +88,7 @@ export function BranchesPage({ canManage }: { canManage: boolean }) {
                 </h2>
               )}
               {items.map((b) => (
-                <BranchCard key={b.id} branch={b} canManage={canManage} onEdit={() => setEditing(b)} />
+                <BranchCard key={b.id} branch={b} canManage={canManage} canManageHalls={canManageHalls} onEdit={() => setEditing(b)} />
               ))}
             </section>
           ))}
@@ -103,7 +104,17 @@ export function BranchesPage({ canManage }: { canManage: boolean }) {
   );
 }
 
-function BranchCard({ branch, canManage, onEdit }: { branch: Branch; canManage: boolean; onEdit: () => void }) {
+function BranchCard({
+  branch,
+  canManage,
+  canManageHalls,
+  onEdit,
+}: {
+  branch: Branch;
+  canManage: boolean;
+  canManageHalls: boolean;
+  onEdit: () => void;
+}) {
   const t = useTranslations("branches");
   const tu = useTranslations("ui");
   const tw = useTranslations("weekdaysShort");
@@ -248,6 +259,7 @@ function BranchCard({ branch, canManage, onEdit }: { branch: Branch; canManage: 
           )}
         </div>
       </div>
+      <HallsBlock branch={branch} canManage={canManageHalls} />
       <DeskDialog
         branch={branch}
         desk={desk === "new" ? null : desk}

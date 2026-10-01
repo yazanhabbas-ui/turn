@@ -276,6 +276,44 @@ export function SourceTable({ rows }: { rows: ReportData["bySource"] }) {
   );
 }
 
+/* ─────────────── Halls (group sessions) ─────────────── */
+
+export function HallsTable({ rows }: { rows: ReportData["byHall"] }) {
+  const t = useTranslations("reports.halls");
+  const locale = useLocale();
+  const f = useReportFormat();
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t("name")}</TableHead>
+            <TableHead className="text-end">{t("sessions")}</TableHead>
+            <TableHead className="text-end">{t("avgGroupSize")}</TableHead>
+            <TableHead className="text-end">{t("occupancy")}</TableHead>
+            <TableHead className="text-end">{t("avgSessionMin")}</TableHead>
+            <TableHead className="text-end">{t("noShowRate")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((h) => (
+            <TableRow key={h.hallId}>
+              <TableCell className="font-medium whitespace-nowrap">
+                {h.number} {pickText(h.name, locale)}
+              </TableCell>
+              <TableCell className="tabular text-end">{f.num(h.sessions)}</TableCell>
+              <TableCell className="tabular text-end">{f.num(h.avgGroupSize, 1)}</TableCell>
+              <TableCell className="tabular text-end">{f.pct(h.occupancyPct, 0)}</TableCell>
+              <TableCell className="tabular text-end whitespace-nowrap">{f.minutes(h.avgSessionMin)}</TableCell>
+              <TableCell className="tabular text-end">{f.pct(h.noShowRatePct)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
 /* ─────────────── Shifts ─────────────── */
 
 export function ShiftsTable({ shifts }: { shifts: ShiftReport[] }) {

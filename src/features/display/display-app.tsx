@@ -7,10 +7,19 @@ import { cn } from "@/lib/utils";
 import { ScreenLayout } from "./layouts";
 import { Pairing } from "./pairing";
 import { makeT, type Dicts } from "./text";
-import { clearToken, readToken, saveToken, useDisplayState, useKiosk, type CallEvent, type DisplayState } from "./use-display";
+import {
+  clearToken,
+  readToken,
+  saveToken,
+  useDisplayState,
+  useKiosk,
+  type CallEvent,
+  type DisplayState,
+  type HallCallEvent,
+} from "./use-display";
 import type { Call } from "./parts";
 import { VoiceEngine } from "./voice/engine";
-import { buildVoiceJob } from "./voice/job";
+import { buildHallVoiceJob, buildVoiceJob } from "./voice/job";
 import { preloadPack } from "./voice/providers";
 
 const FLASH_MS = 12_000;
@@ -106,7 +115,40 @@ function Screen({
     eng.enqueue(job);
   }, []);
 
-  const { state, connection, clockOffset } = useDisplayState(token, { onCall, onRevoked });
+  const onHallCall = useCallback((e: HallCallEvent) => {
+    if (!e.tickets.length) return;
+    const numbers = e.tickets.map((x) => x.displayNumber);
+    setCall({
+      ticketId: e.tickets[0].ticketId,
+      displayNumber: numbers[0],
+      deskNumber: null,
+      at: Date.now(),
+      recall: e.recall,
+      hall: { id: e.hallId, number: e.hallNumber, numbers },
+    });
+    setFlashing(true);
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setFlashing(false), FLASH_MS);
+
+    const s = stateRef.current;
+    const eng = engine.current;
+    if (!s || !eng || !s.voice.settings.enabled) return;
+    const job = buildHallVoiceJob({
+      id: `${e.sessionId}:${e.recall ? "r" : "c"}:${numbers.join(",")}`,
+      settings: s.voice.settings,
+      templates: s.voice.templates,
+      packs: s.voice.packs,
+      digits: s.regional.digitsVoice,
+      hallNumber: e.hallNumber,
+      displayNumbers: numbers,
+      announce: { mode: s.hallsConfig?.announceMode ?? "list", maxAnnounced: s.hallsConfig?.maxAnnounced ?? 6 },
+      ticketLanguage: e.tickets[0].language,
+      recall: e.recall,
+    });
+    if (job) eng.enqueue(job);
+  }, []);
+
+  const { state, connection, clockOffset } = useDisplayState(token, { onCall, onHallCall, onRevoked });
   stateRef.current = state;
 
   // Interface language rotation.

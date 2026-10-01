@@ -74,6 +74,7 @@ export function ReportFilters({
     !!filters.branchId ||
     !!filters.reasonId ||
     !!filters.agentId ||
+    !!filters.hallId ||
     filters.weekdays.length > 0 ||
     filters.hourFrom !== null ||
     filters.hourTo !== null;
@@ -146,6 +147,21 @@ export function ReportFilters({
             placeholder={t("allAgents")}
           />
         </div>
+        {meta?.halls && meta.halls.length > 0 && (
+          <label className="space-y-1 text-xs font-medium">
+            <span className="text-muted-foreground block">{t("hall")}</span>
+            <NativeSelect className="w-44" value={filters.hallId} onChange={(e) => onChange({ hallId: e.target.value })}>
+              <option value="">{t("allHalls")}</option>
+              {meta.halls
+                .filter((h) => !filters.branchId || h.branchId === filters.branchId)
+                .map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.number} {pickText(h.name, locale)}
+                  </option>
+                ))}
+            </NativeSelect>
+          </label>
+        )}
         <div className="flex items-end gap-2">
           <label className="space-y-1 text-xs font-medium">
             <span className="text-muted-foreground block">{t("hourFrom")}</span>
@@ -205,7 +221,7 @@ export function ReportFilters({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => onChange({ branchId: "", reasonId: "", agentId: "", weekdays: [], hourFrom: null, hourTo: null })}
+            onClick={() => onChange({ branchId: "", reasonId: "", agentId: "", hallId: "", weekdays: [], hourFrom: null, hourTo: null })}
           >
             {t("clear")}
           </Button>

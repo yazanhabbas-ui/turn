@@ -40,6 +40,7 @@ const EMPTY: Form = {
   intakeFields: [],
   allowAppointments: false,
   requiresStaff: false,
+  delivery: "desk",
   isFeatured: false,
   shortcutKey: null,
   sortOrder: 0,
@@ -430,6 +431,21 @@ export function ReasonEditor({ id, canManage }: { id: string | null; canManage: 
             />
             {t("allowAppointments")}
           </label>
+        </Section>
+
+        <Section title={t("deliverySection")} hint={t("deliveryHint")}>
+          <Field label={t("delivery")} htmlFor="rs-delivery">
+            <NativeSelect
+              id="rs-delivery"
+              className="sm:w-64"
+              value={form.delivery ?? "desk"}
+              onChange={(e) => set("delivery", e.target.value as "desk" | "hall")}
+            >
+              <option value="desk">{t("deliveryDesk")}</option>
+              <option value="hall">{t("deliveryHall")}</option>
+            </NativeSelect>
+          </Field>
+          {form.delivery === "hall" && <p className="text-muted-foreground text-xs">{t("deliveryHallHint")}</p>}
         </Section>
 
         <Section title={t("kioskSection")} hint={t("kioskSectionHint")}>
