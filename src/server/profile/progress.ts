@@ -12,6 +12,7 @@ import {
   type ProgressFeedback,
 } from "@/domain/profile/progress";
 import { can } from "@/domain/rbac/permissions";
+import { hostedSessionFacts } from "../halls/hosted";
 import type { Actor } from "../admin/actor";
 import { orgOf } from "../admin/actor";
 import { now as clockNow } from "../clock";
@@ -133,6 +134,9 @@ export async function myProgress(actor: Actor, period: Period): Promise<Progress
     agent = {
       facts: mine.rows.map(toFact),
       feedback,
+      hosted: (await hostedSessionFacts(me, windowStart.getTime(), now + 1))
+        .filter((s) => s.status === "CLOSED" && s.startedAt !== null && s.closedAt !== null)
+        .map((s) => ({ closedAt: s.closedAt!, visitors: s.members.filter((m) => m === "ENTERED" || m === "DONE").length })),
       branchFacts: theirs.rows.map(toFact),
       statusLog: [...before, ...inWindow].map((e) => ({ status: e.status, at: e.at.getTime() })),
       servedDaily,

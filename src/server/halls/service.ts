@@ -128,7 +128,14 @@ async function callIntoHall(ctx: Ctx, t: TicketRow, s: SessionRow, hostId: strin
     agentId: hostId,
     payload: { hallId: s.hallId, sessionId: s.id },
   });
-  await ctx.tx.insert(hallSessionTickets).values({ sessionId: s.id, ticketId: t.id, status: "CALLED", calledAt: now });
+  // A visitor sent back earlier and called into the same session again reuses their row.
+  await ctx.tx
+    .insert(hallSessionTickets)
+    .values({ sessionId: s.id, ticketId: t.id, status: "CALLED", calledAt: now })
+    .onConflictDoUpdate({
+      target: [hallSessionTickets.sessionId, hallSessionTickets.ticketId],
+      set: { status: "CALLED", calledAt: now, enteredAt: null, finishedAt: null, outcome: null },
+    });
   return row;
 }
 

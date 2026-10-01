@@ -111,6 +111,8 @@ export type AgentReport = {
     /** Latest written comments of the period. */
     comments: { at: number; score: number; comment: string; displayNumber: string }[];
   } | null;
+  /** Hall sessions the agent hosted in the period and the visitors received in them (D62); absent when none. */
+  halls?: { sessions: number; visitors: number };
 };
 
 export function statsOf(facts: AggregateFact[]): ReportStats {
@@ -138,6 +140,8 @@ export function computeAgentReport(input: {
   branchFacts: AggregateFact[] | null;
   /** False when visitor feedback is switched off: no satisfaction block, no scores. */
   feedbackOn: boolean;
+  /** Hall hosting totals of the period; ignored when the agent hosted no session. */
+  hosted?: { sessions: number; visitors: number };
 }): AgentReport {
   const { range, timezone: tz } = input;
   const strip = <T extends AggregateFact>(list: T[]): T[] => (input.feedbackOn ? list : list.map((f) => ({ ...f, score: null })));
@@ -210,5 +214,6 @@ export function computeAgentReport(input: {
       },
     },
     csat,
+    ...(input.hosted && input.hosted.sessions > 0 ? { halls: input.hosted } : {}),
   };
 }

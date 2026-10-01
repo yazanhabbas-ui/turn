@@ -1,7 +1,19 @@
 import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { serviceDay } from "@/domain/schedule/time";
-import { agentProfiles, alerts, csatResponses, desks, tickets, users, visitReasons } from "@/db/schema";
+import {
+  agentProfiles,
+  alerts,
+  csatResponses,
+  desks,
+  hallSessions,
+  hallSessionTickets,
+  halls,
+  tickets,
+  users,
+  visitReasons,
+} from "@/db/schema";
+import { ACTIVE_MEMBER } from "@/domain/halls/state";
 import { averageScore, satisfiedPct } from "@/domain/feedback/csat";
 import type { Actor } from "../admin/actor";
 import { now as clockNow } from "../clock";
@@ -42,6 +54,7 @@ export async function liveView(actor: Actor, branchId?: string) {
         servingAgentId: tickets.servingAgentId,
         deskId: tickets.deskId,
         serviceDay: tickets.serviceDay,
+        hallId: tickets.hallId,
       })
       .from(tickets)
       // Today's tickets plus anything still open from an earlier day (nobody is lost across the daily reset).
@@ -99,10 +112,15 @@ export async function liveView(actor: Actor, branchId?: string) {
   // An agent may have several visitors at once: keep them all, oldest first.
   const activeByAgent = new Map<string | null, typeof open>();
   for (const t of open
-    .filter((x) => x.status === "CALLED" || x.status === "SERVING")
+    // Hall visitors are shown with their hall, not at the host's desk.
+    .filter((x) => (x.status === "CALLED" || x.status === "SERVING") && !x.hallId)
     .sort((a, b) => a.arrivedAt.getTime() - b.arrivedAt.getTime())) {
     activeByAgent.set(t.servingAgentId, [...(activeByAgent.get(t.servingAgentId) ?? []), t]);
   }
+
+  // Halls (D62): only when the feature is on and the branch has halls; desk-only branches are unchanged.
+  const hallsCfg = await getSetting(org, "halls", branch.id);
+  const hallBoard = hallsCfg.enabled ? await liveHalls(branch.id, profiles, names, now) : [];
 
   return {
     now: new Date(now).toISOString(),
@@ -182,6 +200,8 @@ export async function liveView(actor: Actor, branchId?: string) {
       .sort((a, b) => waitMin(b) - waitMin(a))
       .slice(0, 10)
       .map((t) => ({ ticketId: t.id, displayNumber: t.displayNumber, reasonId: t.reasonId, waitMin: round1(waitMin(t)) })),
+    /** Halls with their host, status, occupancy and visitors; empty when halls are off or the branch has none. */
+    halls: hallBoard,
     thresholds: { longWaitMinutes: settings.longWaitMinutes, queueLimit: settings.queueLimit },
     alerts: openAlerts.map((a) => ({
       id: a.id,
@@ -191,4 +211,71 @@ export async function liveView(actor: Actor, branchId?: string) {
       createdAt: a.createdAt.toISOString(),
     })),
   };
+}
+
+export type LiveHall = {
+  id: string;
+  number: string;
+  name: Record<string, string>;
+  capacity: number;
+  /** free = no group; called = visitors called, not all in yet; in_session = the host has started. */
+  state: "free" | "called" | "in_session";
+  host: { id: string; name: Record<string, string>; status: string } | null;
+  /** Visitors called or inside (the seats in use). */
+  occupied: number;
+  visitors: { displayNumber: string; status: "CALLED" | "ENTERED" }[];
+  sessionMin: number | null;
+};
+
+/** The live state of the branch's halls: the open group of each, who hosts it and which ticket numbers are in it. */
+async function liveHalls(
+  branchId: string,
+  profiles: (typeof agentProfiles.$inferSelect)[],
+  names: Map<string, Record<string, string>>,
+  now: number,
+): Promise<LiveHall[]> {
+  const hallRows = await db()
+    .select()
+    .from(halls)
+    .where(and(eq(halls.branchId, branchId), isNull(halls.archivedAt)))
+    .orderBy(asc(halls.sortOrder), asc(halls.number));
+  if (!hallRows.length) return [];
+  const sessions = await db()
+    .select()
+    .from(hallSessions)
+    .where(and(eq(hallSessions.branchId, branchId), inArray(hallSessions.status, ["OPEN", "IN_SESSION"])));
+  const members = sessions.length
+    ? await db()
+        .select({ sessionId: hallSessionTickets.sessionId, status: hallSessionTickets.status, displayNumber: tickets.displayNumber })
+        .from(hallSessionTickets)
+        .innerJoin(tickets, eq(tickets.id, hallSessionTickets.ticketId))
+        .where(
+          inArray(
+            hallSessionTickets.sessionId,
+            sessions.map((s) => s.id),
+          ),
+        )
+        .orderBy(asc(tickets.queuedAt), asc(tickets.number))
+    : [];
+  return hallRows.map((h) => {
+    const session = sessions.find((s) => s.hallId === h.id);
+    const hostId = session?.hostAgentId ?? profiles.find((p) => p.currentHallId === h.id && p.status !== "OFFLINE")?.userId ?? null;
+    const hostProfile = hostId ? profiles.find((p) => p.userId === hostId) : undefined;
+    const visitors = session
+      ? members
+          .filter((m) => m.sessionId === session.id && ACTIVE_MEMBER.has(m.status))
+          .map((m) => ({ displayNumber: m.displayNumber, status: m.status as "CALLED" | "ENTERED" }))
+      : [];
+    return {
+      id: h.id,
+      number: h.number,
+      name: h.name,
+      capacity: session?.capacity ?? h.capacity,
+      state: !session ? "free" : session.status === "IN_SESSION" ? "in_session" : "called",
+      host: hostId ? { id: hostId, name: names.get(hostId) ?? {}, status: hostProfile?.status ?? "AVAILABLE" } : null,
+      occupied: visitors.length,
+      visitors,
+      sessionMin: session ? round1((now - (session.startedAt ?? session.calledAt).getTime()) / MIN) : null,
+    };
+  });
 }

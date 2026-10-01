@@ -3,6 +3,7 @@ import {
   Coffee,
   ConciergeBell,
   DatabaseZap,
+  DoorOpen,
   Flag,
   Hourglass,
   Languages,
@@ -41,6 +42,7 @@ export type SectionId =
   | "feedback"
   | "priorities"
   | "agents"
+  | "halls"
   | "breakLimit"
   | "breaks"
   | "wallboard"
@@ -281,6 +283,41 @@ export const SECTIONS: SectionDef[] = [
       { key: "shiftEndGrace", anchor: "aw-grace" },
       { key: "shifts" },
       { key: "addShift" },
+    ],
+  },
+  {
+    id: "halls",
+    group: "service",
+    icon: DoorOpen,
+    scope: "branch",
+    keys: ["halls"],
+    keywords: [
+      "hall",
+      "halls",
+      "group",
+      "session",
+      "capacity",
+      "room",
+      "orientation",
+      "host",
+      "seminar",
+      "قاعة",
+      "قاعات",
+      "مجموعة",
+      "جلسة",
+      "سعة",
+      "مضيف",
+      "تعريفية",
+    ],
+    fields: [
+      { key: "hallsEnabled", anchor: "hl-enabled" },
+      { key: "hallsGroupMode", anchor: "hl-mode" },
+      { key: "hallsMinGroup", anchor: "hl-min" },
+      { key: "hallsMaxGroup", anchor: "hl-max" },
+      { key: "hallsAllowTopUp", anchor: "hl-topup" },
+      { key: "hallsAutoStart", anchor: "hl-auto" },
+      { key: "hallsAnnounceMode", anchor: "hl-announce" },
+      { key: "hallsMaxAnnounced", anchor: "hl-announced" },
     ],
   },
   {

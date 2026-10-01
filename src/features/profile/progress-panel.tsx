@@ -288,6 +288,13 @@ export function ProgressPanel() {
             <CardContent>{chart && <EChart option={chart} height={220} ariaLabel={t("trendAria")} />}</CardContent>
           </Card>
 
+          {p.agent?.hosted && (
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <Tile label={t("hostedSessions")} value={format.number(p.agent.hosted[period].sessions)} sub={t(`periods.${period}`)} />
+              <Tile label={t("hostedVisitors")} value={format.number(p.agent.hosted[period].visitors)} sub={t("hostedHint")} />
+            </div>
+          )}
+
           {p.agent && (
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <Tile

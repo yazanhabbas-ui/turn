@@ -1,6 +1,13 @@
 {
   "ar.phrase.number": "/audio/ar/ar-sa-zariyah/phrase-number.mp3",
   "ar.phrase.desk": "/audio/ar/ar-sa-zariyah/phrase-desk.mp3",
+  "ar.phrase.group_numbers": "/audio/ar/ar-sa-zariyah/phrase-group-numbers.mp3",
+  "ar.phrase.please_go_to_hall": "/audio/ar/ar-sa-zariyah/phrase-please-go-to-hall.mp3",
+  "ar.phrase.please_go_to_hall_single": "/audio/ar/ar-sa-zariyah/phrase-please-go-to-hall-single.mp3",
+  "ar.phrase.and": "/audio/ar/ar-sa-zariyah/phrase-and.mp3",
+  "ar.phrase.next_group": "/audio/ar/ar-sa-zariyah/phrase-next-group.mp3",
+  "ar.phrase.range_from": "/audio/ar/ar-sa-zariyah/phrase-range-from.mp3",
+  "ar.phrase.range_to": "/audio/ar/ar-sa-zariyah/phrase-range-to.mp3",
   "ar.num.0": "/audio/ar/ar-sa-zariyah/num-0.mp3",
   "ar.num.1": "/audio/ar/ar-sa-zariyah/num-1.mp3",
   "ar.num.2": "/audio/ar/ar-sa-zariyah/num-2.mp3",

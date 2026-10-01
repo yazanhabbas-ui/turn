@@ -18,6 +18,10 @@ export type PublicStatus = {
   reason: { name: Record<string, string>; color: string; icon: string } | null;
   branch: Record<string, string>;
   desk: { number: string; name: Record<string, string> } | null;
+  /** The hall the visitor's group was called to; null for desk visits. */
+  hall?: { number: string; name: Record<string, string> } | null;
+  /** The visit is received with a group in a hall. */
+  groupVisit?: boolean;
   position: { ahead: number; estimatedWaitMinutes: number; waitLow?: number; waitHigh?: number } | null;
   waitDisplay: WaitDisplay;
   /** Rating card for a completed visit (null when feedback is off or the visit is not completed). */
@@ -93,15 +97,17 @@ export function VisitorStatus({
       )}
 
       <div role="status" aria-live="polite" className="mt-8 max-w-sm text-lg">
-        {s.status === "WAITING" && t("waiting")}
+        {s.status === "WAITING" && (s.groupVisit ? t("waitingGroup") : t("waiting"))}
         {called && (
           <div className="space-y-3">
             <BellRing className="text-status-called mx-auto size-12 animate-bounce" aria-hidden />
-            <p className="text-2xl font-bold">{t("called")}</p>
-            <p className="text-status-called text-4xl font-bold">{s.desk ? pickText(s.desk.name, locale) : ""}</p>
+            <p className="text-2xl font-bold">{s.hall ? t("calledHall") : t("called")}</p>
+            <p className="text-status-called text-4xl font-bold">
+              {s.hall ? `${s.hall.number} ${pickText(s.hall.name, locale)}`.trim() : s.desk ? pickText(s.desk.name, locale) : ""}
+            </p>
           </div>
         )}
-        {s.status === "SERVING" && t("serving")}
+        {s.status === "SERVING" && (s.hall ? t("servingHall", { hall: `${s.hall.number} ${pickText(s.hall.name, locale)}`.trim() }) : t("serving"))}
         {s.status === "COMPLETED" && t("finished")}
         {s.status === "ON_HOLD" && t("onHold")}
         {s.status === "CANCELLED" && t("cancelled")}

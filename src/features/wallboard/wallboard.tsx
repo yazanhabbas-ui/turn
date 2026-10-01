@@ -54,6 +54,18 @@ type Live = {
     ticket: { displayNumber: string; status: string; reasonId: string; minutes: number } | null;
     tickets: { displayNumber: string; status: string; reasonId: string; minutes: number }[];
   }[];
+  /** Halls with their live group (D62); empty when halls are off or the branch has none. */
+  halls?: {
+    id: string;
+    number: string;
+    name: L;
+    capacity: number;
+    state: "free" | "called" | "in_session";
+    host: { id: string; name: L; status: string } | null;
+    occupied: number;
+    visitors: { displayNumber: string; status: "CALLED" | "ENTERED" }[];
+    sessionMin: number | null;
+  }[];
   reasons: {
     id: string;
     name: L;
@@ -400,6 +412,18 @@ export function Wallboard({ canAck }: { canAck: boolean }) {
               )}
             </section>
             <div className="space-y-4">
+              {data.halls && data.halls.length > 0 && (
+                <section className={cn("rounded-xl border p-4", th.card)}>
+                  <h2 className="mb-3 border-s-4 ps-2 text-lg font-semibold 2xl:text-2xl" style={ACCENT}>
+                    {t("halls")}
+                  </h2>
+                  <div className="space-y-3">
+                    {data.halls.map((h) => (
+                      <HallCard key={h.id} hall={h} th={th} name={name} />
+                    ))}
+                  </div>
+                </section>
+              )}
               <section className={cn("rounded-xl border p-4", th.card)}>
                 <div className="mb-3 flex items-center gap-2">
                   <BellRing className="size-5" aria-hidden />
@@ -651,6 +675,55 @@ function DeskCard({
           <span className={cn("text-sm 2xl:text-xl", th.muted)}>{t("noTicket")}</span>
         )}
       </div>
+    </div>
+  );
+}
+
+function HallCard({
+  hall,
+  th,
+  name,
+}: {
+  hall: NonNullable<Live["halls"]>[number];
+  th: Theme;
+  name: (v: L | null | undefined) => string;
+}) {
+  const t = useTranslations("wallboard");
+  const pct = hall.capacity > 0 ? Math.min(100, Math.round((hall.occupied / hall.capacity) * 100)) : 0;
+  const stateLabel = hall.state === "free" ? t("hallFree") : hall.state === "called" ? t("hallCalled") : t("hallInSession");
+  return (
+    <div className={cn("rounded-xl border p-4", hall.state === "free" ? th.empty : th.card)}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className={cn("text-xs 2xl:text-base", th.muted)}>{t("hall", { number: hall.number })}</div>
+          <div className="truncate font-semibold 2xl:text-2xl">{name(hall.name)}</div>
+          <div className={cn("mt-0.5 text-xs 2xl:text-lg", th.muted)}>
+            {hall.host ? t("hallHost", { name: name(hall.host.name) }) : t("hallNoHost")}
+          </div>
+        </div>
+        <div className="text-end">
+          <div className={cn("text-sm font-semibold 2xl:text-xl", hall.state === "in_session" ? th.ok : hall.state === "called" ? th.warn : th.muted)}>
+            {stateLabel}
+          </div>
+          <div className="tabular text-2xl font-bold 2xl:text-4xl">{t("hallOccupancy", { n: hall.occupied, capacity: hall.capacity })}</div>
+        </div>
+      </div>
+      <div className={cn("mt-2 h-2 overflow-hidden rounded-full", th.track)} role="presentation">
+        <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: "var(--wb-primary)" }} />
+      </div>
+      {hall.visitors.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {hall.visitors.map((v) => (
+            <span
+              key={v.displayNumber}
+              dir="ltr"
+              className={cn("tabular rounded-md border px-2 py-0.5 text-lg font-bold 2xl:text-3xl", th.divider, v.status === "CALLED" && th.warn)}
+            >
+              {v.displayNumber}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -82,6 +82,8 @@ export type ProgressInput = {
     branchActiveDays: string[];
     /** Visitor feedback on the agent's visits, and on the whole branch (aggregated only); omitted when feedback is off. */
     feedback?: { own: ProgressFeedback[]; branch: ProgressFeedback[] | null };
+    /** Hall sessions the agent hosted and finished (D62), with the visitors who came to each. */
+    hosted?: { closedAt: number; visitors: number }[];
   };
   /** Tickets issued by the user per local day (reception). */
   issuedDaily?: DayCount[];
@@ -104,6 +106,8 @@ export type Progress = {
       /** The latest comments on the agent's own visits. */
       recent: { at: number; score: number; comment: string }[];
     };
+    /** Hall sessions hosted and visitors received in them per period; absent when the agent hosted none in the window. */
+    hosted?: Record<Period, { sessions: number; visitors: number }>;
     milestones: {
       totalServed: number;
       bestDay: { date: string; served: number } | null;
@@ -287,12 +291,23 @@ export function computeProgress(input: ProgressInput): Progress {
       };
     }
 
+    let hosted: NonNullable<Progress["agent"]>["hosted"];
+    if (a.hosted?.length) {
+      const sums = {} as Record<Period, { sessions: number; visitors: number }>;
+      for (const k of PERIODS) {
+        const list = a.hosted.filter((x) => x.closedAt >= ranges[k].from && x.closedAt < now + 1);
+        sums[k] = { sessions: list.length, visitors: list.reduce((n, x) => n + x.visitors, 0) };
+      }
+      if (PERIODS.some((k) => sums[k].sessions > 0)) hosted = sums;
+    }
+
     const served = a.servedDaily.filter((d) => d.count > 0);
     const best = served.reduce<DayCount | null>((m, d) => (!m || d.count > m.count ? d : m), null);
     agent = {
       periods,
       trend: trendOf(a.servedDaily, today, days).map((t) => ({ date: t.date, served: t.count })),
       csat,
+      ...(hosted ? { hosted } : {}),
       milestones: {
         totalServed: served.reduce((n, d) => n + d.count, 0),
         bestDay: best ? { date: best.date, served: best.count } : null,

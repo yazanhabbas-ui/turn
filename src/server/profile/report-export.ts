@@ -60,6 +60,13 @@ export async function buildMyReportExport(
     metric(t.metrics.avgWait, (x) => x.avgWaitMin, t.units.min),
     metric(t.metrics.resolved, (x) => x.resolvedPct, t.units.pct),
     ...(feedback ? [metric(t.metrics.avgScore, (x) => x.avgScore), metric(t.metrics.responses, (x) => x.responses)] : []),
+    // Halls (D62): only for agents who hosted group sessions in the period.
+    ...(report.halls
+      ? [
+          [t.metrics.hallSessions, report.halls.sessions, null, null],
+          [t.metrics.hallVisitors, report.halls.visitors, null, null],
+        ]
+      : []),
   ];
 
   const dailyCols = [c.date, c.served, c.noShows, c.avgService, c.avgWait, c.resolved, ...(feedback ? [c.avgScore] : [])];

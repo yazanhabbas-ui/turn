@@ -6,6 +6,7 @@ import {
   branches,
   breakTypes,
   desks,
+  halls,
   messageTemplates,
   priorityLevels,
   queues,
@@ -499,11 +500,15 @@ export async function publicTicketStatus(token: string) {
   ]);
   if (!settings.enabled) return null;
   const [reason] = await db()
-    .select({ name: visitReasons.name, color: visitReasons.color, icon: visitReasons.icon })
+    .select({ name: visitReasons.name, color: visitReasons.color, icon: visitReasons.icon, delivery: visitReasons.delivery })
     .from(visitReasons)
     .where(eq(visitReasons.id, t.reasonId));
   const [desk] = t.deskId
     ? await db().select({ number: desks.number, name: desks.name }).from(desks).where(eq(desks.id, t.deskId))
+    : [];
+  // The hall the visitor's group was called to (D62): number and name only.
+  const [hall] = t.hallId
+    ? await db().select({ number: halls.number, name: halls.name }).from(halls).where(eq(halls.id, t.hallId))
     : [];
   const [branch] = await db().select({ name: branches.name }).from(branches).where(eq(branches.id, t.branchId));
   let position: Position | null = null;
@@ -515,9 +520,13 @@ export async function publicTicketStatus(token: string) {
     displayNumber: t.displayNumber,
     status: t.status,
     language: t.language,
-    reason: reason ?? null,
+    reason: reason ? { name: reason.name, color: reason.color, icon: reason.icon } : null,
     branch: branch?.name ?? {},
     desk: desk ?? null,
+    /** The hall of a called or serving hall visit; null for desk visits. */
+    hall: hall && (t.status === "CALLED" || t.status === "SERVING") ? hall : null,
+    /** The visit is received together with a group in a hall (the reason is delivered in halls). */
+    groupVisit: reason?.delivery === "hall",
     position,
     waitDisplay: waitDisplayOf(waitSettings),
     notifyOptIn: await canOfferUpdates(t),

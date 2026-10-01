@@ -15,7 +15,7 @@ import { estimateHallWait } from "@/domain/distribution/estimate";
 import { zonedToUtc } from "@/domain/schedule/time";
 import type { Actor } from "@/server/admin/actor";
 import { updateSetting } from "@/server/admin/settings-admin";
-import { advanceClock, setClock } from "@/server/clock";
+import { advanceClock, now, setClock } from "@/server/clock";
 import { createHall } from "@/server/halls/admin";
 import { callGroup, sessionAction } from "@/server/halls/service";
 import { callNext, issueTicket, maintainBranch, setAgentStatus, ticketAction } from "@/server/queue/tickets";
@@ -75,7 +75,7 @@ describe.runIf(available)("halls: group sessions (database)", () => {
     deskReason = byCode("contract");
     await db()
       .update(visitReasons)
-      .set({ delivery: "hall" })
+      .set({ delivery: "hall", intakeFields: [] })
       .where(inArray(visitReasons.id, [hallReason, otherHallReason]));
     await enableHalls();
     hallA = (
@@ -138,12 +138,16 @@ describe.runIf(available)("halls: group sessions (database)", () => {
 
     it("wait estimates for a hall reason use sessions of the hall capacity", async () => {
       const ids = await issueMany(7);
+      const [{ expectedMinutes }] = await db()
+        .select({ expectedMinutes: visitReasons.expectedServiceMinutes })
+        .from(visitReasons)
+        .where(eq(visitReasons.id, hallReason));
       const st = await queueState(reception, branchId);
       // hall capacity 5 (the biggest), 2 halls in parallel: 7th visitor has 6 ahead = 2 sessions = 1 round
       const pos = st.positions[ids[6]];
       expect(pos.ahead).toBe(6);
-      const expected = estimateHallWait(6, 5, 2, 10, { rounding: 1, bufferPercent: 0 });
-      expect(pos.estimatedWaitMinutes).toBeGreaterThanOrEqual(expected.minutes);
+      const expected = estimateHallWait(6, 5, 2, expectedMinutes, { rounding: 1, bufferPercent: 0 });
+      expect(pos.estimatedWaitMinutes).toBe(expected.minutes);
     });
   });
 
@@ -390,6 +394,8 @@ describe.runIf(available)("halls: group sessions (database)", () => {
       const r = await sessionAction(khalid, session!.id, { action: "cancel" });
       expect(r.session!.status).toBe("CANCELLED");
       for (const id of ids) expect(await row(id)).toMatchObject({ status: "WAITING", hallSessionId: null });
+      // the hall has one host: a colleague takes over once the first host signs out
+      await setAgentStatus(khalid, { status: "OFFLINE" });
       expect((await callGroup(noura, { hallId: hallA })).created).toBe(true);
     });
 
@@ -423,7 +429,7 @@ describe.runIf(available)("halls: group sessions (database)", () => {
       const { session } = await callGroup(khalid, { hallId: hallA });
       for (let i = 0; i < 12; i++) {
         advanceClock(3);
-        await maintainBranch(branchId, Date.now());
+        await maintainBranch(branchId, now());
       }
       for (const id of ids) expect((await row(id)).status).not.toBe("CALLED");
       const [s] = await db().select().from(hallSessions).where(eq(hallSessions.id, session!.id));

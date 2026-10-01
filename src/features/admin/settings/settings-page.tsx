@@ -17,6 +17,7 @@ import { PrivacySection } from "./sections/privacy-section";
 import { ReceptionSection } from "./sections/reception-section";
 import { RegionalSection } from "./sections/regional-section";
 import { sectionsFor, SECTIONS, type SectionId } from "./sections/registry";
+import { HallsSection } from "./sections/halls-section";
 import { SelfCheckinSection } from "./sections/self-checkin-section";
 import { RetentionSection } from "./sections/retention-section";
 import { ReportsSection } from "./sections/reports-section";
@@ -148,6 +149,8 @@ function ScopedSettings({
         return <PrioritiesSection items={l.priorities} />;
       case "agents":
         return <AgentsSection initial={s.agentWork} shifts={l.shifts} />;
+      case "halls":
+        return <HallsSection initial={s.halls} />;
       case "breakLimit":
         return <BreakLimitSection initial={s.breaks} />;
       case "breaks":

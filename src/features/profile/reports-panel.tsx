@@ -124,6 +124,12 @@ export function ReportsPanel() {
               [t("summary.noShows"), f.int(r.totals.noShows)],
               [t("summary.avgService"), f.mins(r.totals.avgServiceMin)],
               [t("summary.avgWait"), f.mins(r.totals.avgWaitMin)],
+              ...(r.halls
+                ? [
+                    [t("summary.hallSessions"), f.int(r.halls.sessions)],
+                    [t("summary.hallVisitors"), f.int(r.halls.visitors)],
+                  ]
+                : []),
             ].map(([label, value]) => (
               <div key={label} className="bg-card rounded-xl border p-4">
                 <div className="text-muted-foreground text-sm">{label}</div>

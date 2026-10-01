@@ -13,7 +13,9 @@ import {
   type ReportFact,
   type ReportRange,
 } from "@/domain/profile/agent-report";
+import { hostedSummary } from "@/domain/reports/halls";
 import { can } from "@/domain/rbac/permissions";
+import { hostedSessionFacts } from "../halls/hosted";
 import type { Actor } from "../admin/actor";
 import { orgOf } from "../admin/actor";
 import { now as clockNow } from "../clock";
@@ -132,7 +134,9 @@ export async function myReport(actor: Actor, q: ReportQuery): Promise<AgentRepor
       where t.branch_id = ${profile.branchId} and t.serving_agent_id is not null and t.status in ('COMPLETED', 'NO_SHOW')
         and t.finished_at >= ${new Date(cur.start)} and t.finished_at < ${new Date(cur.end)}`),
   ]);
+  const hosted = hostedSummary(await hostedSessionFacts(me, cur.start, cur.end), me);
   return computeAgentReport({
+    hosted,
     range,
     timezone: tz,
     facts: own.map((r) => toFact(r, feedbackOn)),

@@ -363,7 +363,8 @@
       "no_scope": "Choose the city or branch whose value to reset.",
       "same_city": "Choose a different city to copy from.",
       "desk_required": "Choose your desk first.",
-      "agent_cannot_serve": "You do not serve this reason."
+      "agent_cannot_serve": "You do not serve this reason.",
+      "hall_required": "Choose a hall first."
     },
     "unauthorized": "Your session ended. Please sign in again.",
     "forbidden": {
@@ -405,7 +406,19 @@
       "user_active": "Deactivate the account first, then anonymize it.",
       "already_anonymized": "This account is already anonymized.",
       "queue_full": "The line is full right now.",
-      "at_capacity": "You are already serving as many visitors as you can."
+      "at_capacity": "You are already serving as many visitors as you can.",
+      "halls_disabled": "Halls are not enabled in this branch.",
+      "hall_taken": "Another host is already signed in to this hall.",
+      "hall_busy": "This hall already has a session in progress.",
+      "host_busy": "You already have a session open in another hall.",
+      "hall_session_open": "Close or cancel your hall session first.",
+      "hall_mode": "You are signed in to a hall. Switch to a desk to call single visitors.",
+      "desk_tickets_open": "Finish your visitors at the desk first.",
+      "nobody_entered": "No visitor has entered yet.",
+      "top_up_off": "Adding visitors to a session is not allowed.",
+      "session_started": "The session has already started.",
+      "has_entered": "Visitors have already entered, so the session cannot be cancelled. Close it instead.",
+      "not_your_session": "This session belongs to another host."
     },
     "rate_limited": "Too many requests. Please wait a moment.",
     "weak_password": "The password does not meet the policy.",
@@ -471,7 +484,13 @@
     "noShift": "No fixed shift",
     "anonymize": "Anonymize",
     "anonymizeTitle": "Remove this person's personal data?",
-    "anonymizeBody": "The name, email, phone, picture and sign-in methods are removed for good. The account stays in the history as a deleted user, so tickets and the audit log remain complete. This cannot be undone."
+    "anonymizeBody": "The name, email, phone, picture and sign-in methods are removed for good. The account stays in the history as a deleted user, so tickets and the audit log remain complete. This cannot be undone.",
+    "worksAt": "Works at",
+    "worksAtDesk": "Desk",
+    "worksAtHall": "Hall",
+    "defaultHall": "Default hall",
+    "defaultHallHint": "The hall this host is signed in to by default.",
+    "noHall": "No default hall"
   },
   "invites": {
     "title": "Invitations",
@@ -560,7 +579,25 @@
     "noDesks": "No desks yet.",
     "city": "City",
     "chooseCity": "Choose a city",
-    "allCities": "All cities"
+    "allCities": "All cities",
+    "halls": "Halls",
+    "addHall": "Add hall",
+    "editHall": "Edit hall",
+    "noHalls": "No halls in this branch.",
+    "hallNumber": "Hall number",
+    "hallNumberHint": "Announced on the screen and by voice, e.g. “Hall 2”.",
+    "hallCapacity": "Capacity",
+    "hallCapacityHint": "How many visitors the hall holds (at least 2).",
+    "capacityDown": "Fewer seats",
+    "capacityUp": "More seats",
+    "capacityValue": "{count} seats",
+    "hallReasons": "Services accepted",
+    "hallReasonsHint": "Only services served in halls are listed. Leave empty to accept all of them.",
+    "noHallReasons": "No service is served in halls yet. Set “Served at: Hall” in a visit reason first.",
+    "allHallReasons": "All hall services",
+    "reasonsCount": "{count} services",
+    "hallsOff": "Halls are switched off for this branch, so these halls are not used yet.",
+    "hallsOffAction": "Open settings"
   },
   "reasons": {
     "title": "Visit reasons",
@@ -622,7 +659,13 @@
     "kioskSection": "Self check-in kiosk",
     "kioskSectionHint": "A required detail that visitors may not type alone makes the service “please ask the agent” on the kiosk.",
     "requiresStaff": "Needs a member of staff (not offered for self check-in)",
-    "requiresStaffHint": "The kiosk shows this service as “please ask the agent”."
+    "requiresStaffHint": "The kiosk shows this service as “please ask the agent”.",
+    "deliverySection": "Where it is served",
+    "deliveryHint": "A service is served either at a desk, one visitor at a time, or in a hall, several visitors together.",
+    "delivery": "Served at",
+    "deliveryDesk": "Desk",
+    "deliveryHall": "Hall",
+    "deliveryHallHint": "Visitors for this service are called in groups into a hall by its host. They are never assigned to a desk agent, and halls must be switched on in Settings."
   },
   "settings": {
     "title": "Settings",
@@ -647,7 +690,8 @@
       "waitEstimate": "Waiting time",
       "feedback": "Feedback",
       "retention": "Data retention",
-      "selfCheckin": "Self check-in"
+      "selfCheckin": "Self check-in",
+      "halls": "Halls"
     },
     "companyName": "Company name",
     "logoUrl": "Logo URL",
@@ -892,7 +936,8 @@
       "privacy": "The visitor consent text.",
       "feedback": "Ask visitors how their visit went, and what counts as a low score.",
       "retention": "How long personal data is kept before it is anonymized or deleted, and a button to run or preview it.",
-      "selfCheckin": "A tablet where visitors take their own ticket, and its limits."
+      "selfCheckin": "A tablet where visitors take their own ticket, and its limits.",
+      "halls": "Rooms where one host receives several visitors together: grouping, starting and announcing."
     },
     "cards": {
       "preview": "Preview",
@@ -934,7 +979,10 @@
       "selfCheckin": "Self check-in kiosk",
       "selfCheckinLimits": "Limits",
       "selfCheckinReasons": "Services on the kiosk",
-      "selfCheckinWelcome": "Welcome text"
+      "selfCheckinWelcome": "Welcome text",
+      "hallsGeneral": "Halls and grouping",
+      "hallsSession": "During the session",
+      "hallsAnnounce": "Announcing a group"
     },
     "ui": {
       "search": "Search settings…",
@@ -1088,7 +1136,33 @@
     "selfCheckinReasonsLink": "Visit reasons",
     "selfCheckinFieldsFoot": "Some details are staff-only (for example the last 4 digits of the ID), so those services need staff.",
     "selfCheckinWelcome": "Welcome text on the kiosk",
-    "selfCheckinKiosks": "Pair kiosks in Screens"
+    "selfCheckinKiosks": "Pair kiosks in Screens",
+    "hallsIntro": "A hall is a room with a fixed capacity where one host receives several visitors at once. Create halls under Admin → Branches and mark a visit reason as “Hall” in its editor. Halls are off until you switch them on here.",
+    "hallsEnabled": "Halls are on",
+    "hallsEnabledHint": "Off: hall services are not called and the host screen is hidden.",
+    "hallsGroupMode": "Who is called together",
+    "hallsGroupMode_same_reason": "Same service only",
+    "hallsGroupMode_same_reason_hint": "Each session serves one service, for example one orientation at a time.",
+    "hallsGroupMode_any_reason": "Any service the hall accepts",
+    "hallsGroupMode_any_reason_hint": "Visitors are called in order of arrival across all the services the hall accepts.",
+    "hallsMinGroup": "Smallest group",
+    "hallsMinGroupHint": "The fewest visitors worth calling into a session. 1 = call whoever is waiting.",
+    "hallsMaxGroup": "Largest group",
+    "hallsMaxGroupHint": "The most visitors called at once. 0 = the capacity of the hall.",
+    "hallsAllowTopUp": "Allow adding visitors before the session starts",
+    "hallsAllowTopUpHint": "The host may call more visitors while seats are free and the session has not started.",
+    "hallsAutoStart": "Start when everyone has entered",
+    "hallsAutoStartHint": "The session starts by itself once every called visitor has arrived in the hall.",
+    "hallsAnnounceMode": "How a group is announced",
+    "hallsAnnounceMode_list": "Read every number",
+    "hallsAnnounceMode_list_hint": "“Tickets A12, A13 and A14 to hall 2”.",
+    "hallsAnnounceMode_range": "Read as a range",
+    "hallsAnnounceMode_range_hint": "“Tickets A12 to A20 to hall 2”.",
+    "hallsAnnounceMode_hall_only": "Name the hall only",
+    "hallsAnnounceMode_hall_only_hint": "“The next group to hall 2”. No numbers are read.",
+    "hallsAnnounceIntro": "Applies to the waiting-room screen and the voice announcement.",
+    "hallsMaxAnnounced": "Most numbers read one by one",
+    "hallsMaxAnnouncedHint": "A larger group is read as a range, or as “the next group”."
   },
   "audit": {
     "title": "Audit log",
@@ -1463,7 +1537,82 @@
     "visitNumber": "Visit {n}",
     "visitFirst": "First visit",
     "visitLast": "Last visit: {date}",
-    "visitServedBy": "served by {name}"
+    "visitServedBy": "served by {name}",
+    "hall": {
+      "title": "Hall session",
+      "workAt": "Work at",
+      "modeDesk": "Desk",
+      "modeHall": "Hall",
+      "modeLocked": "Finish your current visitors first.",
+      "hall": "Hall",
+      "chooseHall": "Choose your hall",
+      "noHall": "Choose a hall to start",
+      "empty": "No session yet. Call the next group to begin.",
+      "waitingNow": "{count, plural, =0 {Nobody is waiting} one {1 visitor waiting} other {# visitors waiting}}",
+      "callableNow": "{count} can be called now",
+      "blocked": {
+        "waiting_empty": "Nobody is waiting for this hall.",
+        "below_min": "Waiting for at least {min} visitors ({count} waiting now).",
+        "full": "The hall is full."
+      },
+      "callReasons": {
+        "empty": "Nobody is waiting for this hall.",
+        "below_min": "Waiting for at least {min} visitors ({count} waiting now).",
+        "full": "The hall is full."
+      },
+      "callNext": "Call next group",
+      "people": "{count, plural, one {1 visitor} other {# visitors}}",
+      "groupSize": "Group size",
+      "sizeLess": "Fewer visitors",
+      "sizeMore": "More visitors",
+      "seats": "Seats",
+      "seatsAria": "Seats used in the hall",
+      "sessionStatus": {
+        "OPEN": "Gathering",
+        "IN_SESSION": "In session",
+        "CLOSED": "Closed",
+        "CANCELLED": "Cancelled"
+      },
+      "visitors": "Visitors in the hall ({count})",
+      "visitorsAria": "Visitors of this session",
+      "showDetails": "Show details of {number}",
+      "member": {
+        "called": "Called",
+        "entered": "Inside",
+        "done": "Done",
+        "noShow": "No-show",
+        "released": "Released"
+      },
+      "entered": "Entered",
+      "noShow": "No-show",
+      "release": "Release",
+      "releaseHint": "Send the visitor back to the queue at their original place",
+      "markAllEntered": "Mark all entered",
+      "startSession": "Start session",
+      "startNeedsEntered": "At least one visitor must have entered",
+      "topUp": "Top up",
+      "recallGroup": "Recall group",
+      "closeSession": "Close session",
+      "cancelSession": "Cancel session",
+      "keepSession": "Keep session",
+      "closeTitle": "Close the session",
+      "closeBody": "{entered, plural, one {1 visitor inside will be marked as served} other {# visitors inside will be marked as served}}. {missing, plural, =0 {} one {1 visitor who never came in will be marked no-show.} other {# visitors who never came in will be marked no-show.}}",
+      "outcomeForAll": "Outcome for everyone",
+      "cancelTitle": "Cancel the session?",
+      "cancelBody": "Nobody has entered yet. The called visitors go back to the queue at their original places.",
+      "calledToast": "{count, plural, one {1 visitor called} other {# visitors called}}",
+      "toppedUpToast": "Visitors added to the group",
+      "closedToast": "Session closed",
+      "cancelledToast": "Session cancelled",
+      "shortcuts": "Keyboard: Enter = next step · N = call group · E = all entered · S = start · C = close · R = recall",
+      "keys": {
+        "next": "Call next group (N)",
+        "entered": "Mark all entered (E)",
+        "start": "Start session (S)",
+        "close": "Close session (C)",
+        "recall": "Recall group (R)"
+      }
+    }
   },
   "visitorStatus": {
     "title": "Your turn",
@@ -2941,6 +3090,14 @@
     "cardTitle": "{count} branches have no way to issue tickets",
     "cardBody": "These branches have no receptionist, agent walk-in issuing is off and no kiosk is paired. Visitors there cannot get a ticket.",
     "more": "and {count} more",
-    "goBranches": "Open branches"
+    "goBranches": "Open branches",
+    "hallsCardTitle": "{count} branches have hall services nobody can serve",
+    "hallsCardBody": "These branches have visit reasons served in halls, but halls are off, no hall accepts them, or no agent is set up to host a hall. Visitors for them will wait without being called.",
+    "goHallSettings": "Open settings",
+    "hallGap": {
+      "halls_disabled": "Halls are off",
+      "no_hall": "No hall accepts some hall services",
+      "no_host": "No agent hosts a hall"
+    }
   }
 }

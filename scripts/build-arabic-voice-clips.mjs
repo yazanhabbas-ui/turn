@@ -6,7 +6,7 @@
 //   node scripts/build-arabic-voice-clips.mjs --refresh           # ignore the raw cache and synthesise again
 //
 // What is produced per voice: whole-number clips 0..999 and the thousands (num-N.mp3), the Latin and Arabic
-// letters, the fixed phrases ("رقم", "تفضل إلى المكتب") and manifest.json (clip key -> public URL). Words come from
+// letters, the fixed phrases ("رقم", "تفضل إلى المكتب", and the hall group-call phrases) and manifest.json (clip key -> public URL). Words come from
 // src/domain/display/arabic-words.ts, the same file the announcement composer uses.
 //
 // Every clip is trimmed to ~35 ms of lead / ~50 ms of tail silence and loudness-normalised (see lib/voice-audio.mjs),
@@ -63,8 +63,9 @@ const fileOfLetter = (ch) => (/^[A-Za-z]$/.test(ch) ? `letter-${ch.toUpperCase()
 /** [manifest key, file name without extension, text, group] */
 function allClips() {
   const list = [];
-  list.push(["ar.phrase.number", "phrase-number", ARABIC_PHRASES.number, "phrases"]);
-  list.push(["ar.phrase.desk", "phrase-desk", ARABIC_PHRASES.desk, "phrases"]);
+  // Fixed phrases: "رقم", "تفضل إلى المكتب" and the group-call phrases for halls (D62), e.g. phrase-please-go-to-hall.mp3.
+  for (const [key, text] of Object.entries(ARABIC_PHRASES))
+    list.push([`ar.phrase.${key}`, `phrase-${key.replaceAll("_", "-")}`, text, "phrases"]);
   for (let n = 0; n <= 999; n++) list.push([`ar.num.${n}`, `num-${n}`, arabicNumberWords(n), "numbers"]);
   for (const t of Object.keys(ARABIC_THOUSANDS))
     list.push([`ar.num.${Number(t) * 1000}`, `num-${Number(t) * 1000}`, ARABIC_THOUSANDS[t], "numbers"]);
