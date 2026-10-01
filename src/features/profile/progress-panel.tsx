@@ -290,7 +290,11 @@ export function ProgressPanel() {
 
           {p.agent?.hosted && (
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <Tile label={t("hostedSessions")} value={format.number(p.agent.hosted[period].sessions)} sub={t(`periods.${period}`)} />
+              <Tile
+                label={t("hostedSessions")}
+                value={format.number(p.agent.hosted[period].sessions)}
+                sub={t(`periods.${period}`)}
+              />
               <Tile label={t("hostedVisitors")} value={format.number(p.agent.hosted[period].visitors)} sub={t("hostedHint")} />
             </div>
           )}

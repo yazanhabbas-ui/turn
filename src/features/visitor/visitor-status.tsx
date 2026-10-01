@@ -107,7 +107,8 @@ export function VisitorStatus({
             </p>
           </div>
         )}
-        {s.status === "SERVING" && (s.hall ? t("servingHall", { hall: `${s.hall.number} ${pickText(s.hall.name, locale)}`.trim() }) : t("serving"))}
+        {s.status === "SERVING" &&
+          (s.hall ? t("servingHall", { hall: `${s.hall.number} ${pickText(s.hall.name, locale)}`.trim() }) : t("serving"))}
         {s.status === "COMPLETED" && t("finished")}
         {s.status === "ON_HOLD" && t("onHold")}
         {s.status === "CANCELLED" && t("cancelled")}

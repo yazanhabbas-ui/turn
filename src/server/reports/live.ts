@@ -246,7 +246,11 @@ async function liveHalls(
     .where(and(eq(hallSessions.branchId, branchId), inArray(hallSessions.status, ["OPEN", "IN_SESSION"])));
   const members = sessions.length
     ? await db()
-        .select({ sessionId: hallSessionTickets.sessionId, status: hallSessionTickets.status, displayNumber: tickets.displayNumber })
+        .select({
+          sessionId: hallSessionTickets.sessionId,
+          status: hallSessionTickets.status,
+          displayNumber: tickets.displayNumber,
+        })
         .from(hallSessionTickets)
         .innerJoin(tickets, eq(tickets.id, hallSessionTickets.ticketId))
         .where(
@@ -259,7 +263,8 @@ async function liveHalls(
     : [];
   return hallRows.map((h) => {
     const session = sessions.find((s) => s.hallId === h.id);
-    const hostId = session?.hostAgentId ?? profiles.find((p) => p.currentHallId === h.id && p.status !== "OFFLINE")?.userId ?? null;
+    const hostId =
+      session?.hostAgentId ?? profiles.find((p) => p.currentHallId === h.id && p.status !== "OFFLINE")?.userId ?? null;
     const hostProfile = hostId ? profiles.find((p) => p.userId === hostId) : undefined;
     const visitors = session
       ? members

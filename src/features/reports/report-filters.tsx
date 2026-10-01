@@ -221,7 +221,9 @@ export function ReportFilters({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => onChange({ branchId: "", reasonId: "", agentId: "", hallId: "", weekdays: [], hourFrom: null, hourTo: null })}
+            onClick={() =>
+              onChange({ branchId: "", reasonId: "", agentId: "", hallId: "", weekdays: [], hourFrom: null, hourTo: null })
+            }
           >
             {t("clear")}
           </Button>

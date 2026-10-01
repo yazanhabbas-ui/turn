@@ -702,10 +702,17 @@ function HallCard({
           </div>
         </div>
         <div className="text-end">
-          <div className={cn("text-sm font-semibold 2xl:text-xl", hall.state === "in_session" ? th.ok : hall.state === "called" ? th.warn : th.muted)}>
+          <div
+            className={cn(
+              "text-sm font-semibold 2xl:text-xl",
+              hall.state === "in_session" ? th.ok : hall.state === "called" ? th.warn : th.muted,
+            )}
+          >
             {stateLabel}
           </div>
-          <div className="tabular text-2xl font-bold 2xl:text-4xl">{t("hallOccupancy", { n: hall.occupied, capacity: hall.capacity })}</div>
+          <div className="tabular text-2xl font-bold 2xl:text-4xl">
+            {t("hallOccupancy", { n: hall.occupied, capacity: hall.capacity })}
+          </div>
         </div>
       </div>
       <div className={cn("mt-2 h-2 overflow-hidden rounded-full", th.track)} role="presentation">
@@ -717,7 +724,11 @@ function HallCard({
             <span
               key={v.displayNumber}
               dir="ltr"
-              className={cn("tabular rounded-md border px-2 py-0.5 text-lg font-bold 2xl:text-3xl", th.divider, v.status === "CALLED" && th.warn)}
+              className={cn(
+                "tabular rounded-md border px-2 py-0.5 text-lg font-bold 2xl:text-3xl",
+                th.divider,
+                v.status === "CALLED" && th.warn,
+              )}
             >
               {v.displayNumber}
             </span>
