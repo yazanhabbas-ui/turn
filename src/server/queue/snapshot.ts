@@ -200,7 +200,9 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
     order by queue_id, assigned_at desc nulls last`);
 
   const hallReasonIds = new Set(reasonRows.filter((r) => r.delivery === "hall").map((r) => r.id));
-  const hostOf = new Map(profileRows.filter((p) => p.currentHallId && p.status !== "OFFLINE").map((p) => [p.currentHallId!, p.userId]));
+  const hostOf = new Map(
+    profileRows.filter((p) => p.currentHallId && p.status !== "OFFLINE").map((p) => [p.currentHallId!, p.userId]),
+  );
   const hallList: HallInfo[] = hallRows.map((h) => ({
     id: h.id,
     number: h.number,
@@ -210,7 +212,8 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
     reasonIds: new Set(hallReasonRows.filter((r) => r.hallId === h.id).map((r) => r.reasonId)),
     hostAgentId: hostOf.get(h.id) ?? null,
   }));
-  const hallAccepts = (h: HallInfo, reasonId: string) => hallReasonIds.has(reasonId) && (h.reasonIds.size === 0 || h.reasonIds.has(reasonId));
+  const hallAccepts = (h: HallInfo, reasonId: string) =>
+    hallReasonIds.has(reasonId) && (h.reasonIds.size === 0 || h.reasonIds.has(reasonId));
 
   const engineTickets: EngineTicket[] = ticketRows.map((t) => ({
     id: t.id,
@@ -234,7 +237,9 @@ export async function loadBranchContext(tx: Tx, branchId: string, now = clockNow
   const waitFor = (reasonId: string, ahead: number, agents: number): WaitEstimate => {
     if (!hallReasonIds.has(reasonId)) return wait.estimate(reasonId, ahead, agents);
     const usable = hallSettings.enabled ? hallList.filter((h) => hallAccepts(h, reasonId)) : [];
-    const capacity = usable.length ? Math.max(...usable.map((h) => hallSettings.maxGroup > 0 ? Math.min(h.capacity, hallSettings.maxGroup) : h.capacity)) : 1;
+    const capacity = usable.length
+      ? Math.max(...usable.map((h) => (hallSettings.maxGroup > 0 ? Math.min(h.capacity, hallSettings.maxGroup) : h.capacity)))
+      : 1;
     return wait.estimateHall(reasonId, ahead, capacity, Math.max(1, usable.length));
   };
 

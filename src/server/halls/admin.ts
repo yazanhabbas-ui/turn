@@ -132,7 +132,8 @@ export async function updateHall(actor: Actor, id: string, input: HallInput) {
       .select({ capacity: hallSessions.capacity })
       .from(hallSessions)
       .where(and(eq(hallSessions.hallId, id), inArray(hallSessions.status, ["OPEN", "IN_SESSION"])));
-    if (live && input.capacity < live.capacity) throw new AppError("conflict", { reason: "hall_session_open", field: "capacity" });
+    if (live && input.capacity < live.capacity)
+      throw new AppError("conflict", { reason: "hall_session_open", field: "capacity" });
     const { reasonIds, ...rest } = input;
     const [after] = await tx
       .update(halls)
@@ -167,6 +168,9 @@ export async function archiveHall(actor: Actor, id: string) {
     // Hosts lose the hall; they pick another next time they sign in.
     await tx.update(agentProfiles).set({ currentHallId: null }).where(eq(agentProfiles.currentHallId, id));
     await tx.update(agentProfiles).set({ defaultHallId: null }).where(eq(agentProfiles.defaultHallId, id));
-    await audit({ ...auditMeta(actor), branchId: before.branchId, action: "hall.archived", entityType: "hall", entityId: id, before }, tx);
+    await audit(
+      { ...auditMeta(actor), branchId: before.branchId, action: "hall.archived", entityType: "hall", entityId: id, before },
+      tx,
+    );
   });
 }

@@ -57,6 +57,7 @@ describe.runIf(available)("display screens (database)", () => {
       showSlides: true,
       showWaiting: true,
       showClock: true,
+      showHallOccupancy: true,
       theme: "default" as const,
       voice: {},
     },

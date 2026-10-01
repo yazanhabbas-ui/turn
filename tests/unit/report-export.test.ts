@@ -126,6 +126,7 @@ function sampleReport(): Report {
         csatResponses: 0,
       },
     ],
+    byHall: [],
     byShift: [
       { shiftId: "s1", name: { ar: "صباحي", en: "Morning" }, visitors: 90, served: 80, avgWaitMin: 3.4 },
       { shiftId: "s2", name: { ar: "مسائي", en: "Evening" }, visitors: 30, served: 24, avgWaitMin: 5.8 },

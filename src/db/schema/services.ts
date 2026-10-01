@@ -1,4 +1,17 @@
-import { boolean, date, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  date,
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  primaryKey,
+  text,
+  unique,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { archivedAt, createdAt, id, updatedAt, type LocalizedText } from "./_common";
 import { agentGroups } from "./agents";
 import { users } from "./identity";

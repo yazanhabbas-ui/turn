@@ -9,9 +9,7 @@ import { splitTicket } from "../display/speech";
  */
 export type AnnounceMode = "list" | "range" | "hall_only";
 
-export type AnnounceItem =
-  | { kind: "ticket"; displayNumber: string }
-  | { kind: "range"; from: string; to: string; count: number };
+export type AnnounceItem = { kind: "ticket"; displayNumber: string } | { kind: "range"; from: string; to: string; count: number };
 
 export type GroupAnnouncement = { mode: "list" | "range" | "group_only"; items: AnnounceItem[]; total: number };
 

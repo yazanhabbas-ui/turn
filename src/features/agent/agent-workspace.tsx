@@ -204,7 +204,7 @@ export function AgentWorkspaceView() {
     if (!current) return void callNext();
     if (current.status === "CALLED") return void action(current, { action: "start" });
     if (current.status === "SERVING") setCompleteFor(current);
-  }, [busy, data, current, callNext, action]);
+  }, [busy, data, current, callNext, action, hallMode]);
 
   // Keyboard / USB call button: Enter = primary action, R = recall.
   useEffect(() => {

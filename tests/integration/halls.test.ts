@@ -454,6 +454,12 @@ describe.runIf(available)("halls: group sessions (database)", () => {
       expect(pub).toMatchObject({ status: "CALLED" });
       expect((pub as { hall?: { number: string } | null }).hall).toMatchObject({ number: "1" });
       const q = await queueState(reception, branchId);
+      expect(q.halls.find((h) => h.id === hallA)).toMatchObject({
+        occupied: 2,
+        capacity: 3,
+        status: "called",
+        hostAgentId: khalid.auth.user.id,
+      });
       expect(q.tickets.find((x) => x.id === ids[0])).toMatchObject({ hallId: hallA, status: "CALLED" });
     });
 

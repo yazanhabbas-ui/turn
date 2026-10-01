@@ -384,7 +384,7 @@
       "_": "This conflicts with existing data.",
       "email": "A user with this email already exists.",
       "code": "This code is already used.",
-      "number": "This desk number is already used in this branch.",
+      "number": "This desk or hall number is already used in this branch.",
       "shortcutKey": "This keyboard shortcut is already used by another reason.",
       "key": "This key is already used.",
       "system_role": "Built-in roles cannot be changed. Clone the role to customise it.",

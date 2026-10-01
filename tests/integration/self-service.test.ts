@@ -67,6 +67,7 @@ const config = {
   showSlides: true,
   showWaiting: true,
   showClock: true,
+  showHallOccupancy: true,
   theme: "default" as const,
   voice: {},
 };

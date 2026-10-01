@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { db, pool } from "@/db/client";
 import { branches, tickets, visitReasons } from "@/db/schema";
@@ -36,7 +36,10 @@ describe.runIf(available)("halls in reports, wallboard, visitor page, notificati
   let hallB: string;
   const filters = { from: "2026-09-29", to: "2026-09-29" };
 
-  const issue = async (reasonId = hallReason, fields: Record<string, string> = {}) => {
+  const issue = async (
+    reasonId = hallReason,
+    fields: Record<string, string> = reasonId === deskReason ? { phone: "0944000099" } : {},
+  ) => {
     const t = await issueTicket(reception, {
       branchId,
       reasonId,
@@ -90,12 +93,8 @@ describe.runIf(available)("halls in reports, wallboard, visitor page, notificati
     [{ id: branchId }] = await db().select({ id: branches.id }).from(branches);
     const reasons = await db().select().from(visitReasons);
     hallReason = reasons.find((r) => r.code === "general")!.id;
-    deskReason = reasons.find((r) => r.code === "contract")!.id;
+    deskReason = reasons.find((r) => r.code === "complaint")!.id;
     await db().update(visitReasons).set({ delivery: "hall", intakeFields: [] }).where(eq(visitReasons.id, hallReason));
-    await db()
-      .update(visitReasons)
-      .set({ intakeFields: [] })
-      .where(inArray(visitReasons.id, [deskReason]));
     await updateSetting(admin, "halls", { enabled: true, maxGroup: 4 });
     hallA = (
       await createHall(admin, branchId, {
@@ -306,7 +305,7 @@ describe.runIf(available)("halls in reports, wallboard, visitor page, notificati
       await db()
         .update(visitReasons)
         .set({ intakeFields: [{ key: "phone", required: false }] })
-        .where(inArray(visitReasons.id, [hallReason, deskReason]));
+        .where(eq(visitReasons.id, hallReason));
       const group = await issue(hallReason, { phone: "0944000011" });
       const deskVisitor = await issue(deskReason, { phone: "0944000012" });
       await flushNotifications();

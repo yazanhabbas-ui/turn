@@ -115,6 +115,21 @@ export async function queueState(actor: Actor, branchId: string, opts: { q?: str
         handledToday: a.handledToday,
         reasons: [...a.skills.keys()],
       })),
+      /** Live hall occupancy (D62): visitors called to or inside each hall. Empty while halls are off. */
+      halls: bctx.hallSettings.enabled
+        ? bctx.halls.map((h) => {
+            const inside = rows.filter((t) => t.hallId === h.id && (t.status === "CALLED" || t.status === "SERVING"));
+            return {
+              id: h.id,
+              number: h.number,
+              name: h.name,
+              capacity: h.capacity,
+              occupied: inside.length,
+              hostAgentId: h.hostAgentId,
+              status: !inside.length ? "free" : inside.some((t) => t.status === "CALLED") ? "called" : "in_session",
+            };
+          })
+        : [],
     };
   });
 }

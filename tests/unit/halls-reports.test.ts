@@ -15,7 +15,9 @@ const halls = new Map<string, HallInfo>([
   ["h2", { number: "2", name: { ar: "القاعة ب", en: "Hall B" }, branchId: "b1" }],
 ]);
 
-const session = (over: Partial<HallSessionFact> & Pick<HallSessionFact, "sessionId" | "hallId" | "members">): HallSessionFact => ({
+const session = (
+  over: Partial<HallSessionFact> & Pick<HallSessionFact, "sessionId" | "hallId" | "members">,
+): HallSessionFact => ({
   branchId: "b1",
   hostAgentId: "a1",
   status: "CLOSED",
@@ -145,7 +147,13 @@ describe("hall hosting in the agent's own numbers", () => {
       now,
       timezone: "Asia/Damascus",
       period: "week",
-      agent: { ...agent, hosted: [{ closedAt: now - 60 * MIN, visitors: 6 }, { closedAt: now - 30 * MIN, visitors: 4 }] },
+      agent: {
+        ...agent,
+        hosted: [
+          { closedAt: now - 60 * MIN, visitors: 6 },
+          { closedAt: now - 30 * MIN, visitors: 4 },
+        ],
+      },
       actionsDaily: [],
     });
     expect(some.agent?.hosted?.day).toEqual({ sessions: 2, visitors: 10 });

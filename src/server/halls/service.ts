@@ -195,7 +195,12 @@ export async function callGroup(actor: QueueActor, input: z.infer<typeof callGro
       size: input.size,
     });
     if (!plan.ticketIds.length) {
-      return { session: null, created: false, reason: plan.shortfall === "none" ? "empty" : plan.shortfall, available: plan.available };
+      return {
+        session: null,
+        created: false,
+        reason: plan.shortfall === "none" ? "empty" : plan.shortfall,
+        available: plan.available,
+      };
     }
 
     const now = new Date(ctx.bctx.now);
@@ -246,7 +251,8 @@ export async function sessionAction(actor: QueueActor, sessionId: string, input:
       case "enter": {
         if (!live) return view();
         const wanted = input.ticketIds ? new Set(input.ticketIds) : null;
-        if (wanted) for (const id of wanted) if (!list.some((x) => x.t.id === id)) throw new AppError("validation", { field: "ticketIds" });
+        if (wanted)
+          for (const id of wanted) if (!list.some((x) => x.t.id === id)) throw new AppError("validation", { field: "ticketIds" });
         for (const { m, t } of active) {
           if (m.status !== "CALLED" || (wanted && !wanted.has(t.id))) continue;
           const row = await startTicket(ctx, t);
@@ -257,7 +263,10 @@ export async function sessionAction(actor: QueueActor, sessionId: string, input:
       case "start": {
         if (s.status === "IN_SESSION" || !live) return view();
         if (!active.some((x) => x.m.status === "ENTERED")) throw new AppError("conflict", { reason: "nobody_entered" });
-        await ctx.tx.update(hallSessions).set({ status: "IN_SESSION", startedAt: s.startedAt ?? now }).where(eq(hallSessions.id, s.id));
+        await ctx.tx
+          .update(hallSessions)
+          .set({ status: "IN_SESSION", startedAt: s.startedAt ?? now })
+          .where(eq(hallSessions.id, s.id));
         break;
       }
       case "release": {

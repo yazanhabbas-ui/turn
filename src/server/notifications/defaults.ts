@@ -33,7 +33,7 @@ const LEGACY_BODIES: Record<string, Loc[]> = {
   called: [{ ar: "رقمك {number}: تفضل إلى المكتب {desk}.", en: "Number {number}: please go to desk {desk}." }],
 };
 
-export function isLegacyDefault(_channel: string, event: string, body: Loc): boolean {
+export function isLegacyDefault(_channel: string, event: string, body: { ar?: string; en?: string }): boolean {
   return (LEGACY_BODIES[event] ?? []).some((l) => l.ar === body.ar && l.en === body.en);
 }
 
