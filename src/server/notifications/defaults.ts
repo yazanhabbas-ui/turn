@@ -14,8 +14,9 @@ const short = {
     en: "Your turn is near! {ahead} ahead of you.\nYour number is {number}.\nTrack your turn: {link}",
   },
   called: {
-    ar: "رقمك {number}: تفضل إلى المكتب {desk}.",
-    en: "Number {number}: please go to desk {desk}.",
+    // The desk line and the hall line are optional: a desk visit gets the first, a group visit in a hall the second.
+    ar: "رقمك {number}.\nتفضل إلى المكتب {desk}.\nتمت مناداة مجموعتك، تفضلوا إلى القاعة {hall}.",
+    en: "Number {number}.\nPlease go to desk {desk}.\nYour group is called: please go to hall {hall}.",
   },
   no_show: {
     ar: "لم نتمكن من العثور عليك عند مناداة الرقم {number}.\nيرجى مراجعة الاستقبال إن كنت لا تزال بحاجة إلى الخدمة.",
@@ -26,6 +27,15 @@ const short = {
     en: "Thank you for visiting {branch}.\nWe would value your feedback: {feedbackLink}",
   },
 } satisfies Record<NotificationEvent, Loc>;
+
+/** The earlier built-in wording of the called message (before halls). Stored copies of it are treated as the default. */
+const LEGACY_BODIES: Record<string, Loc[]> = {
+  called: [{ ar: "رقمك {number}: تفضل إلى المكتب {desk}.", en: "Number {number}: please go to desk {desk}." }],
+};
+
+export function isLegacyDefault(_channel: string, event: string, body: Loc): boolean {
+  return (LEGACY_BODIES[event] ?? []).some((l) => l.ar === body.ar && l.en === body.en);
+}
 
 const emailSubject = {
   ticket_issued: { ar: "رقمك {number} في {branch}", en: "Your number {number} at {branch}" },
@@ -39,7 +49,7 @@ const EVENTS = Object.keys(short) as NotificationEvent[];
 
 /**
  * Wording used until an administrator edits a template, and the source for the rows the seed inserts. Placeholders:
- * {number} {name} {desk} {wait} {ahead} {branch} {reason} {link} {feedbackLink}.
+ * {number} {name} {desk} {hall} {wait} {ahead} {branch} {reason} {link} {feedbackLink}.
  */
 export const DEFAULT_TEMPLATES: DefaultTemplate[] = EVENTS.flatMap((event) =>
   (["whatsapp", "sms", "email"] as const).map((channel) => ({

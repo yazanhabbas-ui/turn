@@ -1,4 +1,4 @@
-import type { branches, desks, tickets, visitReasons, visitors } from "@/db/schema";
+import type { branches, desks, halls, tickets, visitReasons, visitors } from "@/db/schema";
 import { pickText } from "@/i18n/locales";
 import { env } from "../env";
 import { signStop } from "./optout";
@@ -13,6 +13,8 @@ export type TemplateVarsInput = {
   branch: Pick<typeof branches.$inferSelect, "name"> | null;
   reason: Pick<typeof visitReasons.$inferSelect, "name"> | null;
   desk: Pick<typeof desks.$inferSelect, "number" | "name"> | null;
+  /** The hall of a group visit (D62); unset or null for desk visits. */
+  hall?: Pick<typeof halls.$inferSelect, "number" | "name"> | null;
   /** Values captured when the event happened (position and wait), as text. */
   snapshot: { ahead?: string; wait?: string };
 };
@@ -33,7 +35,7 @@ export function registerTemplateVars(provider: TemplateVarsProvider) {
 export const publicLinkFor = (token: string) => `${env().APP_URL.replace(/\/$/, "")}/t/${token}`;
 
 /**
- * The one place that decides what every placeholder means: {number} {ticket} {name} {desk} {wait} {ahead} {branch}
+ * The one place that decides what every placeholder means: {number} {ticket} {name} {desk} {hall} {wait} {ahead} {branch}
  * {reason} {link} {stopLink} and {feedbackLink} (empty unless a registered provider supplies it).
  */
 export async function buildTemplateVars(input: TemplateVarsInput): Promise<Record<string, string>> {
@@ -44,6 +46,8 @@ export async function buildTemplateVars(input: TemplateVarsInput): Promise<Recor
     ticket: ticket.displayNumber,
     name: input.visitor?.name?.trim() ?? "",
     desk: input.desk ? input.desk.number : "",
+    // Number and name, like the visitor page; empty for desk visits so the line mentioning it is left out.
+    hall: input.hall ? `${input.hall.number} ${pickText(input.hall.name, locale)}`.trim() : "",
     wait: input.snapshot.wait ?? "",
     ahead: input.snapshot.ahead ?? "",
     branch: input.branch ? pickText(input.branch.name, locale) : "",

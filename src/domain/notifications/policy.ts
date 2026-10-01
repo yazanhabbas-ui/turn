@@ -14,6 +14,7 @@ export const TEMPLATE_VARIABLES = [
   "ticket",
   "name",
   "desk",
+  "hall",
   "wait",
   "ahead",
   "branch",
@@ -27,7 +28,7 @@ export const TEMPLATE_VARIABLES = [
  * Placeholders that may be empty. A line that contains one of them is left out when it has no value, so
  * "Rate your visit: {feedbackLink}" disappears instead of printing an empty link.
  */
-export const OPTIONAL_LINE_VARIABLES: readonly string[] = ["feedbackLink", "wait", "name"];
+export const OPTIONAL_LINE_VARIABLES: readonly string[] = ["feedbackLink", "wait", "name", "desk", "hall"];
 
 /** Renders a message; optional lines with an empty value are removed and blank runs collapsed. */
 export function renderMessage(template: string, vars: Record<string, string | undefined>): string {

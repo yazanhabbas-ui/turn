@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { hallSessions, hallSessionTickets, halls, tickets } from "@/db/schema";
+import { hallSessions, hallSessionTickets, tickets } from "@/db/schema";
 import { orderTickets } from "@/domain/distribution/ordering";
 import { planHallBatch } from "@/domain/halls/plan";
 import { ACTIVE_MEMBER, LIVE_SESSION, type HallTicketStatus } from "@/domain/halls/state";

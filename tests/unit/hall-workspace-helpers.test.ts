@@ -44,12 +44,20 @@ describe("hall workspace helpers", () => {
 
   it("derives the group buttons from the session", () => {
     const calledOnly = sessionFlags(consoleOf({ waiting: 3, callable: 3 }, ["CALLED", "CALLED"]));
-    expect(calledOnly).toMatchObject({ canEnterAll: true, startEnabled: false, canClose: false, canCancel: true, canTopUp: true });
+    expect(calledOnly).toMatchObject({
+      canEnterAll: true,
+      startEnabled: false,
+      canClose: false,
+      canCancel: true,
+      canTopUp: true,
+    });
     const mixed = sessionFlags(consoleOf({}, ["ENTERED", "CALLED"]));
     expect(mixed).toMatchObject({ canEnterAll: true, startEnabled: true, canClose: true, canCancel: false, canTopUp: false });
     const running = sessionFlags(consoleOf({ waiting: 5, callable: 5 }, ["ENTERED", "ENTERED"], "IN_SESSION"));
     expect(running).toMatchObject({ canStart: false, canTopUp: false, canClose: true, canRecall: false });
-    expect(sessionFlags(consoleOf({ settings: { ...settings, allowTopUp: false }, waiting: 3, callable: 3 }, ["CALLED"])).canTopUp).toBe(false);
+    expect(
+      sessionFlags(consoleOf({ settings: { ...settings, allowTopUp: false }, waiting: 3, callable: 3 }, ["CALLED"])).canTopUp,
+    ).toBe(false);
     expect(sessionFlags(consoleOf({}, undefined))).toMatchObject({ canClose: false, canCancel: false, canEnterAll: false });
   });
 

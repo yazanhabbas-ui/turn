@@ -1662,7 +1662,10 @@
       "done": "Done. You will not receive any more messages from us.",
       "invalid": "This link is not valid.",
       "failed": "Something went wrong. Please try again."
-    }
+    },
+    "calledHall": "Your group is called. Please go to the hall:",
+    "servingHall": "Your session is under way in hall {hall}.",
+    "waitingGroup": "Please wait. You will be called together with a group to the hall."
   },
   "screens": {
     "title": "Screens & voice",
@@ -1935,7 +1938,15 @@
       "unknown": "New alert",
       "low_score": "Ticket {displayNumber} was rated {score} out of 5",
       "low_satisfaction": "Average satisfaction {avg} from {responses} answers in the last {windowHours} h (limit {limit})"
-    }
+    },
+    "halls": "Halls",
+    "hall": "Hall {number}",
+    "hallFree": "Free",
+    "hallCalled": "Group called",
+    "hallInSession": "In session",
+    "hallHost": "Host: {name}",
+    "hallNoHost": "No host",
+    "hallOccupancy": "{n} / {capacity}"
   },
   "reportExport": {
     "title": "Queue performance report",
@@ -1978,7 +1989,8 @@
       "csatByDay": "Satisfaction by day",
       "csatBreakdown": "Satisfaction by agent, reason, branch and shift",
       "csatComments": "Recent low scores with a comment",
-      "bySource": "By source"
+      "bySource": "By source",
+      "byHall": "By hall"
     },
     "units": {
       "min": "min",
@@ -2029,7 +2041,14 @@
       "comment": "Comment",
       "ticket": "Ticket",
       "satisfied": "Satisfied (%)",
-      "source": "Source"
+      "source": "Source",
+      "hall": "Hall",
+      "sessions": "Sessions",
+      "hallVisitors": "Visitors received",
+      "avgGroupSize": "Avg visitors per session",
+      "occupancy": "Occupancy (%)",
+      "avgSessionMin": "Avg session length (min)",
+      "noShowRate": "No-show rate (%)"
     },
     "metrics": {
       "visitors": "Visitors",
@@ -2088,7 +2107,8 @@
       "kiosk": "Self check-in kiosk",
       "appointment": "Appointment",
       "api": "API"
-    }
+    },
+    "filterHall": "Hall"
   },
   "reports": {
     "title": "Reports",
@@ -2122,7 +2142,9 @@
       "hourFrom": "From hour",
       "hourTo": "To hour",
       "weekdays": "Weekdays",
-      "clear": "Clear filters"
+      "clear": "Clear filters",
+      "hall": "Hall",
+      "allHalls": "All halls"
     },
     "kpi": {
       "title": "Key figures",
@@ -2167,7 +2189,8 @@
       "forecast": "Forecast",
       "repeat": "Repeat visits",
       "shifts": "By shift",
-      "sources": "How tickets were issued"
+      "sources": "How tickets were issued",
+      "halls": "Halls (group sessions)"
     },
     "charts": {
       "visitors": "Visitors",
@@ -2333,6 +2356,15 @@
         "appointment": "Appointment",
         "api": "API"
       }
+    },
+    "halls": {
+      "hint": "Group sessions per hall: how many took place, how full the hall was and how long they lasted.",
+      "name": "Hall",
+      "sessions": "Sessions",
+      "avgGroupSize": "Avg visitors per session",
+      "occupancy": "Occupancy",
+      "avgSessionMin": "Avg session length",
+      "noShowRate": "No-show rate"
     }
   },
   "reportSchedules": {
@@ -2579,7 +2611,10 @@
       "csatTrend": "Average score, last {n} days",
       "csatTrendAria": "Line chart of your average visitor score per day",
       "csatRecent": "Recent comments",
-      "csatScore": "Score {n} / 5"
+      "csatScore": "Score {n} / 5",
+      "hostedSessions": "Hall sessions hosted",
+      "hostedVisitors": "Visitors received in halls",
+      "hostedHint": "Visitors who entered your sessions"
     },
     "reports": {
       "title": "My reports",
@@ -2608,7 +2643,9 @@
         "avgWait": "Average wait of your visitors",
         "resolved": "Completed share",
         "avgScore": "Average satisfaction",
-        "responses": "Answers"
+        "responses": "Answers",
+        "hallSessions": "Hall sessions hosted",
+        "hallVisitors": "Visitors received in halls"
       },
       "daily": {
         "title": "Daily summary",
@@ -2741,7 +2778,9 @@
           "avgWait": "Average wait",
           "resolved": "Completed share",
           "avgScore": "Average satisfaction",
-          "responses": "Satisfaction answers"
+          "responses": "Satisfaction answers",
+          "hallSessions": "Hall sessions hosted",
+          "hallVisitors": "Visitors received in halls"
         },
         "units": {
           "min": "min",
@@ -2905,7 +2944,8 @@
       "reason": "Visit reason",
       "link": "Link to follow the queue",
       "feedbackLink": "Feedback link (optional)",
-      "stopLink": "Personal stop link"
+      "stopLink": "Personal stop link",
+      "hall": "Hall of a group visit (optional)"
     },
     "sample": {
       "name": {

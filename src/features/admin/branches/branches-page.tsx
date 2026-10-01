@@ -88,7 +88,13 @@ export function BranchesPage({ canManage, canManageHalls = false }: { canManage:
                 </h2>
               )}
               {items.map((b) => (
-                <BranchCard key={b.id} branch={b} canManage={canManage} canManageHalls={canManageHalls} onEdit={() => setEditing(b)} />
+                <BranchCard
+                  key={b.id}
+                  branch={b}
+                  canManage={canManage}
+                  canManageHalls={canManageHalls}
+                  onEdit={() => setEditing(b)}
+                />
               ))}
             </section>
           ))}

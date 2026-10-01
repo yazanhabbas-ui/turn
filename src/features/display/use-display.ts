@@ -52,7 +52,10 @@ export const clearToken = () =>
  * ticket was called). Survives network drops: keeps showing the last state, retries with back-off, and polls
  * while the socket is down. A revoked token sends the screen back to the pairing page.
  */
-export function useDisplayState(token: string, handlers: { onCall: (e: CallEvent) => void; onHallCall: (e: HallCallEvent) => void; onRevoked: () => void }) {
+export function useDisplayState(
+  token: string,
+  handlers: { onCall: (e: CallEvent) => void; onHallCall: (e: HallCallEvent) => void; onRevoked: () => void },
+) {
   const [state, setState] = useState<DisplayState | null>(() => {
     const cached = safe(() => localStorage.getItem(CACHE_KEY));
     return cached ? safe(() => JSON.parse(cached) as DisplayState) : null;

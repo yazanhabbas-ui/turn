@@ -1,6 +1,16 @@
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { announcements, branches, desks, hallSessions, halls, messageTemplates, ttsAudioPacks, tickets, visitReasons } from "@/db/schema";
+import {
+  announcements,
+  branches,
+  desks,
+  hallSessions,
+  halls,
+  messageTemplates,
+  ttsAudioPacks,
+  tickets,
+  visitReasons,
+} from "@/db/schema";
 import { resolveSurfaceTheme } from "@/domain/branding/surface-theme";
 import { parseDisplayConfig } from "@/domain/display/config";
 import { now as clockNow } from "../clock";
@@ -115,7 +125,9 @@ export async function displayState(display: DisplayRow) {
     : [];
   const sessionByHall = new Map(liveSessions.map((s) => [s.hallId, s]));
   const hallList = shownHalls.map((h) => {
-    const here = active.filter((t) => t.hallId === h.id).reverse();
+    const here = active
+      .filter((t) => t.hallId === h.id)
+      .sort((x, y) => x.displayNumber.localeCompare(y.displayNumber, "en", { numeric: true }));
     const session = sessionByHall.get(h.id);
     return {
       id: h.id,
@@ -124,7 +136,7 @@ export async function displayState(display: DisplayRow) {
       zone: h.zone,
       capacity: h.capacity,
       status: !session ? "free" : session.status === "IN_SESSION" ? "in_session" : "called",
-      /** The visitors called to the hall or inside it, in the order they were called. */
+      /** The visitors called to the hall or inside it, in number order. */
       numbers: here.map((t) => t.displayNumber),
       occupied: here.length,
       sessionId: session?.id ?? null,

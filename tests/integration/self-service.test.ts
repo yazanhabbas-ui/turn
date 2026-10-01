@@ -6,10 +6,21 @@ import * as kioskContextRoute from "@/app/api/v1/kiosk/context/route";
 import * as kioskTicketsRoute from "@/app/api/v1/kiosk/tickets/route";
 import * as queueStateRoute from "@/app/api/v1/queue/state/route";
 import { db, pool } from "@/db/client";
-import { branches, rolePermissions, roles, ticketEvents, tickets, users, visitReasons } from "@/db/schema";
+import {
+  agentProfiles,
+  branches,
+  hallReasons,
+  rolePermissions,
+  roles,
+  ticketEvents,
+  tickets,
+  users,
+  visitReasons,
+} from "@/db/schema";
 import { zonedToUtc } from "@/domain/schedule/time";
 import type { Actor } from "@/server/admin/actor";
 import { enableAgentIssuing, issuingCoverage } from "@/server/admin/coverage";
+import { createHall } from "@/server/halls/admin";
 import { createDisplay, listDisplays, revokeDisplay } from "@/server/admin/screens";
 import { updateSetting } from "@/server/admin/settings-admin";
 import { setClock } from "@/server/clock";
@@ -265,6 +276,35 @@ describe.runIf(available)("running a branch without a receptionist (database)", 
     await enableAgentIssuing(admin, aleppoId);
     cov = await issuingCoverage(admin);
     expect(cov.find((c) => c.branchId === aleppoId)).toMatchObject({ agentAllowed: true, canIssue: true });
+  });
+
+  it("flags hall services nobody can serve: halls off, no accepting hall, no host (D62)", async () => {
+    const gaps = async () => (await issuingCoverage(admin)).find((c) => c.branchId === mainId)!.hallGaps;
+    expect(await gaps()).toEqual([]); // no hall reasons yet: nothing to flag
+    await db().update(visitReasons).set({ delivery: "hall" }).where(eq(visitReasons.code, "general"));
+    const [reason] = await db().select({ id: visitReasons.id }).from(visitReasons).where(eq(visitReasons.code, "general"));
+    expect((await gaps()).map((g) => g.type)).toEqual(["halls_disabled"]);
+    await updateSetting(admin, "halls", { enabled: true }, mainId);
+    expect((await gaps()).map((g) => g.type).sort()).toEqual(["no_hall", "no_host"]);
+    const other = await db().select({ id: visitReasons.id }).from(visitReasons).where(eq(visitReasons.code, "documents"));
+    await db().update(visitReasons).set({ delivery: "hall" }).where(eq(visitReasons.code, "documents"));
+    // A hall that accepts only "documents" leaves "general" without a hall.
+    const { id: hallId } = await createHall(admin, mainId, {
+      number: "1",
+      name: { ar: "قاعة", en: "Hall" },
+      capacity: 5,
+      reasonIds: other.map((o) => o.id),
+      sortOrder: 0,
+    });
+    const types = (await gaps()).map((g) => g.type).sort();
+    expect(types).toEqual(["no_hall", "no_host"]);
+    expect((await gaps()).find((g) => g.type === "no_hall")!.reasonIds).toEqual([reason.id]);
+    // A host (default hall) closes the host gap; accepting everything closes the other.
+    await db().update(agentProfiles).set({ defaultHallId: hallId }).where(eq(agentProfiles.branchId, mainId));
+    expect((await gaps()).map((g) => g.type)).toEqual(["no_hall"]);
+    await db().delete(hallReasons).where(eq(hallReasons.hallId, hallId));
+    expect(await gaps()).toEqual([]);
+    expect((await issuingCoverage(admin)).find((c) => c.branchId === mainId)!.hallsEnabled).toBe(true);
   });
 
   it("breaks tickets down by source in the report", async () => {

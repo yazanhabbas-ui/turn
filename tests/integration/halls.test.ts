@@ -14,6 +14,7 @@ import {
 import { estimateHallWait } from "@/domain/distribution/estimate";
 import { zonedToUtc } from "@/domain/schedule/time";
 import type { Actor } from "@/server/admin/actor";
+import { putRule } from "@/server/admin/distribution";
 import { updateSetting } from "@/server/admin/settings-admin";
 import { advanceClock, now, setClock } from "@/server/clock";
 import { createHall } from "@/server/halls/admin";
@@ -77,6 +78,7 @@ describe.runIf(available)("halls: group sessions (database)", () => {
       .update(visitReasons)
       .set({ delivery: "hall", intakeFields: [] })
       .where(inArray(visitReasons.id, [hallReason, otherHallReason]));
+    await db().update(visitReasons).set({ intakeFields: [] }).where(eq(visitReasons.id, deskReason));
     await enableHalls();
     hallA = (
       await createHall(admin, branchId, {
@@ -425,6 +427,10 @@ describe.runIf(available)("halls: group sessions (database)", () => {
 
   describe("timers and realtime state", () => {
     it("a group that does not come in is recalled together and then marked as no-show by the existing timers", async () => {
+      await putRule(admin, {
+        scope: "global",
+        config: { noShow: { autoRecall: true, recallAfterMinutes: 2, maxRecalls: 1, timeoutMinutes: 6 } },
+      });
       const ids = await issueMany(3);
       const { session } = await callGroup(khalid, { hallId: hallA });
       for (let i = 0; i < 12; i++) {

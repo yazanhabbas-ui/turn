@@ -306,7 +306,9 @@ export function UserDialog({
                     <NativeSelect
                       id="a-branch"
                       value={form.agent.branchId}
-                      onChange={(e) => set("agent", { ...form.agent!, branchId: e.target.value, defaultDeskId: null, defaultHallId: null })}
+                      onChange={(e) =>
+                        set("agent", { ...form.agent!, branchId: e.target.value, defaultDeskId: null, defaultHallId: null })
+                      }
                     >
                       {lookups.branches.map((b) => (
                         <option key={b.id} value={b.id}>
@@ -352,7 +354,7 @@ export function UserDialog({
                       </NativeSelect>
                     </Field>
                   ) : (
-                  <Field label={t("defaultDesk")} htmlFor="a-desk">
+                    <Field label={t("defaultDesk")} htmlFor="a-desk">
                       <NativeSelect
                         id="a-desk"
                         value={form.agent.defaultDeskId ?? ""}

@@ -11,6 +11,8 @@ import {
   desks,
   displays,
   floors,
+  hallSessions,
+  halls,
   notificationsLog,
   reasonAssignments,
   reportSchedules,
@@ -26,6 +28,8 @@ import { putRule } from "@/server/admin/distribution";
 import { saveGroup } from "@/server/admin/groups";
 import { updateSetting } from "@/server/admin/settings-admin";
 import { pairDevice } from "@/server/display/device";
+import { createHall } from "@/server/halls/admin";
+import { callGroup } from "@/server/halls/service";
 import { issueTicket } from "@/server/queue/tickets";
 import { actorFor, resetDemo } from "./fixtures";
 import { prepareTestDatabase } from "./helpers";
@@ -320,6 +324,8 @@ describe.runIf(available)("cross-city isolation (a Damascus user against Aleppo 
   let faisalId: string;
   let aleppoDesk: string;
   let aleppoFloor: string;
+  let aleppoHall: string;
+  let aleppoSession: string;
   let aleppoDisplay: string;
   let aleppoAnnouncement: string;
   let aleppoSchedule: string;
@@ -439,6 +445,22 @@ describe.runIf(available)("cross-city isolation (a Damascus user against Aleppo 
     ).ticket.id;
     await putRule(aleppoAdmin, { scope: "branch", branchId: aleppoBranch, config: {} });
     await updateSetting(aleppoAdmin, "wifi", { enabled: false } as never, aleppoBranch);
+    // A hall with a live group session in Aleppo (D62).
+    await db().update(visitReasons).set({ delivery: "hall", intakeFields: [] }).where(eq(visitReasons.id, generalReason));
+    await updateSetting(aleppoAdmin, "halls", { enabled: true } as never, aleppoBranch);
+    aleppoHall = (
+      await createHall(aleppoAdmin, aleppoBranch, { number: "1", name: { ar: "قاعة" }, capacity: 4, reasonIds: [], sortOrder: 0 })
+    ).id;
+    for (let i = 0; i < 2; i++)
+      await issueTicket(superAdmin, {
+        branchId: aleppoBranch,
+        reasonId: generalReason,
+        language: "ar",
+        fields: {},
+        consent: false,
+        source: "reception",
+      } as never);
+    aleppoSession = (await callGroup(await actorFor("faisal@dor.local"), { hallId: aleppoHall })).session!.id;
   });
 
   const refused = (status: number) => expect([403, 404]).toContain(status);
@@ -485,6 +507,51 @@ describe.runIf(available)("cross-city isolation (a Damascus user against Aleppo 
     const [d] = await db().select().from(displays).where(eq(displays.id, aleppoDisplay));
     expect(d.archivedAt).toBeNull();
     expect(d.revokedAt).toBeNull();
+  });
+
+  it("halls and group sessions of another city can be neither managed nor hosted by outsiders", async () => {
+    const c = cookies["damascus.admin"];
+    refused(
+      (
+        await http("v1/admin/branches/[id]/halls", "POST", {
+          cookie: c,
+          params: { id: aleppoBranch },
+          body: { number: "9", name: { ar: "x" }, capacity: 5, reasonIds: [] },
+        })
+      ).status,
+    );
+    refused(
+      (
+        await http("v1/admin/halls/[id]", "PUT", {
+          cookie: c,
+          params: { id: aleppoHall },
+          body: { number: "1", name: { ar: "x" }, capacity: 9, reasonIds: [] },
+        })
+      ).status,
+    );
+    refused((await http("v1/admin/halls/[id]", "DELETE", { cookie: c, params: { id: aleppoHall } })).status);
+    // Not the host and no supervisor right: a Damascus agent cannot act on the Aleppo session or call into its hall.
+    const k = cookies["khalid"];
+    refused(
+      (
+        await http("v1/halls/sessions/[id]/actions", "POST", {
+          cookie: k,
+          params: { id: aleppoSession },
+          body: { action: "enter" },
+        })
+      ).status,
+    );
+    // Halls are off in Damascus (409); with them on, a hall of another branch is simply not found (400).
+    expect(
+      (await http("v1/halls/call-group", "POST", { cookie: k, body: { hallId: aleppoHall } })).status,
+    ).toBeGreaterThanOrEqual(400);
+    expect(await db().select().from(hallSessions).where(eq(hallSessions.hallId, aleppoHall))).toHaveLength(1);
+    const [h] = await db().select().from(halls).where(eq(halls.id, aleppoHall));
+    expect(h.archivedAt).toBeNull();
+    expect(h.capacity).toBe(4);
+    // The Damascus admin does not see the Aleppo hall in the branch list.
+    const list = (await http("v1/admin/branches", "GET", { cookie: c })).json.items;
+    expect(JSON.stringify(list)).not.toContain(aleppoHall);
   });
 
   it("announcements, report schedules, invites, notifications, alerts, groups and rules of another city are untouchable", async () => {

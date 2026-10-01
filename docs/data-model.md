@@ -15,6 +15,10 @@ erDiagram
   organizations ||--o{ branches : has
   branches ||--o{ floors : has
   branches ||--o{ desks : has
+  branches ||--o{ halls : has
+  halls ||--o{ hall_sessions : hosts
+  hall_sessions ||--o{ hall_session_tickets : "group"
+  tickets ||--o{ hall_session_tickets : ""
   organizations ||--o{ users : employs
   users ||--o{ user_roles : granted
   roles ||--o{ user_roles : ""
@@ -33,13 +37,14 @@ erDiagram
 
 ## Tenancy and locations
 
-| Table           | Purpose                                                                          |
-| --------------- | -------------------------------------------------------------------------------- |
-| `organizations` | Tenant: name, slug, default locale, enabled locales                              |
-| `cities`        | Groups branches; access can be granted per city                                  |
-| `branches`      | Office: `city_id`, code, name, **timezone**, **weekend days**                    |
-| `floors`        | Optional grouping of desks                                                       |
-| `desks`         | Counter/office; `number` is announced ("Desk 3"); `zone` for multi-zone displays |
+| Table           | Purpose                                                                                                                                                               |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `organizations` | Tenant: name, slug, default locale, enabled locales                                                                                                                   |
+| `cities`        | Groups branches; access can be granted per city                                                                                                                       |
+| `branches`      | Office: `city_id`, code, name, **timezone**, **weekend days**                                                                                                         |
+| `floors`        | Optional grouping of desks                                                                                                                                            |
+| `desks`         | Counter/office; `number` is announced ("Desk 3"); `zone` for multi-zone displays                                                                                      |
+| `halls`         | Room with a `capacity` (>= 2) where one host receives a group together (D62); `number` is announced ("Hall 2"); `zone`; unique `number` per branch among active halls |
 
 ## Identity and access
 
@@ -135,3 +140,17 @@ Shifts (`shifts.city_id`) and message templates (`message_templates.city_id`) ar
 ## Self check-in (D61)
 
 `visit_reasons.requires_staff` (boolean, default false) hides a reason from the kiosk ("please ask the agent"). Intake fields (JSON on the reason) may carry `selfService` (boolean; unset = default by key). `tickets.source` takes `reception`, `agent`, `kiosk`, `appointment` or `api`. Settings `reception.agentIssuing` and the `selfCheckin` group resolve organization, city, branch like other settings. Permission `tickets.issue_self`.
+
+## Halls (D62, migration 0018)
+
+| Table / column                       | Purpose                                                                                                                                                                                                                                 |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `halls`                              | See Tenancy. Archived, never deleted                                                                                                                                                                                                    |
+| `hall_reasons`                       | Hall-delivered reasons a hall accepts; no rows = all of them                                                                                                                                                                            |
+| `hall_sessions`                      | One group session: hall, host, status `OPEN` / `IN_SESSION` / `CLOSED` / `CANCELLED`, capacity snapshot, `reason_id`, `called_at`, `started_at`, `closed_at`, `outcome`. Partial unique indexes: one live session per hall and per host |
+| `hall_session_tickets`               | A visitor in a session: `CALLED` / `ENTERED` / `NO_SHOW` / `DONE` / `RELEASED`, with `called_at`, `entered_at`, `finished_at`, `outcome`; unique per session and ticket                                                                 |
+| `visit_reasons.delivery`             | `desk` (default) or `hall`: hall reasons are served only by hall sessions and never auto-assigned to desk agents                                                                                                                        |
+| `agent_profiles.current_hall_id`     | The hall the agent is signed in to as host (an agent is at a desk or a hall, never both); `default_hall_id` is the hall they usually host                                                                                               |
+| `tickets.hall_id`, `hall_session_id` | The hall and session a visitor is in; cleared when the visitor goes back to the queue, kept as history after the visit                                                                                                                  |
+
+Ticket statuses are unchanged; a session maps onto them (call = CALLED, enter = SERVING, close = COMPLETED / NO_SHOW). Ticket events of a hall visit carry `{hallId, sessionId}` in the payload; sending a visitor back is the event `HALL_RELEASED`.

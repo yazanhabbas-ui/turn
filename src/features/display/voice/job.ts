@@ -76,7 +76,10 @@ export function buildVoiceJob(input: CallInput): VoiceJob | null {
   return jobFrom(input, planCall(input));
 }
 
-function jobFrom(input: { id: string; settings: VoiceSettings; packs: PlanInput["packs"]; repeat?: number }, steps: PlannedStep[]): VoiceJob | null {
+function jobFrom(
+  input: { id: string; settings: VoiceSettings; packs: PlanInput["packs"]; repeat?: number },
+  steps: PlannedStep[],
+): VoiceJob | null {
   const v = input.settings;
   if (!steps.length) return null;
   const browser = new BrowserTts();

@@ -361,6 +361,7 @@ function recentGroups(recent: DisplayState["recent"]): RecentGroup[] {
     if (g) g.numbers.push(r.displayNumber);
     else groups.push({ key, numbers: [r.displayNumber], deskNumber: r.deskNumber, hallNumber: r.hallNumber ?? null });
   }
+  for (const g of groups) if (g.numbers.length > 1) g.numbers.sort((x, y) => x.localeCompare(y, "en", { numeric: true }));
   return groups;
 }
 

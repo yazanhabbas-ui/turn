@@ -246,7 +246,13 @@ function HallDialog({
                   value={f.capacity}
                   onChange={(e) => setCapacity(Number(e.target.value))}
                 />
-                <Button type="button" variant="outline" size="icon" aria-label={t("capacityUp")} onClick={() => setCapacity(f.capacity + 1)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  aria-label={t("capacityUp")}
+                  onClick={() => setCapacity(f.capacity + 1)}
+                >
                   <Plus aria-hidden />
                 </Button>
               </div>
@@ -265,7 +271,11 @@ function HallDialog({
               <Input id="h-zone" maxLength={20} value={f.zone} onChange={(e) => setF({ ...f, zone: e.target.value })} />
             </Field>
           </div>
-          <Field label={t("hallReasons")} htmlFor="h-reasons" hint={hallReasons.length ? t("hallReasonsHint") : t("noHallReasons")}>
+          <Field
+            label={t("hallReasons")}
+            htmlFor="h-reasons"
+            hint={hallReasons.length ? t("hallReasonsHint") : t("noHallReasons")}
+          >
             <AgentMultiPicker
               id="h-reasons"
               options={options}

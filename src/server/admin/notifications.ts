@@ -167,6 +167,7 @@ export async function sendTestMessage(actor: Actor, input: z.infer<typeof testIn
     ticket: "A-001",
     name: pickText(actor.auth.user.displayName, input.locale),
     desk: "3",
+    hall: "",
     wait: "5",
     ahead: "2",
     branch: "—",

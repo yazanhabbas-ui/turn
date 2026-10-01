@@ -52,7 +52,13 @@ describe.runIf(available)("agent workspace: hall console (database)", () => {
 
   async function enableHalls(minGroup = 1) {
     await db().update(visitReasons).set({ delivery: "hall" }).where(eq(visitReasons.id, generalId));
-    await updateSetting(admin, "halls", { enabled: true, minGroup, maxGroup: 0, allowTopUp: true, autoStartWhenAllEntered: true });
+    await updateSetting(admin, "halls", {
+      enabled: true,
+      minGroup,
+      maxGroup: 0,
+      allowTopUp: true,
+      autoStartWhenAllEntered: true,
+    });
     ({ id: hallId } = await createHall(admin, branchId, {
       number: "H1",
       name: { ar: "قاعة الاجتماعات", en: "Meeting hall" },

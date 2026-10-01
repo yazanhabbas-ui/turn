@@ -113,7 +113,9 @@ export function hallEnglishText(call: HallCall, digits: DigitSystem, plan?: Grou
   const hall = applyDigits(call.hallNumber, digits);
   const say = (d: string) => spokenTicket(d, digits, call.reading);
   if (p.mode === "group_only") return `${E.nextGroup}, ${E.goToHall} ${hall}`;
-  const parts = p.items.map((i) => (i.kind === "ticket" ? say(i.displayNumber) : `${E.from} ${say(i.from)} ${E.to} ${say(i.to)}`));
+  const parts = p.items.map((i) =>
+    i.kind === "ticket" ? say(i.displayNumber) : `${E.from} ${say(i.from)} ${E.to} ${say(i.to)}`,
+  );
   const list = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} ${E.and} ${parts[parts.length - 1]}` : parts[0];
   return `${p.total === 1 ? E.ticket : E.tickets} ${list}, ${E.goToHall} ${hall}`;
 }

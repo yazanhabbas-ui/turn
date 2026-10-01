@@ -213,6 +213,7 @@ function Preview({ body, subject, channel }: { body: Loc; subject: Loc | null; c
           ticket: "A-014",
           name: t(`sample.name.${l}`),
           desk: "3",
+          hall: "",
           wait: t(`sample.wait.${l}`),
           ahead: "2",
           branch: t(`sample.branch.${l}`),

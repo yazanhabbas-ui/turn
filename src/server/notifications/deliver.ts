@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull, lte, or } from "drizzle-orm";
 import { db } from "@/db/client";
-import { branches, desks, messageTemplates, notificationsLog, tickets, visitReasons, visitors } from "@/db/schema";
+import { branches, desks, halls, messageTemplates, notificationsLog, tickets, visitReasons, visitors } from "@/db/schema";
 import { looksLikeEmail, RateLimiter, renderMessage, retryDelaySeconds, type NotifyChannel } from "@/domain/notifications/policy";
 import { maskRecipient, placeholdersOf } from "@/domain/templates/render";
 import { pickText } from "@/i18n/locales";
@@ -8,7 +8,7 @@ import { logger } from "../logger";
 import { providerFor } from "../messaging/providers";
 import { getSetting } from "../settings/service";
 import { pickByCity } from "../settings/templates";
-import { defaultTemplate } from "./defaults";
+import { defaultTemplate, isLegacyDefault } from "./defaults";
 import { registerFeedbackTemplateVars } from "../feedback/register";
 import { buildTemplateVars } from "./vars";
 
@@ -40,6 +40,11 @@ export async function templateFor(organizationId: string, channel: string, event
       ),
     );
   const row = pickByCity(rows, cityId);
+  // A stored copy of the old built-in wording follows the current built-in one (it gained the hall line).
+  const d0 = row ? defaultTemplate(channel, event) : undefined;
+  if (row && d0 && isLegacyDefault(channel, event, row.body)) {
+    return row.isActive ? { subject: row.subject, body: d0.body, providerTemplate: row.providerTemplate } : null;
+  }
   if (row) return row.isActive ? { subject: row.subject, body: row.body, providerTemplate: row.providerTemplate } : null;
   const d = defaultTemplate(channel, event);
   return d ? { subject: d.subject ?? null, body: d.body, providerTemplate: null } : null;
@@ -109,10 +114,11 @@ async function deliver(logId: string, schedule: Schedule) {
   let lastChannel: string = row.channel;
   let lastProvider: string = row.provider;
 
-  const [[branch], [reason], [desk]] = await Promise.all([
+  const [[branch], [reason], [desk], [hall]] = await Promise.all([
     db().select().from(branches).where(eq(branches.id, t.branchId)),
     db().select().from(visitReasons).where(eq(visitReasons.id, t.reasonId)),
     t.deskId ? db().select().from(desks).where(eq(desks.id, t.deskId)) : Promise.resolve([undefined]),
+    t.hallId && row.event === "called" ? db().select().from(halls).where(eq(halls.id, t.hallId)) : Promise.resolve([undefined]),
   ]);
   const vars = await buildTemplateVars({
     event: row.event,
@@ -122,6 +128,7 @@ async function deliver(logId: string, schedule: Schedule) {
     branch: branch ?? null,
     reason: reason ?? null,
     desk: desk ?? null,
+    hall: hall ?? null,
     snapshot: { ahead: payload.ahead, wait: payload.wait },
   });
 
