@@ -6,6 +6,7 @@ import { pickText } from "@/i18n/locales";
 import { logger } from "../logger";
 import { pickByCity } from "../settings/templates";
 import { providerFor } from "./providers";
+import { SYSTEM_EMAIL_TEMPLATES } from "./system-templates";
 import type { Channel, MessageAttachment } from "./types";
 
 export type SendRequest = {
@@ -43,7 +44,8 @@ export async function sendTemplated(req: SendRequest): Promise<{ status: "sent" 
         cityId ? or(isNull(messageTemplates.cityId), eq(messageTemplates.cityId, cityId)) : isNull(messageTemplates.cityId),
       ),
     );
-  const tpl = pickByCity(tpls, cityId);
+  const builtIn = req.channel === "email" ? SYSTEM_EMAIL_TEMPLATES[req.event] : undefined;
+  const tpl = pickByCity(tpls, cityId) ?? (builtIn ? { subject: builtIn.subject, body: builtIn.body, providerTemplate: null } : undefined);
   const provider = providerFor(req.channel);
   const base = {
     organizationId: req.organizationId,

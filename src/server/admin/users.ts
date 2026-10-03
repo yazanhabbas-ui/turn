@@ -8,6 +8,7 @@ import {
   cities,
   desks,
   halls,
+  organizations,
   passwordResetTokens,
   rolePermissions,
   roles,
@@ -17,7 +18,7 @@ import {
 } from "@/db/schema";
 import { looseNameMatch, normalizeArabic } from "@/domain/i18n/arabic-normalize";
 import { localizedText, uuid } from "@/domain/validation";
-import { LOCALE_CODES } from "@/i18n/locales";
+import { LOCALE_CODES, pickText } from "@/i18n/locales";
 import { audit } from "../audit";
 import { assertPasswordAcceptable, normalizeEmail } from "../auth/service";
 import { hashPassword } from "../auth/password";
@@ -26,6 +27,7 @@ import { randomToken, sha256Hex } from "../crypto";
 import { AppError } from "../http/errors";
 import { appLink } from "../links";
 import { enqueue } from "../jobs";
+import { providerFor } from "../messaging/providers";
 import { allowedBranches, allowedCities, assertCanGrant, auditMeta, orgOf, requirePermission, type Actor } from "./actor";
 
 /** A role for the whole organization (no scope), one branch, or every branch of one city. */
@@ -57,7 +59,11 @@ export const userInput = z.object({
   groupIds: z.array(uuid).max(50).optional(),
 });
 
-export const createUserInput = userInput.extend({ password: z.string().max(256).optional() });
+export const createUserInput = userInput.extend({
+  password: z.string().max(256).optional(),
+  /** When no password is given, email the new user an activation link (the link is also returned for copying). */
+  sendActivationEmail: z.boolean().optional(),
+});
 
 export type UserView = {
   id: string;
@@ -342,14 +348,14 @@ async function createResetLink(
 export async function createUser(
   actor: Actor,
   input: z.infer<typeof createUserInput>,
-): Promise<{ id: string; setPasswordLink?: string }> {
+): Promise<{ id: string; setPasswordLink?: string; activationEmail?: "queued" | "not_configured" }> {
   requirePermission(actor, "users.manage");
   const org = orgOf(actor);
   const email = normalizeEmail(input.email);
   if (input.password) await assertPasswordAcceptable(org, input.password, email);
   const passwordHash = input.password ? await hashPassword(input.password) : null;
 
-  return db().transaction(async (tx) => {
+  const created = await db().transaction(async (tx) => {
     const [dup] = await tx
       .select({ id: users.id })
       .from(users)
@@ -375,9 +381,30 @@ export async function createUser(
     await writeAgentAndGroups(tx, actor, u.id, input);
     await audit({ ...auditMeta(actor), action: "user.created", entityType: "user", entityId: u.id, after: { ...u, grants } }, tx);
     if (passwordHash) return { id: u.id };
-    const { link } = await createResetLink(tx, u.id, input.locale ?? "ar");
-    return { id: u.id, setPasswordLink: link };
+    const { link, expiresAt } = await createResetLink(tx, u.id, input.locale ?? "ar");
+    return { id: u.id, setPasswordLink: link, expiresAt, displayName: u.displayName };
   });
+  if (!("setPasswordLink" in created) || !created.setPasswordLink) return { id: created.id };
+  const { setPasswordLink, expiresAt, displayName } = created;
+  if (input.sendActivationEmail === false) return { id: created.id, setPasswordLink };
+  if (!providerFor("email")) return { id: created.id, setPasswordLink, activationEmail: "not_configured" };
+  const locale = input.locale ?? "ar";
+  const [orgRow] = await db().select({ name: organizations.name }).from(organizations).where(eq(organizations.id, org));
+  await enqueue("messages.send", {
+    organizationId: org,
+    userId: created.id,
+    channel: "email",
+    event: "activation",
+    to: email,
+    locale,
+    vars: {
+      name: pickText(displayName, locale, email),
+      company: pickText(orgRow?.name, locale),
+      link: setPasswordLink,
+      expires: expiresAt.toISOString().slice(0, 16).replace("T", " ") + " UTC",
+    },
+  });
+  return { id: created.id, setPasswordLink, activationEmail: "queued" };
 }
 
 export async function updateUser(actor: Actor, id: string, input: z.infer<typeof userInput>): Promise<void> {

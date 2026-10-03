@@ -228,3 +228,30 @@ export const apiKeys = pgTable("api_keys", {
   createdByUserId: uuid("created_by_user_id").references(() => users.id),
   createdAt: createdAt(),
 });
+
+/**
+ * Self-service sign-up requests from prospective staff. The password is stored hashed; the account only exists once an
+ * administrator approves the request (role and branch are chosen at approval).
+ */
+export const signupRequests = pgTable(
+  "signup_requests",
+  {
+    id: id(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    email: text("email").notNull(),
+    displayName: jsonb("display_name").$type<LocalizedText>().notNull(),
+    phone: text("phone"),
+    passwordHash: text("password_hash").notNull(),
+    locale: text("locale").notNull().default("ar"),
+    /** pending | approved | rejected */
+    status: text("status").notNull().default("pending"),
+    decidedByUserId: uuid("decided_by_user_id").references(() => users.id),
+    decidedAt: ts("decided_at"),
+    rejectReason: text("reject_reason"),
+    userId: uuid("user_id").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [index("signup_requests_org_status_idx").on(t.organizationId, t.status)],
+);

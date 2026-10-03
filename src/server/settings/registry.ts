@@ -97,6 +97,8 @@ export const SETTINGS = {
       /** Role keys whose members must enable 2FA. */
       require2faForRoles: z.array(z.string()).default([]),
       inviteExpiryHours: z.number().int().min(1).max(720).default(72),
+      /** Lets prospective staff request an account on the public sign-up page; an administrator approves each request. */
+      selfSignupEnabled: z.boolean().default(true),
     })
     .prefault({}),
   privacy: z

@@ -17,6 +17,7 @@ import {
 import type { Actor } from "@/server/admin/actor";
 import { archiveBranch, branchInput, createBranch, createDesk } from "@/server/admin/branches";
 import { acceptInvite, createInvite, describeInvite, revokeInvite } from "@/server/admin/invites";
+import { approveSignup, listSignups, rejectSignup, requestSignup } from "@/server/admin/signups";
 import { createReason, listReasons, setAssignments, setReasonArchived } from "@/server/admin/reasons";
 import { archiveRole, cloneRole, createRole, listRoles, updateRole } from "@/server/admin/roles";
 import { updateSetting } from "@/server/admin/settings-admin";
@@ -205,6 +206,52 @@ describe.runIf(available)("admin core (database)", () => {
         acceptInvite(inv.link.split("/").pop()!, { displayName: { ar: "x" }, password: "Late-Strong-2026" }, client),
         "not_found",
       );
+    });
+  });
+
+  describe("self sign-up requests", () => {
+    const form = (email: string) => ({
+      email,
+      displayName: { ar: "سلمى" },
+      password: "Salma-Strong-2026",
+      locale: "ar" as const,
+    });
+
+    it("is closed when switched off, then an admin approves the request into an account with role and branch", async () => {
+      await updateSetting(admin, "security", { selfSignupEnabled: false });
+      await expectCode(requestSignup(form("salma@dor.local"), client), "not_found");
+      await updateSetting(admin, "security", { selfSignupEnabled: true });
+
+      expect(await requestSignup(form("Salma@dor.local"), client)).toEqual({ ok: true });
+      // A repeat request and a request for an existing account look the same and add nothing.
+      expect(await requestSignup(form("salma@dor.local"), client)).toEqual({ ok: true });
+      expect(await requestSignup(form("khalid@dor.local"), client)).toEqual({ ok: true });
+      const pending = (await listSignups(admin)).filter((r) => r.status === "pending");
+      expect(pending.map((r) => r.email)).toEqual(["salma@dor.local"]);
+      // Not an account yet: signing in fails.
+      await expect(login({ email: "salma@dor.local", password: "Salma-Strong-2026" }, client)).rejects.toThrow();
+
+      process.env.MESSAGING_MOCK = "true";
+      mockOutbox().length = 0;
+      const { userId } = await approveSignup(admin, pending[0].id, { roleId: await roleId("agent"), branchId });
+      expect(mockOutbox()[0]).toMatchObject({ channel: "email", to: "salma@dor.local" });
+      delete process.env.MESSAGING_MOCK;
+      const grants = await db().select().from(userRoles).where(eq(userRoles.userId, userId));
+      expect(grants).toEqual([expect.objectContaining({ roleId: await roleId("agent"), branchId })]);
+      expect(await db().select().from(agentProfiles).where(eq(agentProfiles.userId, userId))).toHaveLength(1);
+      expect((await login({ email: "salma@dor.local", password: "Salma-Strong-2026" }, client)).token).toBeTruthy();
+      await expectCode(approveSignup(admin, pending[0].id, { roleId: await roleId("agent"), branchId }), "conflict");
+    });
+
+    it("rejecting a request creates no account, and weak passwords are refused", async () => {
+      await updateSetting(admin, "security", { selfSignupEnabled: true });
+      await expectCode(requestSignup({ ...form("weak@dor.local"), password: "abc" }, client), "weak_password");
+      await requestSignup(form("nora@dor.local"), client);
+      const [req] = await listSignups(admin);
+      await rejectSignup(admin, req.id, { reason: "not hiring" });
+      expect((await listSignups(admin))[0].status).toBe("rejected");
+      expect(await db().select().from(users).where(eq(users.email, "nora@dor.local"))).toHaveLength(0);
+      await expectCode(rejectSignup(admin, req.id, {}), "conflict");
     });
   });
 

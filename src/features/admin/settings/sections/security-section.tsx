@@ -82,6 +82,12 @@ export function SecuritySection({ initial, roles }: { initial: SettingValue<"sec
                 max={720}
                 onChange={(inviteExpiryHours) => set({ inviteExpiryHours })}
               />
+              <Check
+                id="sc-signup"
+                label={t("selfSignupEnabled")}
+                checked={v.selfSignupEnabled}
+                onChange={(selfSignupEnabled) => set({ selfSignupEnabled })}
+              />
             </SettingCard>
             <SettingCard title={t("require2faForRoles")}>
               <fieldset id="sc-2fa">

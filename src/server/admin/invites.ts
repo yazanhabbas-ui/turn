@@ -1,6 +1,6 @@
 import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "@/db/client";
+import { db, type Tx } from "@/db/client";
 import { agentProfiles, branches, invites, organizations, rolePermissions, roles, userRoles, users } from "@/db/schema";
 import { normalizeArabic } from "@/domain/i18n/arabic-normalize";
 import { localizedText, uuid } from "@/domain/validation";
@@ -69,7 +69,7 @@ export async function listInvites(actor: Actor) {
     }));
 }
 
-async function roleForInvite(actor: Actor, roleId: string) {
+export async function roleForInvite(actor: Actor, roleId: string) {
   const [role] = await db()
     .select()
     .from(roles)
@@ -264,6 +264,56 @@ export async function describeInvite(token: string) {
   };
 }
 
+
+export type ProvisionInput = {
+  organizationId: string;
+  email: string;
+  displayName: Record<string, string>;
+  phone: string | null;
+  locale: string;
+  passwordHash: string;
+  roleId: string;
+  branchId: string | null;
+};
+
+/**
+ * Creates a staff account with one role grant. Roles that serve visitors also get an agent profile in the given branch
+ * (or the default branch). Shared by invite acceptance and approval of a sign-up request.
+ */
+export async function provisionUser(tx: Tx, p: ProvisionInput) {
+  const [u] = await tx
+    .insert(users)
+    .values({
+      organizationId: p.organizationId,
+      email: p.email,
+      displayName: p.displayName,
+      nameSearch: normalizeArabic([...Object.values(p.displayName), p.email.split("@")[0]].join(" ")),
+      phone: p.phone,
+      locale: p.locale,
+      passwordHash: p.passwordHash,
+      passwordChangedAt: new Date(),
+      lastLoginAt: new Date(),
+    })
+    .returning();
+  await tx.insert(userRoles).values({ userId: u.id, roleId: p.roleId, branchId: p.branchId });
+  const serves = await tx
+    .select({ k: rolePermissions.permissionKey })
+    .from(rolePermissions)
+    .where(and(eq(rolePermissions.roleId, p.roleId), eq(rolePermissions.permissionKey, "agent.serve")));
+  if (serves.length) {
+    const [branch] = p.branchId
+      ? [{ id: p.branchId }]
+      : await tx
+          .select({ id: branches.id })
+          .from(branches)
+          .where(and(eq(branches.organizationId, p.organizationId), isNull(branches.archivedAt)))
+          .orderBy(desc(branches.isDefault))
+          .limit(1);
+    if (branch) await tx.insert(agentProfiles).values({ userId: u.id, organizationId: p.organizationId, branchId: branch.id });
+  }
+  return u;
+}
+
 export const acceptInviteInput = z.object({
   email: z.string().trim().email().max(320).optional(),
   displayName: localizedText({ max: 120 }),
@@ -301,39 +351,16 @@ export async function acceptInvite(
       .where(and(eq(users.organizationId, inv.organizationId), eq(users.email, email)));
     if (dup) throw new AppError("conflict", { field: "email" });
 
-    const [u] = await tx
-      .insert(users)
-      .values({
-        organizationId: inv.organizationId,
-        email,
-        displayName: input.displayName,
-        nameSearch: normalizeArabic([...Object.values(input.displayName), email.split("@")[0]].join(" ")),
-        phone: inv.phone,
-        locale: inv.locale,
-        passwordHash,
-        passwordChangedAt: new Date(),
-        lastLoginAt: new Date(),
-      })
-      .returning();
-    await tx.insert(userRoles).values({ userId: u.id, roleId: inv.roleId, branchId: inv.branchId });
-
-    // Roles that serve visitors get an agent profile in the invited branch (or the default branch).
-    const serves = await tx
-      .select({ k: rolePermissions.permissionKey })
-      .from(rolePermissions)
-      .where(and(eq(rolePermissions.roleId, inv.roleId), eq(rolePermissions.permissionKey, "agent.serve")));
-    if (serves.length) {
-      const [branch] = inv.branchId
-        ? [{ id: inv.branchId }]
-        : await tx
-            .select({ id: branches.id })
-            .from(branches)
-            .where(and(eq(branches.organizationId, inv.organizationId), isNull(branches.archivedAt)))
-            .orderBy(desc(branches.isDefault))
-            .limit(1);
-      if (branch)
-        await tx.insert(agentProfiles).values({ userId: u.id, organizationId: inv.organizationId, branchId: branch.id });
-    }
+    const u = await provisionUser(tx, {
+      organizationId: inv.organizationId,
+      email,
+      displayName: input.displayName,
+      phone: inv.phone,
+      locale: inv.locale,
+      passwordHash,
+      roleId: inv.roleId,
+      branchId: inv.branchId,
+    });
     await tx.update(invites).set({ usedByUserId: u.id }).where(eq(invites.id, inv.id));
     await audit(
       {

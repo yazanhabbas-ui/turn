@@ -45,7 +45,9 @@
     "code": "Verification code",
     "verify": "Verify",
     "invalidCode": "The code is incorrect or expired.",
-    "signedOut": "You have been signed out."
+    "signedOut": "You have been signed out.",
+    "noAccount": "No account yet?",
+    "requestAccount": "Request an account"
   },
   "account": {
     "title": "My account",
@@ -726,6 +728,7 @@
     "lockoutMinutes": "Lock duration (min)",
     "require2faForRoles": "Roles that must use 2FA",
     "inviteExpiryHours": "Invitation validity (hours)",
+    "selfSignupEnabled": "Let people request an account on the sign-up page (an administrator approves each request)",
     "retentionDays": "Anonymize visitor data after (days)",
     "retentionHint": "Counted from the last visit. Name, phone number and company are removed so the person cannot be recognised again. Visit counts and statistics stay.",
     "consentText": "Consent text on the reception form",
@@ -1191,6 +1194,34 @@
       "break_type": "Break type",
       "setting": "Setting"
     }
+  },
+  "signupPage": {
+    "title": "Request an account",
+    "subtitle": "Fill in your details. An administrator will review your request.",
+    "name": "Your name",
+    "email": "Email",
+    "phone": "Phone (optional)",
+    "password": "Choose a password",
+    "confirm": "Confirm password",
+    "submit": "Send request",
+    "done": "Your request was sent. You will get an email when an administrator approves it, then you can sign in.",
+    "disabled": "Account requests are not open. Ask your administrator for an invitation.",
+    "haveAccount": "Already have an account?"
+  },
+  "signups": {
+    "title": "Requests",
+    "empty": "No account requests yet.",
+    "applicant": "Applicant",
+    "requested": "Requested",
+    "approve": "Approve",
+    "reject": "Reject",
+    "approved": "Request approved. The person was notified.",
+    "rejected": "Request rejected.",
+    "approveTitle": "Approve account",
+    "approveHint": "Choose the role and branch for {email}. They can sign in right away with the password they chose.",
+    "rejectTitle": "Reject this request?",
+    "rejectBody": "The person is told their request was not approved. They can apply again later.",
+    "status": { "pending": "Pending", "approved": "Approved", "rejected": "Rejected" }
   },
   "invitePage": {
     "title": "Join {organization}",

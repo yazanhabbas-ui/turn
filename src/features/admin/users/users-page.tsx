@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Lookups, UserRow } from "../types";
 import { useLookups, useText } from "../use-lookups";
 import { ChannelLabel, InviteDialog, INVITES, InviteResultView, type InviteResult } from "./invite-dialog";
+import { SignupRequestsTable, usePendingSignups } from "./signup-requests";
 import { UserDialog } from "./user-dialog";
 
 type InviteRow = {
@@ -34,7 +35,9 @@ type InviteRow = {
 export function UsersPage({ canManage, canInvite }: { canManage: boolean; canInvite: boolean }) {
   const t = useTranslations("users");
   const ti = useTranslations("invites");
+  const tsu = useTranslations("signups");
   const lookups = useLookups();
+  const pendingSignups = usePendingSignups(canInvite);
   const [editing, setEditing] = useState<UserRow | null>(null);
   const [dialog, setDialog] = useState<"user" | "invite" | null>(null);
 
@@ -71,6 +74,12 @@ export function UsersPage({ canManage, canInvite }: { canManage: boolean; canInv
         <TabsList>
           <TabsTrigger value="users">{t("title")}</TabsTrigger>
           {canInvite && <TabsTrigger value="invites">{ti("title")}</TabsTrigger>}
+          {canInvite && (
+            <TabsTrigger value="signups">
+              {tsu("title")}
+              {pendingSignups > 0 && <Badge className="ms-2">{pendingSignups}</Badge>}
+            </TabsTrigger>
+          )}
         </TabsList>
         <TabsContent value="users" className="mt-4">
           {lookups.data && (
@@ -87,6 +96,11 @@ export function UsersPage({ canManage, canInvite }: { canManage: boolean; canInv
         {canInvite && (
           <TabsContent value="invites" className="mt-4">
             {lookups.data && <InvitesTable lookups={lookups.data} />}
+          </TabsContent>
+        )}
+        {canInvite && (
+          <TabsContent value="signups" className="mt-4">
+            {lookups.data && <SignupRequestsTable lookups={lookups.data} />}
           </TabsContent>
         )}
       </Tabs>
