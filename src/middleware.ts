@@ -37,5 +37,5 @@ export default function middleware(req: NextRequest) {
 
 export const config = {
   // Everything except API routes, Next internals, static files and the socket endpoint.
-  matcher: ["/((?!api|_next|_vercel|socket\\.io|audio|icons|.*\\..*).*)"],
+  matcher: ["/((?!api|_next|socket\\.io|audio|icons|.*\\..*).*)"],
 };
