@@ -149,6 +149,8 @@ export class VoiceEngine {
     const gen = this.generation;
     const live = () => gen === this.generation;
     if (this.ctx) for (const p of job.providers) p.attach?.(this.ctx);
+    // Providers may start fetching their audio now, while the chime plays.
+    for (const step of job.steps) for (const p of job.providers) p.prepare?.(step);
     if (job.chime && this.ctx?.state === "running") {
       await playChime(this.ctx, job.opts.volume * (job.chimeVolume ?? 0.6)).catch(() => undefined);
       if (job.gapChimeMs && live()) await this.wait(job.gapChimeMs);
@@ -156,23 +158,23 @@ export class VoiceEngine {
     for (let round = 0; round < job.repeat && live(); round++) {
       for (const step of job.steps) {
         if (!live()) return;
-        const provider = await this.choose(job, step);
-        if (!provider) {
-          this.events.onUnavailable?.(step);
-          continue;
-        }
-        try {
-          await provider.speak(step, job.opts);
-        } catch {
-          if (live()) this.events.onUnavailable?.(step);
-        }
+        if (!(await this.speakWithFallback(job, step, live))) this.events.onUnavailable?.(step);
       }
       if (round < job.repeat - 1 && live()) await this.wait(job.gapMs);
     }
   }
 
-  private async choose(job: VoiceJob, step: SpeechStep) {
-    for (const p of job.providers) if (await p.supports(step)) return p;
-    return null;
+  /** The first provider that supports the step and manages to speak it; a failing one hands over to the next. */
+  private async speakWithFallback(job: VoiceJob, step: SpeechStep, live: () => boolean): Promise<boolean> {
+    for (const p of job.providers) {
+      if (!(await p.supports(step))) continue;
+      try {
+        await p.speak(step, job.opts);
+        return true;
+      } catch {
+        if (!live()) return true;
+      }
+    }
+    return false;
   }
 }

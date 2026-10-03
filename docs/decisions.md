@@ -485,6 +485,13 @@ A **hall** is a named room of a branch with a **capacity** in which **one agent 
 - **Reporting and visitors.** Export section `byHall` and an overview card: sessions, average group size, occupancy (visitors that entered / capacity), average session length, no-show rate; filter by hall; hall visitors also flow into every existing KPI. The status page says where to go ("Your group is called: please go to Hall 2"); the notification variable `{hall}` is available for the `called` event and the default wording mentions it only when present.
 - **Not done / limits.** No hall-specific working schedule or opening state (by decision). The estimate assumes all hall sessions of a reason last the same time. A visitor can be in one session only. Appointments to a hall reason work as for any reason (no booking of a place in a specific session). Hosting from two browsers at once is the same host and is idempotent.
 
+## D63: Arabic call read as one sentence (voice provider "cloud")
+
+- **Problem.** The recorded packs play a call as separate clips ("رقم", letter, number, desk phrase, desk number), each synthesised alone, so the joins sound unnatural, most of all around the ticket and desk numbers.
+- **Decision.** Provider `cloud` ("Natural sentence voice (online)") sends the whole Arabic announcement (the editable template with the ticket and desk as words) to `GET /api/v1/display/tts?text=&voice=`, which renders it as ONE utterance with the neural voice that belongs to the chosen pack (`src/domain/display/edge-voices.ts`) and returns an mp3. Screens authenticate with their device token, the admin voice test with the staff session. Rendering runs in a small child process (`src/server/display/edge-speak.cjs`), because the speech library's WebSocket code breaks when bundled into Next.js. Results are cached on disk by (voice, text) in `TTS_CACHE_DIR` (default: the system temp folder), so each distinct sentence is synthesised once; a screen asks for the audio while the chime plays.
+- **Fallback.** Order is cloud, then the recorded pack, then the browser voice; the engine now tries the next provider when one fails to speak, not only when it does not support a step. English is unchanged.
+- **Caveat.** It uses the same unofficial Edge read-aloud service as the clip generator (see D35): the server needs internet the first time each sentence is spoken (about 5 s, then instant), and it is for evaluation. For production use an Azure Speech key (same voice names) behind the same endpoint.
+
 ## D59: End-to-end and load testing
 
 Decided in Milestone 8 part 4. Details: [testing.md](testing.md), [load-testing.md](load-testing.md).

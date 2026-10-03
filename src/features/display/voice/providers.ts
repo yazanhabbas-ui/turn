@@ -29,6 +29,8 @@ export interface TtsProvider {
   readonly id: "browser" | "pack" | "cloud";
   /** Called by the engine before speaking, with the audio context that the user unlocked. */
   attach?(ctx: AudioContext): void;
+  /** Optional: start fetching what `speak` will need (called while the chime plays, so the voice starts without delay). */
+  prepare?(step: SpeechStep): void;
   supports(step: SpeechStep): Promise<boolean> | boolean;
   speak(step: SpeechStep, opts: SpeechOptions): Promise<void>;
   stop(): void;
@@ -284,5 +286,107 @@ export class PackTts implements TtsProvider {
     this.finish?.();
     this.current?.pause();
     this.current = null;
+  }
+}
+
+/**
+ * Reads the whole Arabic announcement as ONE sentence with a neural voice (rendered by the server, cached there), so
+ * it sounds like a person speaking and not like separately recorded words. Needs the server to reach the internet the
+ * first time a sentence is requested; if it cannot, the engine falls back to the next provider.
+ */
+export class CloudTts implements TtsProvider {
+  readonly id = "cloud" as const;
+  private ctx: AudioContext | null = null;
+  private source: AudioBufferSourceNode | null = null;
+  private current: HTMLAudioElement | null = null;
+  private finish: (() => void) | null = null;
+  private stopped = false;
+  private readonly audio = new Map<string, Promise<ArrayBuffer>>();
+
+  /** `fetchAudio` returns the mp3 of a sentence; the voice id is the bundled voice the admin chose. */
+  constructor(
+    private readonly fetchAudio: (text: string, voice: string) => Promise<ArrayBuffer>,
+    private readonly voice: string,
+  ) {}
+
+  attach(ctx: AudioContext) {
+    this.ctx = ctx;
+  }
+
+  supports(step: SpeechStep) {
+    return step.locale === "ar" && step.text.trim().length > 0;
+  }
+
+  private bytes(text: string) {
+    let p = this.audio.get(text);
+    if (!p) {
+      p = this.fetchAudio(text, this.voice);
+      p.catch(() => this.audio.delete(text));
+      this.audio.set(text, p);
+    }
+    return p;
+  }
+
+  prepare(step: SpeechStep) {
+    if (this.supports(step)) this.bytes(step.text).catch(() => undefined);
+  }
+
+  async speak(step: SpeechStep, opts: SpeechOptions) {
+    this.stopped = false;
+    const bytes = await this.bytes(step.text);
+    if (this.stopped) return;
+    const speed = Math.min(1.25, Math.max(0.8, opts.speed ?? 1));
+    const ctx = this.ctx;
+    if (ctx && ctx.state === "running") {
+      const buffer = await ctx.decodeAudioData(bytes.slice(0));
+      if (this.stopped) return;
+      const gain = ctx.createGain();
+      gain.gain.value = opts.volume;
+      gain.connect(ctx.destination);
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.playbackRate.value = speed;
+      src.connect(gain);
+      this.source = src;
+      await new Promise<void>((resolve) => {
+        this.finish = resolve;
+        src.onended = () => resolve();
+        src.start();
+      });
+      this.finish = null;
+      this.source = null;
+      gain.disconnect();
+      return;
+    }
+    const url = URL.createObjectURL(new Blob([bytes], { type: "audio/mpeg" }));
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const audio = new Audio(url);
+        audio.volume = opts.volume;
+        audio.playbackRate = speed;
+        this.current = audio;
+        this.finish = resolve;
+        audio.onended = () => resolve();
+        audio.onerror = () => reject(new Error("cloud voice failed"));
+        audio.play().catch(reject);
+      });
+    } finally {
+      URL.revokeObjectURL(url);
+      this.current = null;
+      this.finish = null;
+    }
+  }
+
+  stop() {
+    this.stopped = true;
+    try {
+      this.source?.stop();
+    } catch {
+      /* not started yet */
+    }
+    this.source = null;
+    this.current?.pause();
+    this.current = null;
+    this.finish?.();
   }
 }

@@ -1803,9 +1803,9 @@
       "providers": {
         "browser": "Browser voice",
         "pack": "Pre-recorded audio pack",
-        "cloud": "Cloud voice (requires configuration)"
+        "cloud": "Natural sentence voice (online)"
       },
-      "cloudNote": "Cloud voice is an extension point: it needs a server-side speech service to be configured first.",
+      "cloudNote": "The whole announcement is read as one natural sentence by a neural voice (the voice you chose above). The server needs internet the first time each sentence is spoken, then keeps it. If it is unreachable, the recorded voice takes over.",
       "langAr": "Arabic",
       "langEn": "English",
       "repeat": "Repeat (times)",

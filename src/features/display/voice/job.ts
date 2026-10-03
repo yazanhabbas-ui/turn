@@ -5,7 +5,8 @@ import type { CallLanguages } from "@/domain/display/speech";
 import type { DigitSystem } from "@/domain/i18n/digits";
 import type { SettingValue } from "@/server/settings/registry";
 import type { VoiceJob } from "./engine";
-import { BrowserTts, PackTts, type TtsProvider } from "./providers";
+import { packVoiceId } from "@/domain/display/edge-voices";
+import { BrowserTts, CloudTts, PackTts, type TtsProvider } from "./providers";
 
 export type VoiceSettings = SettingValue<"voice">;
 
@@ -21,6 +22,8 @@ export type PlanInput = {
   /** The language the visitor chose at reception. */
   ticketLanguage: string;
   recall?: boolean;
+  /** The screen's device token (the admin test uses the signed-in session instead); used by the cloud voice. */
+  deviceToken?: string;
   /** Preview overrides. */
   callLanguages?: CallLanguages;
   repeat?: number;
@@ -76,16 +79,31 @@ export function buildVoiceJob(input: CallInput): VoiceJob | null {
   return jobFrom(input, planCall(input));
 }
 
+/** Fetches the mp3 of one sentence from the server (screens send their device token, the admin test its session). */
+function sentenceFetcher(deviceToken?: string) {
+  return async (text: string, voice: string): Promise<ArrayBuffer> => {
+    const res = await fetch(`/api/v1/display/tts?${new URLSearchParams({ text, voice })}`, {
+      headers: deviceToken ? { Authorization: `Bearer ${deviceToken}` } : {},
+      credentials: "same-origin",
+    });
+    if (!res.ok) throw new Error(`speech ${res.status}`);
+    return res.arrayBuffer();
+  };
+}
+
 function jobFrom(
-  input: { id: string; settings: VoiceSettings; packs: PlanInput["packs"]; repeat?: number },
+  input: { id: string; settings: VoiceSettings; packs: PlanInput["packs"]; repeat?: number; deviceToken?: string },
   steps: PlannedStep[],
 ): VoiceJob | null {
   const v = input.settings;
   if (!steps.length) return null;
   const browser = new BrowserTts();
   const pack = new PackTts(input.packs);
-  // "cloud" is an extension point (see TtsProvider); until a cloud adapter is registered it behaves like "browser".
-  const providers: TtsProvider[] = v.provider === "pack" ? [pack, browser] : [browser, pack];
+  // "cloud": the whole Arabic call is read as one sentence by a neural voice (the server renders and caches it); if that
+  // is unreachable, the recorded pack and then the browser voice take over.
+  const cloud = new CloudTts(sentenceFetcher(input.deviceToken), packVoiceId(input.packs.ar));
+  const providers: TtsProvider[] =
+    v.provider === "cloud" ? [cloud, pack, browser] : v.provider === "pack" ? [pack, browser] : [browser, pack];
   return {
     id: input.id,
     steps,

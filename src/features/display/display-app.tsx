@@ -105,6 +105,7 @@ function Screen({
       settings: s.voice.settings,
       templates: s.voice.templates,
       packs: s.voice.packs,
+      deviceToken: token,
       digits: s.regional.digitsVoice,
       displayNumber: e.displayNumber,
       deskNumber: e.deskNumber,
@@ -113,7 +114,7 @@ function Screen({
     });
     if (!job) return;
     eng.enqueue(job);
-  }, []);
+  }, [token]);
 
   const onHallCall = useCallback((e: HallCallEvent) => {
     if (!e.tickets.length) return;
@@ -138,6 +139,7 @@ function Screen({
       settings: s.voice.settings,
       templates: s.voice.templates,
       packs: s.voice.packs,
+      deviceToken: token,
       digits: s.regional.digitsVoice,
       hallNumber: e.hallNumber,
       displayNumbers: numbers,
@@ -146,7 +148,7 @@ function Screen({
       recall: e.recall,
     });
     if (job) eng.enqueue(job);
-  }, []);
+  }, [token]);
 
   const { state, connection, clockOffset } = useDisplayState(token, { onCall, onHallCall, onRevoked });
   stateRef.current = state;

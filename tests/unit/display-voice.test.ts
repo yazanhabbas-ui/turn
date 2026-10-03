@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseDisplayConfig } from "@/domain/display/config";
 import { planAnnouncement } from "@/domain/display/plan";
 import { announcementText, callSequence, splitTicket, spokenTicket } from "@/domain/display/speech";
+import { packVoiceId } from "@/domain/display/edge-voices";
 import { pickVoice } from "@/features/display/voice/providers";
 import { VoiceEngine, type VoiceJob } from "@/features/display/voice/engine";
 import type { TtsProvider } from "@/features/display/voice/providers";
@@ -169,5 +170,65 @@ describe("voice queue cancellation", () => {
     // "a" got at most its first two steps; the 5 s repeat pause did not hold "b" back.
     expect(log.filter((x) => x.startsWith("a")).length).toBeLessThanOrEqual(2);
     expect(log.filter((x) => x.startsWith("b")).length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("sentence voice (cloud)", () => {
+  const job = (providers: TtsProvider[]): VoiceJob => ({
+    id: "c1",
+    steps: [{ locale: "ar", text: "بطاقة رقم إيه أربعة عشر، الرجاء التوجه إلى المكتب ثلاثة", keys: [] }],
+    repeat: 1,
+    gapMs: 1,
+    chime: false,
+    opts: { rate: 1, volume: 1 },
+    providers,
+  });
+
+  it("starts fetching before speaking, and hands over to the next voice when the first one fails", async () => {
+    const log: string[] = [];
+    const cloud: TtsProvider = {
+      id: "cloud",
+      prepare: (s) => void log.push(`prepare:${s.locale}`),
+      supports: () => true,
+      speak: async () => {
+        log.push("cloud:speak");
+        throw new Error("offline");
+      },
+      stop: () => undefined,
+    };
+    const pack: TtsProvider = {
+      id: "pack",
+      supports: () => true,
+      speak: async () => void log.push("pack:speak"),
+      stop: () => undefined,
+    };
+    const unavailable: string[] = [];
+    const engine = new VoiceEngine({ onUnavailable: (s) => unavailable.push(s.locale) });
+    engine.enqueue(job([cloud, pack]));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(log).toEqual(["prepare:ar", "cloud:speak", "pack:speak"]);
+    expect(unavailable).toEqual([]);
+  });
+
+  it("reports the step as unavailable only when every voice failed", async () => {
+    const failing: TtsProvider = {
+      id: "cloud",
+      supports: () => true,
+      speak: async () => {
+        throw new Error("offline");
+      },
+      stop: () => undefined,
+    };
+    const unavailable: string[] = [];
+    const engine = new VoiceEngine({ onUnavailable: (s) => unavailable.push(s.locale) });
+    engine.enqueue(job([failing]));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(unavailable).toEqual(["ar"]);
+  });
+
+  it("finds the neural voice of a pack from its clip URLs", () => {
+    expect(packVoiceId({ "ar.phrase.number": "/audio/ar/ar-sy-laith/phrase-number.mp3" })).toBe("ar-sy-laith");
+    expect(packVoiceId({ "ar.phrase.number": "/audio/ar/ar-jo-kareem/phrase-number.mp3" })).toBe("ar-sa-hamed");
+    expect(packVoiceId(undefined)).toBe("ar-sa-hamed");
   });
 });
