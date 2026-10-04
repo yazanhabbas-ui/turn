@@ -117,6 +117,16 @@
     },
     "welcome": "Welcome, {name}",
     "overviewHint": "Configure your offices, services, and how turns are distributed. Every rule here takes effect immediately.",
+    "gettingStarted": "Getting started",
+    "gettingStartedProgress": "{done} of {total} done",
+    "stepDone": "Done",
+    "steps": {
+      "reasons": "Add the visit reasons visitors come for",
+      "desks": "Add desks to your branch",
+      "team": "Invite your team (agents, reception, supervisors)",
+      "screen": "Pair a waiting-room display screen",
+      "email": "Set up email so invitations and activation links are sent"
+    },
     "groups": "Agent groups",
     "screens": "Screens",
     "cities": "Cities",

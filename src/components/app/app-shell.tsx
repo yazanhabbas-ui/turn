@@ -7,6 +7,7 @@ import { AREAS, type AreaKey } from "@/lib/areas";
 import { cn } from "@/lib/utils";
 import type { AuthContext } from "@/server/auth/session";
 import { getBranding } from "@/server/branding";
+import { AreaMenu } from "./area-menu";
 import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
 import { SignOutButton } from "./sign-out-button";
@@ -33,8 +34,8 @@ export async function AppShell({
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="bg-background/95 sticky top-0 z-30 border-b backdrop-blur">
-        <div className="flex h-14 items-center gap-3 px-4">
-          <Link href="/" className="text-brand flex items-center gap-2 font-bold">
+        <div className="flex h-14 items-center gap-2 px-3 sm:gap-3 sm:px-4">
+          <Link href="/" className="text-brand flex shrink-0 items-center gap-2 font-bold">
             {branding.logoUrl ? (
               <>
                 {/* Both logos are rendered; CSS picks the one for the active theme, so there is no flash. */}
@@ -57,7 +58,15 @@ export async function AppShell({
             {/* With a logo the name is part of the logo: showing it again would repeat it. */}
             {!branding.logoUrl && <span className="hidden sm:inline">{pickText(branding.companyName, locale)}</span>}
           </Link>
-          <nav className="flex items-center gap-1 overflow-x-auto" aria-label={t("chooseArea")}>
+          {areas.length > 1 && (
+            <AreaMenu
+              className="md:hidden"
+              label={t("chooseArea")}
+              current={area}
+              areas={areas.map((a) => ({ key: a.key, href: a.href, label: t(a.key) }))}
+            />
+          )}
+          <nav className="hidden items-center gap-1 overflow-x-auto md:flex" aria-label={t("chooseArea")}>
             {areas.map((a) => (
               <Link
                 key={a.key}
@@ -74,7 +83,7 @@ export async function AppShell({
           </nav>
           <div className="ms-auto flex items-center gap-1">
             <ThemeToggle />
-            <LanguageSwitcher signedIn />
+            <LanguageSwitcher signedIn compact />
             <Link
               href="/profile"
               title={t("profile")}

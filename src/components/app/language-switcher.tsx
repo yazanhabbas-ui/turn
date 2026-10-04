@@ -7,9 +7,19 @@ import { Button } from "@/components/ui/button";
 import { LOCALE_CODES, LOCALES, type Locale } from "@/i18n/locales";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 /** Toggles between UI languages; persists the choice on the user profile when signed in. */
-export function LanguageSwitcher({ signedIn = false, className }: { signedIn?: boolean; className?: string }) {
+export function LanguageSwitcher({
+  signedIn = false,
+  compact = false,
+  className,
+}: {
+  signedIn?: boolean;
+  /** Icon only on a phone (the app header has no room for the name). */
+  compact?: boolean;
+  className?: string;
+}) {
   const t = useTranslations("common");
   const locale = useLocale() as Locale;
   const router = useRouter();
@@ -34,7 +44,7 @@ export function LanguageSwitcher({ signedIn = false, className }: { signedIn?: b
       }
     >
       <Languages aria-hidden />
-      {LOCALES[next].label}
+      <span className={cn(compact && "max-sm:sr-only")}>{LOCALES[next].label}</span>
     </Button>
   );
 }

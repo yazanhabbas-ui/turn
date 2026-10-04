@@ -26,7 +26,8 @@ export function SignOutButton() {
       }}
     >
       <LogOut className="rtl-flip" aria-hidden />
-      {t("signOut")}
+      {/* Icon only on a phone, where the header has no room for the word. */}
+      <span className="max-sm:sr-only">{t("signOut")}</span>
     </Button>
   );
 }

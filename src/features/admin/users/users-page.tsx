@@ -179,8 +179,8 @@ function UsersTable({ lookups, onEdit }: { lookups: Lookups; onEdit: (u: UserRow
               <TableRow>
                 <TableHead>{tu("name")}</TableHead>
                 <TableHead>{t("roles")}</TableHead>
-                <TableHead>{tu("status")}</TableHead>
-                <TableHead>{t("lastLogin")}</TableHead>
+                <TableHead className="max-md:hidden">{tu("status")}</TableHead>
+                <TableHead className="max-md:hidden">{t("lastLogin")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -194,6 +194,10 @@ function UsersTable({ lookups, onEdit }: { lookups: Lookups; onEdit: (u: UserRow
                         <div className="text-muted-foreground text-xs" dir="ltr">
                           {u.email}
                         </div>
+                        {/* On a phone the status column is hidden, so it sits under the name. */}
+                        <Badge variant={u.isActive ? "outline" : "destructive"} className="mt-1 md:hidden">
+                          {u.isActive ? tu("active") : tu("inactive")}
+                        </Badge>
                       </div>
                     </div>
                   </TableCell>
@@ -207,7 +211,7 @@ function UsersTable({ lookups, onEdit }: { lookups: Lookups; onEdit: (u: UserRow
                       ))}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="max-md:hidden">
                     <div className="flex items-center gap-1.5">
                       <Badge variant={u.isActive ? "outline" : "destructive"}>{u.isActive ? tu("active") : tu("inactive")}</Badge>
                       {u.agent?.shiftId && (
@@ -221,7 +225,7 @@ function UsersTable({ lookups, onEdit }: { lookups: Lookups; onEdit: (u: UserRow
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
+                  <TableCell className="text-muted-foreground text-sm max-md:hidden">
                     {u.lastLoginAt ? format.relativeTime(new Date(u.lastLoginAt), now) : tu("never")}
                   </TableCell>
                 </TableRow>
