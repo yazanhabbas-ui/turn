@@ -1,0 +1,30 @@
+[
+  {
+    "name": "agent-workspace",
+    "user": "khalid@dor.local",
+    "path": "/agent",
+    "note": "The whole agent workspace: status buttons, desk selector, the large Call next button, My queues and Served today on the side",
+    "fullPage": false
+  },
+  {
+    "name": "agent-profile",
+    "user": "khalid@dor.local",
+    "path": "/profile",
+    "note": "My profile card (picture, roles, works at), the My progress section",
+    "fullPage": false
+  },
+  {
+    "name": "agent-reports",
+    "user": "khalid@dor.local",
+    "path": "/profile",
+    "note": "The My reports section lower on the page, with the period buttons and summary figures",
+    "fullPage": true
+  },
+  {
+    "name": "agent-account",
+    "user": "khalid@dor.local",
+    "path": "/account",
+    "note": "My account: interface language, change password form, two-step verification card",
+    "fullPage": false
+  }
+]

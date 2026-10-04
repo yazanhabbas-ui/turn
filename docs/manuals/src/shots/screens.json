@@ -1,0 +1,27 @@
+[
+  {
+    "name": "screens-list",
+    "user": "admin@dor.local",
+    "path": "/admin/screens",
+    "note": "The Screens page with the three tabs (Screens, Announcements, Voice), the Add kiosk and Add screen buttons, and the list of screens with their Online and Paired badges",
+    "fullPage": false
+  },
+  {
+    "name": "screens-wallboard",
+    "user": "admin@dor.local",
+    "path": "/wallboard",
+    "note": "The live wallboard with its tiles, desks and alerts",
+    "fullPage": false
+  },
+  {
+    "name": "screens-voice",
+    "user": "admin@dor.local",
+    "path": "/admin/screens",
+    "note": "Screens page with the Voice tab open",
+    "click": {
+      "en": "Voice",
+      "ar": "الصوت"
+    },
+    "fullPage": true
+  }
+]

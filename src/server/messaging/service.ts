@@ -45,7 +45,8 @@ export async function sendTemplated(req: SendRequest): Promise<{ status: "sent" 
       ),
     );
   const builtIn = req.channel === "email" ? SYSTEM_EMAIL_TEMPLATES[req.event] : undefined;
-  const tpl = pickByCity(tpls, cityId) ?? (builtIn ? { subject: builtIn.subject, body: builtIn.body, providerTemplate: null } : undefined);
+  const tpl =
+    pickByCity(tpls, cityId) ?? (builtIn ? { subject: builtIn.subject, body: builtIn.body, providerTemplate: null } : undefined);
   const provider = providerFor(req.channel);
   const base = {
     organizationId: req.organizationId,

@@ -52,3 +52,6 @@ voice-samples/
 # e2e / load tests
 /.next-e2e/
 /load-results/
+
+# manuals: intermediate HTML of the PDF build
+/docs/manuals/pdf/.build/

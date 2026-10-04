@@ -1,0 +1,43 @@
+[
+  {
+    "name": "supervisor-home",
+    "user": "supervisor@dor.local",
+    "path": "/",
+    "note": "The 'Choose where to work' page with the Administration, Reports and Live wallboard tiles"
+  },
+  {
+    "name": "supervisor-wallboard",
+    "user": "supervisor@dor.local",
+    "path": "/wallboard",
+    "note": "Live operations: tiles, desks, waiting by reason, long waits and alerts",
+    "waitFor": "h1"
+  },
+  {
+    "name": "supervisor-reports",
+    "user": "supervisor@dor.local",
+    "path": "/reports",
+    "note": "Reports page with the filter bar, the Download button and the key figures",
+    "waitFor": "h1"
+  },
+  {
+    "name": "supervisor-groups",
+    "user": "supervisor@dor.local",
+    "path": "/admin/groups",
+    "note": "Agent groups list (read only, no Add group button) showing the supervisor and members of each group",
+    "waitFor": "h1"
+  },
+  {
+    "name": "supervisor-profile",
+    "user": "supervisor@dor.local",
+    "path": "/profile",
+    "note": "My profile with roles, member since, last sign-in and the security link",
+    "waitFor": "h1"
+  },
+  {
+    "name": "supervisor-account",
+    "user": "supervisor@dor.local",
+    "path": "/account",
+    "note": "My account: interface language, change password, two-step verification",
+    "waitFor": "h1"
+  }
+]

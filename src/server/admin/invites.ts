@@ -264,7 +264,6 @@ export async function describeInvite(token: string) {
   };
 }
 
-
 export type ProvisionInput = {
   organizationId: string;
   email: string;

@@ -158,3 +158,12 @@ Tickets issued after that backup are lost, so decide quickly after an upgrade. I
 ## 9. Without Docker
 
 `npm run local` (README) bundles PostgreSQL and is meant for a single PC and for development. For a server without Docker install Node 22 and PostgreSQL 15+ natively, set `DATABASE_URL`, run `npm ci && npm run build && npm run db:migrate`, create the admin with `npm run admin:create`, and run `npm start` under systemd (`Restart=always`, `KillSignal=SIGTERM`, `TimeoutStopSec=40`). Use `scripts/backup.sh` with `BACKUP_DIRECT_URL` (needs `pg_dump` on the host) or `node scripts/db-backup.mjs backup` (needs only Node).
+
+## 10. Optional online services and account requests
+
+Everything below is off or harmless by default and can be left alone on an isolated network.
+
+- **Email (invitations, activation links, password resets, approvals, scheduled reports).** Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` and make sure `APP_URL` is the address people open in their browser (the links in the emails are built from it). Without SMTP the admin screens still show every link so it can be copied and sent by hand. Creating an agent without a password emails an activation link; staff accounts have built-in English and Arabic wording that Admin → Notifications can override.
+- **Account requests.** The sign-up page (`/signup`) is open by default so people can ask for an account; nobody gets access until an administrator approves the request in Admin → Users → Requests. Turn it off in Admin → Settings → Security ("Let people request an account…") if you only want invitations. The page is rate limited and never reveals whether an email already has an account.
+- **Announcement voice.** The default voices work offline (the browser's own voice or the bundled recorded packs). "Natural sentence voice (online)" reads the whole Arabic call as one sentence: the server sends only the announcement text (ticket letters and number, desk number; no names or phone numbers) to the Microsoft speech service the first time each sentence is spoken and caches the audio in `TTS_CACHE_DIR` (a volume is recommended in Docker). If the service cannot be reached the recorded pack takes over. It uses the same unofficial service as the clip generator (D35); for a licensed production setup switch to an Azure Speech key (D63). Leave the provider on "Pre-recorded audio pack" or "Browser voice" to keep everything on your network.
+- **WhatsApp / SMS** providers are configured in Admin → Notifications.

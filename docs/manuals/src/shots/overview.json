@@ -1,0 +1,20 @@
+[
+  {
+    "name": "overview-sign-in",
+    "user": "",
+    "path": "/login",
+    "note": "The sign-in page with the email and password fields and the Sign in button"
+  },
+  {
+    "name": "overview-signup",
+    "user": "",
+    "path": "/signup",
+    "note": "The Request an account form (name, email, phone, password, Send request)"
+  },
+  {
+    "name": "overview-account",
+    "user": "khalid@dor.local",
+    "path": "/account",
+    "note": "My account page: interface language, change password, two-step verification cards"
+  }
+]

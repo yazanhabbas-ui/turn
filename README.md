@@ -2,9 +2,11 @@
 
 An Arabic-first, fully bilingual (AR/EN) system for in-office visitor queues. Reception issues tickets by visit reason, the system routes them to agents according to admin-configured rules, a waiting-room screen calls numbers with voice announcements, and admins get KPIs.
 
-It runs entirely on your own server (on-premises or a regional cloud), keeps working on the office LAN without internet, and sends no data to third parties.
+It runs entirely on your own server (on-premises or a regional cloud), keeps working on the office LAN without internet, and sends no data to third parties unless you switch on an optional service (email/SMS/WhatsApp providers you configure, or the online announcement voice; see [docs/deployment.md](docs/deployment.md#10-optional-online-services-and-account-requests)).
 
 > **Status:** Milestones 1–7 are complete (foundation, admin core, queue engine, reception and agent workspaces, display and voice, reports, notifications and feedback). Milestone 8 (hardening) is in progress: deployment files, backups, CI and operations are written (D58) but `docker compose up` has not been run on the development machine, which has no Docker; the CI `docker` job is the check. See [docs/decisions.md](docs/decisions.md) for the milestone plan.
+
+**User manuals** for every role (agent, supervisor, receptionist, administrator, screen setup), in English and Arabic as PDF: [docs/manuals](docs/manuals/README.md).
 
 ## Quick start (Docker, recommended)
 

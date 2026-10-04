@@ -1,0 +1,73 @@
+[
+  {
+    "name": "admin-overview",
+    "user": "admin@dor.local",
+    "path": "/admin",
+    "note": "Overview with the five counters and the sidebar showing every admin page (super admin)"
+  },
+  {
+    "name": "admin-overview-city",
+    "user": "damascus.admin@dor.local",
+    "path": "/admin",
+    "note": "Overview as the Damascus city admin: shorter sidebar (no Cities or Roles management)"
+  },
+  {
+    "name": "admin-branches",
+    "user": "admin@dor.local",
+    "path": "/admin/branches",
+    "note": "Branch cards with floors and the desks table"
+  },
+  {
+    "name": "admin-reasons",
+    "user": "admin@dor.local",
+    "path": "/admin/reasons",
+    "note": "Visit reasons table with prefix, SLA, expected time and assigned agents"
+  },
+  {
+    "name": "admin-users",
+    "user": "admin@dor.local",
+    "path": "/admin/users",
+    "note": "Users list with role badges, tabs Users / Invitations / Requests and the Invite and Add user buttons"
+  },
+  {
+    "name": "admin-roles",
+    "user": "admin@dor.local",
+    "path": "/admin/roles",
+    "note": "Built-in and custom roles with user and permission counts"
+  },
+  {
+    "name": "admin-distribution",
+    "user": "admin@dor.local",
+    "path": "/admin/distribution",
+    "note": "Distribution rules page: scope selector and mode cards",
+    "fullPage": true
+  },
+  {
+    "name": "admin-settings",
+    "user": "admin@dor.local",
+    "path": "/admin/settings",
+    "note": "Settings with the sections list, search box and the first section"
+  },
+  {
+    "name": "admin-notifications",
+    "user": "admin@dor.local",
+    "path": "/admin/notifications",
+    "note": "Notifications, Channels tab with WhatsApp, SMS and Email status"
+  },
+  {
+    "name": "admin-audit",
+    "user": "admin@dor.local",
+    "path": "/admin/audit",
+    "note": "Audit log table with recent entries"
+  },
+  {
+    "name": "admin-requests",
+    "user": "admin@dor.local",
+    "path": "/admin/users",
+    "note": "Users page with the Requests tab open",
+    "click": {
+      "en": "Requests",
+      "ar": "الطلبات"
+    }
+  }
+]

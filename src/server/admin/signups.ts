@@ -52,7 +52,10 @@ export async function signupAvailable(): Promise<boolean> {
  * Public: records a sign-up request. The answer is the same whether or not the address already has an account or a
  * pending request, so the form cannot be used to find out who is registered.
  */
-export async function requestSignup(input: z.infer<typeof signupInput>, client: { ip?: string | null; userAgent?: string | null }) {
+export async function requestSignup(
+  input: z.infer<typeof signupInput>,
+  client: { ip?: string | null; userAgent?: string | null },
+) {
   const open = await openOrganizations(input.organization);
   if (!open.length) throw new AppError("not_found", { reason: "signup_disabled" });
   if (open.length > 1) throw new AppError("organization_required");

@@ -1,0 +1,30 @@
+[
+  {
+    "name": "receptionist-console",
+    "user": "reception@dor.local",
+    "path": "/reception",
+    "note": "The whole reception console: summary line, reason buttons, and the live queue on the side",
+    "fullPage": false
+  },
+  {
+    "name": "receptionist-live-queue",
+    "user": "reception@dor.local",
+    "path": "/reception",
+    "note": "The live queue panel with its filter tabs and search box",
+    "fullPage": false
+  },
+  {
+    "name": "receptionist-profile",
+    "user": "reception@dor.local",
+    "path": "/profile",
+    "note": "My profile page with the link to password, two-step verification and language",
+    "fullPage": false
+  },
+  {
+    "name": "receptionist-account",
+    "user": "reception@dor.local",
+    "path": "/account",
+    "note": "My account: change password and interface language",
+    "fullPage": false
+  }
+]

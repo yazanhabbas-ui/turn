@@ -91,64 +91,76 @@ function Screen({
     return () => engine.current?.clear();
   }, []);
 
-  const onCall = useCallback((e: CallEvent) => {
-    setCall({ ticketId: e.ticketId, displayNumber: e.displayNumber, deskNumber: e.deskNumber, at: Date.now(), recall: e.recall });
-    setFlashing(true);
-    if (flashTimer.current) clearTimeout(flashTimer.current);
-    flashTimer.current = setTimeout(() => setFlashing(false), FLASH_MS);
+  const onCall = useCallback(
+    (e: CallEvent) => {
+      setCall({
+        ticketId: e.ticketId,
+        displayNumber: e.displayNumber,
+        deskNumber: e.deskNumber,
+        at: Date.now(),
+        recall: e.recall,
+      });
+      setFlashing(true);
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+      flashTimer.current = setTimeout(() => setFlashing(false), FLASH_MS);
 
-    const s = stateRef.current;
-    const eng = engine.current;
-    if (!s || !eng || !s.voice.settings.enabled) return;
-    const job = buildVoiceJob({
-      id: `${e.ticketId}:${e.recall ? "r" : "c"}`,
-      settings: s.voice.settings,
-      templates: s.voice.templates,
-      packs: s.voice.packs,
-      deviceToken: token,
-      digits: s.regional.digitsVoice,
-      displayNumber: e.displayNumber,
-      deskNumber: e.deskNumber,
-      ticketLanguage: e.language,
-      recall: e.recall,
-    });
-    if (!job) return;
-    eng.enqueue(job);
-  }, [token]);
+      const s = stateRef.current;
+      const eng = engine.current;
+      if (!s || !eng || !s.voice.settings.enabled) return;
+      const job = buildVoiceJob({
+        id: `${e.ticketId}:${e.recall ? "r" : "c"}`,
+        settings: s.voice.settings,
+        templates: s.voice.templates,
+        packs: s.voice.packs,
+        deviceToken: token,
+        digits: s.regional.digitsVoice,
+        displayNumber: e.displayNumber,
+        deskNumber: e.deskNumber,
+        ticketLanguage: e.language,
+        recall: e.recall,
+      });
+      if (!job) return;
+      eng.enqueue(job);
+    },
+    [token],
+  );
 
-  const onHallCall = useCallback((e: HallCallEvent) => {
-    if (!e.tickets.length) return;
-    const numbers = e.tickets.map((x) => x.displayNumber);
-    setCall({
-      ticketId: e.tickets[0].ticketId,
-      displayNumber: numbers[0],
-      deskNumber: null,
-      at: Date.now(),
-      recall: e.recall,
-      hall: { id: e.hallId, number: e.hallNumber, numbers },
-    });
-    setFlashing(true);
-    if (flashTimer.current) clearTimeout(flashTimer.current);
-    flashTimer.current = setTimeout(() => setFlashing(false), FLASH_MS);
+  const onHallCall = useCallback(
+    (e: HallCallEvent) => {
+      if (!e.tickets.length) return;
+      const numbers = e.tickets.map((x) => x.displayNumber);
+      setCall({
+        ticketId: e.tickets[0].ticketId,
+        displayNumber: numbers[0],
+        deskNumber: null,
+        at: Date.now(),
+        recall: e.recall,
+        hall: { id: e.hallId, number: e.hallNumber, numbers },
+      });
+      setFlashing(true);
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+      flashTimer.current = setTimeout(() => setFlashing(false), FLASH_MS);
 
-    const s = stateRef.current;
-    const eng = engine.current;
-    if (!s || !eng || !s.voice.settings.enabled) return;
-    const job = buildHallVoiceJob({
-      id: `${e.sessionId}:${e.recall ? "r" : "c"}:${numbers.join(",")}`,
-      settings: s.voice.settings,
-      templates: s.voice.templates,
-      packs: s.voice.packs,
-      deviceToken: token,
-      digits: s.regional.digitsVoice,
-      hallNumber: e.hallNumber,
-      displayNumbers: numbers,
-      announce: { mode: s.hallsConfig?.announceMode ?? "list", maxAnnounced: s.hallsConfig?.maxAnnounced ?? 6 },
-      ticketLanguage: e.tickets[0].language,
-      recall: e.recall,
-    });
-    if (job) eng.enqueue(job);
-  }, [token]);
+      const s = stateRef.current;
+      const eng = engine.current;
+      if (!s || !eng || !s.voice.settings.enabled) return;
+      const job = buildHallVoiceJob({
+        id: `${e.sessionId}:${e.recall ? "r" : "c"}:${numbers.join(",")}`,
+        settings: s.voice.settings,
+        templates: s.voice.templates,
+        packs: s.voice.packs,
+        deviceToken: token,
+        digits: s.regional.digitsVoice,
+        hallNumber: e.hallNumber,
+        displayNumbers: numbers,
+        announce: { mode: s.hallsConfig?.announceMode ?? "list", maxAnnounced: s.hallsConfig?.maxAnnounced ?? 6 },
+        ticketLanguage: e.tickets[0].language,
+        recall: e.recall,
+      });
+      if (job) eng.enqueue(job);
+    },
+    [token],
+  );
 
   const { state, connection, clockOffset } = useDisplayState(token, { onCall, onHallCall, onRevoked });
   stateRef.current = state;

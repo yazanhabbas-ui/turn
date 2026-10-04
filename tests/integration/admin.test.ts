@@ -213,7 +213,7 @@ describe.runIf(available)("admin core (database)", () => {
     const form = (email: string) => ({
       email,
       displayName: { ar: "سلمى" },
-      password: "Salma-Strong-2026",
+      password: "Violet-Harbor-2026",
       locale: "ar" as const,
     });
 
@@ -229,7 +229,7 @@ describe.runIf(available)("admin core (database)", () => {
       const pending = (await listSignups(admin)).filter((r) => r.status === "pending");
       expect(pending.map((r) => r.email)).toEqual(["salma@dor.local"]);
       // Not an account yet: signing in fails.
-      await expect(login({ email: "salma@dor.local", password: "Salma-Strong-2026" }, client)).rejects.toThrow();
+      await expect(login({ email: "salma@dor.local", password: "Violet-Harbor-2026" }, client)).rejects.toThrow();
 
       process.env.MESSAGING_MOCK = "true";
       mockOutbox().length = 0;
@@ -239,7 +239,7 @@ describe.runIf(available)("admin core (database)", () => {
       const grants = await db().select().from(userRoles).where(eq(userRoles.userId, userId));
       expect(grants).toEqual([expect.objectContaining({ roleId: await roleId("agent"), branchId })]);
       expect(await db().select().from(agentProfiles).where(eq(agentProfiles.userId, userId))).toHaveLength(1);
-      expect((await login({ email: "salma@dor.local", password: "Salma-Strong-2026" }, client)).token).toBeTruthy();
+      expect((await login({ email: "salma@dor.local", password: "Violet-Harbor-2026" }, client)).token).toBeTruthy();
       await expectCode(approveSignup(admin, pending[0].id, { roleId: await roleId("agent"), branchId }), "conflict");
     });
 

@@ -76,6 +76,8 @@ const PUBLIC: Record<string, string> = {
   "POST v1/auth/login": "sign-in; rate limited per address and per account lockout",
   "POST v1/auth/logout": "ends the caller's own session if any; nothing to read or write otherwise",
   "GET v1/display/state": "waiting-room screens authenticate with their device token (401 without it); rate limited",
+  "GET v1/display/tts":
+    "announcement audio for waiting-room screens (device token) and the admin voice test (session); 401 without either; rate limited",
   "POST v1/kiosk/pair":
     "exchanges a one-time pairing code (kind kiosk only) for a device token; rate limited per address and globally",
   "GET v1/kiosk/context":
@@ -87,6 +89,8 @@ const PUBLIC: Record<string, string> = {
   "POST v1/public/invites/[token]": "accepts an invite with its token; rate limited",
   "GET v1/public/password-reset/[token]": "reset link (160-bit random token, hashed at rest); rate limited",
   "POST v1/public/password-reset/[token]": "completes a reset with its token; rate limited",
+  "POST v1/public/signup":
+    "a prospective staff member asks for an account; only stores a pending request (no account, no access until an admin approves); same answer whether or not the email is known; rate limited",
   "GET v1/public/tickets/[token]": "visitor status page; the 160-bit ticket token is the credential; rate limited",
   "POST v1/public/tickets/[token]/contact": "visitor adds a phone for updates, with consent; token + rate limited",
   "POST v1/public/tickets/[token]/feedback": "visitor rates a completed visit once; token + rate limited",
