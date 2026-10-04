@@ -20,7 +20,9 @@ export function Keypad({ digits, t, onKey }: { digits: DigitSystem; t: T; onKey:
             aria-label={k === "clear" ? t("clear") : k === "back" ? t("delete") : undefined}
             className={cn(
               "tabular grid min-h-[4.5rem] place-items-center rounded-2xl border-2 text-4xl font-semibold shadow-sm transition select-none active:scale-95",
-              action ? "bg-muted text-muted-foreground text-xl" : "bg-card hover:border-brand/50",
+              action
+                ? "bg-dsp-bg border-dsp-line text-dsp-muted text-xl"
+                : "bg-dsp-surface border-dsp-line text-dsp-strong hover:border-dsp-accent",
             )}
           >
             {k === "back" ? <Delete className="size-8" aria-hidden /> : k === "clear" ? t("clear") : applyDigits(k, digits)}

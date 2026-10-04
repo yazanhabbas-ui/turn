@@ -132,6 +132,8 @@ For silent printing, start the kiosk browser with `--kiosk-printing`. Without it
 
 Revoking, re-pairing and deleting a kiosk work like a screen.
 
+> **Note:** The kiosk wears your organization's identity: the welcome band uses your **primary colour** and brand glow, your logo sits on a white plate so it reads with any colour, and the ticket shown to the visitor carries the same band. The text colour switches between white and near-black to stay readable on pale colours. The kiosk's **Theme** (dark, light, brand) decides the background below the band, as on the waiting-room screens.
+
 ### 4.6 Choose and test the announcement voice
 
 ![The Voice tab of the Screens page](shot:screens-voice)

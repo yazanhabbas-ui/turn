@@ -94,6 +94,8 @@ export async function kioskContext(device: Device) {
       companyName: branding.companyName,
       logoUrl: branding.logoUrl,
       logoDarkUrl: branding.logoDarkUrl,
+      primaryColor: branding.primaryColor,
+      accentColor: branding.accentColor,
       ticketFooter: branding.ticketFooter,
     },
     ticketing: { showQrOnTicket: ticketing.showQrOnTicket },

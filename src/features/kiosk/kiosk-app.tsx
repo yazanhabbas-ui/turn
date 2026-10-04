@@ -183,9 +183,17 @@ function Kiosk({
 
   const printCtx = useMemo(() => (ctx ? printContext(ctx) : null), [ctx]);
   const printDone = useCallback(() => setPrintJob(null), []);
-  const dark = ctx ? ctx.theme !== "light" : true;
+  // The kiosk wears the same themes and brand colours as the waiting-room screens of the branch (dark, light, brand).
   const shell = (children: React.ReactNode) => (
-    <div dir={dirOf(lang)} lang={lang} className={`${dark ? "dark" : ""}bg-background text-foreground min-h-dvh select-none`}>
+    <div
+      dir={dirOf(lang)}
+      lang={lang}
+      data-theme={ctx?.theme ?? "dark"}
+      className="dor-display min-h-dvh select-none"
+      style={
+        { "--dsp-primary": ctx?.branding.primaryColor, "--dsp-accent-brand": ctx?.branding.accentColor } as React.CSSProperties
+      }
+    >
       {children}
     </div>
   );
@@ -193,7 +201,7 @@ function Kiosk({
   if (!ctx) {
     return shell(failing ? <Offline t={t} onRetry={() => void refetch()} /> : <Message title={t("loading")} />);
   }
-  if (!ctx.enabled || ctx.reasons.length === 0) return shell(<Unavailable t={t} />);
+  if (!ctx.enabled || ctx.reasons.length === 0) return shell(<Unavailable t={t} ctx={ctx} lang={lang} />);
 
   return shell(
     <>
@@ -232,7 +240,9 @@ function Kiosk({
         />
       )}
       {failing && view.name === "home" && (
-        <p className="bg-muted text-muted-foreground fixed inset-x-0 bottom-0 p-3 text-center text-lg">{t("offlineBanner")}</p>
+        <p className="bg-dsp-surface text-dsp-muted border-dsp-line fixed inset-x-0 bottom-0 border-t p-3 text-center text-lg">
+          {t("offlineBanner")}
+        </p>
       )}
       {printCtx && <PrintTicket job={printJob} ctx={printCtx} onDone={printDone} />}
     </>,
