@@ -232,7 +232,7 @@ The simulator uses the same engine as the live system but changes no real ticket
 
 ### 4.13 Settings
 
-Open **Settings**. A **Search settings...** box finds any option. Sections are grouped: General, Visitors & tickets, Agents & service, Screens & reports, Security & privacy.
+Open **Settings** in the left menu: its sections appear as a dropdown list underneath, grouped as General, Visitors & tickets, Agents & service, Screens & reports, Security & privacy. Choose one to open it. A **Search settings...** box at the top of the page finds any option.
 
 The **Applies to** switcher decides the level you are editing. Values are inherited from the organization, then the city, then the branch. For a section that allows it, switch on **Override for this city** (or branch) to give that level its own value. **Reset to default** removes the override. Each section shows where its current value comes from. A bar shows **You have unsaved changes**; press **Save** or **Discard**.
 

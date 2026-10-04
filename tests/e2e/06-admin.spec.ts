@@ -47,8 +47,12 @@ test.describe("administration", () => {
     await expect(page.getByRole("heading", { level: 2, name: ar("settings.tabs.wifi") })).toBeVisible();
     await expect(page).toHaveURL(/section=wifi/);
 
-    // Branding: edit the English company name; the sticky bar offers Save and Discard.
-    await page.getByRole("button", { name: ar("settings.tabs.branding"), exact: true }).click();
+    // Branding: opened from the section list under "Settings" in the sidebar; edit the English company name, the sticky
+    // bar offers Save and Discard.
+    await page
+      .getByRole("complementary")
+      .getByRole("link", { name: ar("settings.tabs.branding"), exact: true })
+      .click();
     const name = page.locator("#br-name-en");
     const newName = `E2E Services ${Date.now() % 100000}`;
     await name.fill(newName);

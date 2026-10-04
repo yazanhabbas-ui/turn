@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Search, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
-import { cn } from "@/lib/utils";
 import { SettingsShellContext, type SettingsShellApi } from "./settings-context";
+import { SETTINGS_ACTIVE, SETTINGS_GO, type SettingsGoDetail } from "./nav-events";
 import { searchSettings } from "./settings-search";
 import { GROUPS, type SectionDef, type SectionId } from "./sections/registry";
 
@@ -47,19 +47,6 @@ export function SettingsShell({
   const [pending, setPending] = useState<(() => void) | null>(null);
   const dirty = useRef(new Set<string>());
   const searchRef = useRef<HTMLInputElement>(null);
-  // Only the group of the open section is expanded at first, so the menu stays short; the others open on a click.
-  const activeGroup = sections.find((s) => s.id === active)?.group;
-  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(activeGroup ? [activeGroup] : []));
-  useEffect(() => {
-    if (activeGroup) setOpenGroups((prev) => (prev.has(activeGroup) ? prev : new Set(prev).add(activeGroup)));
-  }, [activeGroup]);
-  const toggleGroup = (g: string) =>
-    setOpenGroups((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(g)) next.add(g);
-      return next;
-    });
-
   // Back/forward or a link changing ?section= after the first render.
   useEffect(() => {
     if (valid(requested)) setActive(requested);
@@ -117,6 +104,23 @@ export function SettingsShell({
     [active, shell],
   );
 
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent<string>(SETTINGS_ACTIVE, { detail: active }));
+  }, [active]);
+
+  // The admin sidebar lists the sections under "Settings" and asks this page to open one (through the edits guard).
+  useEffect(() => {
+    const onGo = (e: Event) => {
+      const detail = (e as CustomEvent<SettingsGoDetail>).detail;
+      if (!detail || !valid(detail.id)) return;
+      detail.handled = true;
+      go(detail.id);
+    };
+    window.addEventListener(SETTINGS_GO, onGo);
+    return () => window.removeEventListener(SETTINGS_GO, onGo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [go, sections]);
+
   // Scroll to and flash the field chosen in the search results, once its section has rendered.
   useEffect(() => {
     if (!target) return;
@@ -158,174 +162,126 @@ export function SettingsShell({
       <div className="mx-auto max-w-6xl">
         <PageHeader title={t("title")} description={t("description")} />
         {topBar}
-        <div className="gap-6 lg:grid lg:grid-cols-[14rem_minmax(0,1fr)]">
-          <aside className="mb-5 space-y-3 lg:sticky lg:top-20 lg:mb-0 lg:max-h-[calc(100dvh-6rem)] lg:self-start lg:overflow-y-auto lg:pe-1">
-            <div className="relative">
-              <Search
-                className="text-muted-foreground pointer-events-none absolute inset-s-2.5 top-1/2 size-4 -translate-y-1/2"
-                aria-hidden
-              />
-              <Input
-                ref={searchRef}
-                type="text"
-                role="searchbox"
-                value={query}
-                placeholder={t("ui.search")}
-                aria-label={t("ui.search")}
-                className="ps-8 pe-14 max-lg:h-10"
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") setQuery("");
-                  if (e.key === "Enter" && hits[0]) {
-                    e.preventDefault();
-                    go(hits[0].section.id, hits[0].fields[0]?.anchor);
-                  }
-                }}
-              />
-              {searching ? (
-                <button
-                  type="button"
-                  aria-label={t("ui.clearSearch")}
-                  className="text-muted-foreground hover:text-foreground absolute inset-e-1 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-md"
-                  onClick={() => {
-                    setQuery("");
-                    searchRef.current?.focus();
-                  }}
-                >
-                  <X className="size-4" aria-hidden />
-                </button>
+        <div className="relative mb-5 max-w-md">
+          <Search
+            className="text-muted-foreground pointer-events-none absolute inset-s-2.5 top-1/2 size-4 -translate-y-1/2"
+            aria-hidden
+          />
+          <Input
+            ref={searchRef}
+            type="text"
+            role="searchbox"
+            value={query}
+            placeholder={t("ui.search")}
+            aria-label={t("ui.search")}
+            className="ps-8 pe-14 max-lg:h-10"
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setQuery("");
+              if (e.key === "Enter" && hits[0]) {
+                e.preventDefault();
+                go(hits[0].section.id, hits[0].fields[0]?.anchor);
+              }
+            }}
+          />
+          {searching ? (
+            <button
+              type="button"
+              aria-label={t("ui.clearSearch")}
+              className="text-muted-foreground hover:text-foreground absolute inset-e-1 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-md"
+              onClick={() => {
+                setQuery("");
+                searchRef.current?.focus();
+              }}
+            >
+              <X className="size-4" aria-hidden />
+            </button>
+          ) : (
+            <kbd
+              className="text-muted-foreground bg-muted pointer-events-none absolute inset-e-2 top-1/2 hidden -translate-y-1/2 rounded border px-1.5 text-[11px] lg:block"
+              dir="ltr"
+            >
+              /
+            </kbd>
+          )}
+          {searching && (
+            <div aria-live="polite" className="absolute inset-x-0 top-full z-30 mt-1">
+              {hits.length === 0 ? (
+                <p className="bg-card text-muted-foreground rounded-lg border border-dashed p-4 text-center text-sm shadow-md">
+                  {t("ui.noResults", { query })}
+                </p>
               ) : (
-                <kbd
-                  className="text-muted-foreground bg-muted pointer-events-none absolute inset-e-2 top-1/2 hidden -translate-y-1/2 rounded border px-1.5 text-[11px] lg:block"
-                  dir="ltr"
-                >
-                  /
-                </kbd>
+                <ul className="bg-card max-h-[70dvh] space-y-1 overflow-y-auto rounded-xl border p-1.5 shadow-lg">
+                  {hits.map(({ section, fields }) => {
+                    const HitIcon = section.icon;
+                    return (
+                      <li key={section.id}>
+                        <button
+                          type="button"
+                          className="hover:bg-muted flex min-h-10 w-full items-center gap-2 rounded-lg px-2.5 text-start text-sm font-medium"
+                          onClick={() => go(section.id)}
+                        >
+                          <HitIcon className="text-muted-foreground size-4 shrink-0" aria-hidden />
+                          {title(section.id)}
+                        </button>
+                        {fields.slice(0, 5).map((f) => (
+                          <button
+                            key={f.key}
+                            type="button"
+                            className="text-muted-foreground hover:bg-muted hover:text-foreground flex min-h-9 w-full items-center rounded-lg ps-9 pe-2.5 text-start text-sm"
+                            onClick={() => go(section.id, f.anchor)}
+                          >
+                            {t(f.key)}
+                          </button>
+                        ))}
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
             </div>
+          )}
+        </div>
 
-            {searching ? (
-              <div aria-live="polite">
-                {hits.length === 0 ? (
-                  <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-center text-sm">
-                    {t("ui.noResults", { query })}
-                  </p>
-                ) : (
-                  <ul className="bg-card space-y-1 rounded-xl border p-1.5 shadow-sm">
-                    {hits.map(({ section, fields }) => {
-                      const HitIcon = section.icon;
-                      return (
-                        <li key={section.id}>
-                          <button
-                            type="button"
-                            className="hover:bg-muted flex min-h-10 w-full items-center gap-2 rounded-lg px-2.5 text-start text-sm font-medium"
-                            onClick={() => go(section.id)}
-                          >
-                            <HitIcon className="text-muted-foreground size-4 shrink-0" aria-hidden />
-                            {title(section.id)}
-                          </button>
-                          {fields.slice(0, 5).map((f) => (
-                            <button
-                              key={f.key}
-                              type="button"
-                              className="text-muted-foreground hover:bg-muted hover:text-foreground flex min-h-9 w-full items-center rounded-lg ps-9 pe-2.5 text-start text-sm"
-                              onClick={() => go(section.id, f.anchor)}
-                            >
-                              {t(f.key)}
-                            </button>
-                          ))}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            ) : (
-              <>
-                <div className="lg:hidden">
-                  <NativeSelect
-                    aria-label={t("ui.sectionPicker")}
-                    className="h-10"
-                    value={active}
-                    onChange={(e) => go(e.target.value as SectionId)}
-                  >
-                    {GROUPS.filter((g) => sections.some((s) => s.group === g)).map((g) => (
-                      <optgroup key={g} label={t(`groups.${g}`)}>
-                        {sections
-                          .filter((s) => s.group === g)
-                          .map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {title(s.id)}
-                            </option>
-                          ))}
-                      </optgroup>
-                    ))}
-                  </NativeSelect>
-                </div>
-                <nav className="hidden space-y-1 lg:block" aria-label={t("ui.navLabel")}>
-                  {GROUPS.filter((g) => sections.some((s) => s.group === g)).map((g) => (
-                    <div key={g}>
-                      <button
-                        type="button"
-                        aria-expanded={openGroups.has(g)}
-                        onClick={() => toggleGroup(g)}
-                        className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 flex min-h-9 w-full items-center justify-between rounded-lg px-2.5 text-start text-xs font-semibold tracking-wide outline-none focus-visible:ring-3"
-                      >
-                        {t(`groups.${g}`)}
-                        <ChevronDown
-                          className={cn("size-4 shrink-0 transition-transform", !openGroups.has(g) && "-rotate-90 rtl:rotate-90")}
-                          aria-hidden
-                        />
-                      </button>
-                      <ul className={cn("space-y-0.5 pb-1", !openGroups.has(g) && "hidden")}>
-                        {sections
-                          .filter((s) => s.group === g)
-                          .map((s) => {
-                            const NavIcon = s.icon;
-                            const on = s.id === active;
-                            return (
-                              <li key={s.id}>
-                                <button
-                                  type="button"
-                                  aria-current={on ? "page" : undefined}
-                                  onClick={() => go(s.id)}
-                                  className={cn(
-                                    "focus-visible:ring-ring/50 flex min-h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-start text-sm outline-none focus-visible:ring-3",
-                                    on ? "bg-brand/10 text-brand font-semibold" : "text-foreground/80 hover:bg-muted",
-                                  )}
-                                >
-                                  <NavIcon className="size-4 shrink-0" aria-hidden />
-                                  <span className="truncate">{title(s.id)}</span>
-                                </button>
-                              </li>
-                            );
-                          })}
-                      </ul>
-                    </div>
+        {/* Phones: the sidebar's section list is not available, so the sections are picked here. */}
+        <div className="mb-4 md:hidden">
+          <NativeSelect
+            aria-label={t("ui.sectionPicker")}
+            className="h-10"
+            value={active}
+            onChange={(e) => go(e.target.value as SectionId)}
+          >
+            {GROUPS.filter((g) => sections.some((s) => s.group === g)).map((g) => (
+              <optgroup key={g} label={t(`groups.${g}`)}>
+                {sections
+                  .filter((s) => s.group === g)
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {title(s.id)}
+                    </option>
                   ))}
-                </nav>
-              </>
-            )}
-          </aside>
+              </optgroup>
+            ))}
+          </NativeSelect>
+        </div>
 
-          <div className="min-w-0 max-lg:[&_input:not([type=checkbox]):not([type=radio]):not([type=file])]:h-10 max-lg:[&_select]:h-10">
-            <header className="mb-4 flex items-start gap-3">
-              <span className="bg-brand/10 text-brand grid size-10 shrink-0 place-items-center rounded-xl">
-                <Icon className="size-5" aria-hidden />
-              </span>
-              <div className="min-w-0">
-                <h2 className="text-lg leading-tight font-bold">{title(current.id)}</h2>
-                <p className="text-muted-foreground mt-0.5 text-sm">{t(`sectionDescriptions.${current.id}`)}</p>
-                {meta(current) && (
-                  <Badge variant="outline" className="mt-2">
-                    {t("ui.appliesTo")}: {meta(current)}
-                  </Badge>
-                )}
-              </div>
-            </header>
-            <div key={active} className="space-y-4">
-              {render(active)}
+        <div className="max-w-4xl min-w-0 max-lg:[&_input:not([type=checkbox]):not([type=radio]):not([type=file])]:h-10 max-lg:[&_select]:h-10">
+          <header className="mb-4 flex items-start gap-3">
+            <span className="bg-brand/10 text-brand grid size-10 shrink-0 place-items-center rounded-xl">
+              <Icon className="size-5" aria-hidden />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-lg leading-tight font-bold">{title(current.id)}</h2>
+              <p className="text-muted-foreground mt-0.5 text-sm">{t(`sectionDescriptions.${current.id}`)}</p>
+              {meta(current) && (
+                <Badge variant="outline" className="mt-2">
+                  {t("ui.appliesTo")}: {meta(current)}
+                </Badge>
+              )}
             </div>
+          </header>
+          <div key={active} className="space-y-4">
+            {render(active)}
           </div>
         </div>
       </div>
