@@ -90,7 +90,7 @@
     "dotenv": "^18.0.4",
     "drizzle-kit": "^0.31.11",
     "embedded-postgres": "^18.4.0-beta.17",
-    "eslint": "^9",
+    "eslint": "^10",
     "eslint-config-next": "15.5.26",
     "js-yaml": "^4.3.2",
     "mpg123-decoder": "^1.0.3",
