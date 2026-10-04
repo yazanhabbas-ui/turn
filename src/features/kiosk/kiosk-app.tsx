@@ -189,7 +189,7 @@ function Kiosk({
       dir={dirOf(lang)}
       lang={lang}
       data-theme={ctx?.theme ?? "dark"}
-      className="dor-display min-h-dvh select-none"
+      className="dor-display min-h-dvh touch-manipulation overscroll-none select-none"
       style={
         { "--dsp-primary": ctx?.branding.primaryColor, "--dsp-accent-brand": ctx?.branding.accentColor } as React.CSSProperties
       }

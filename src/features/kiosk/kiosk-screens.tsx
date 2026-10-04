@@ -14,7 +14,8 @@ import { waitLine } from "../queue/wait-text";
 import { Keypad } from "./keypad";
 import type { KioskContext, KioskField, KioskReason, KioskTicket } from "./use-kiosk";
 
-const BIG_BUTTON = "min-h-[4.5rem] rounded-2xl px-8 text-2xl font-bold transition active:scale-[0.98] disabled:opacity-50";
+const BIG_BUTTON =
+  "min-h-[4.5rem] rounded-2xl px-8 text-2xl font-bold transition active:scale-[0.98] disabled:opacity-50 portrait:min-h-[7vh] portrait:px-[5vw] portrait:text-[3.4vw]";
 
 /**
  * The organization's look on the kiosk: its logo on a white plate (so any logo reads), a band in the brand colour with
@@ -77,7 +78,7 @@ function LanguageButtons({
             onClick={() => onLang(l)}
             aria-pressed={active}
             lang={l}
-            className="min-h-[3.5rem] min-w-[7rem] rounded-full border-2 px-6 text-xl font-semibold transition active:scale-95"
+            className="min-h-[3.5rem] min-w-[7rem] rounded-full border-2 px-6 text-xl font-semibold transition active:scale-95 portrait:min-h-[6vh] portrait:min-w-[17vw] portrait:text-[2.8vw]"
             style={
               active
                 ? { backgroundColor: b.on, color: b.on === "#ffffff" ? b.primary : "#ffffff", borderColor: b.on }
@@ -110,15 +111,15 @@ export function Message({
   const b = ctx ? brandOf(ctx) : null;
   return (
     <div className="bg-dsp-bg text-dsp-text grid min-h-dvh place-items-center p-8 text-center">
-      <div className="max-w-2xl space-y-6">
+      <div className="max-w-2xl space-y-6 portrait:max-w-[88vw] portrait:space-y-[3vh]">
         {ctx && b && (
           <div className="mb-10 inline-block rounded-3xl p-5" style={{ background: b.hero, color: b.on }}>
             <LogoPlate ctx={ctx} lang={lang} />
           </div>
         )}
         {icon}
-        <h1 className="text-dsp-strong text-4xl font-bold">{title}</h1>
-        {body && <p className="text-dsp-muted text-2xl">{body}</p>}
+        <h1 className="text-dsp-strong text-4xl font-bold portrait:text-[6vw]">{title}</h1>
+        {body && <p className="text-dsp-muted text-2xl portrait:text-[3.8vw]">{body}</p>}
         {children}
       </div>
     </div>
@@ -172,11 +173,17 @@ export function Home({
   const Chevron = dirOf(lang) === "rtl" ? ChevronLeft : ChevronRight;
   return (
     <div className="bg-dsp-bg text-dsp-text flex min-h-dvh flex-col">
-      <header className="rounded-b-[3rem] px-8 pt-8 pb-20 shadow-xl" style={{ background: b.hero, color: b.on }}>
-        <div className="mx-auto flex max-w-6xl flex-col gap-8">
+      <header
+        className="rounded-b-[3rem] px-8 pt-8 pb-20 shadow-xl portrait:px-[5vw] portrait:pt-[4vh] portrait:pb-[9vh]"
+        style={{ background: b.hero, color: b.on }}
+      >
+        <div className="mx-auto flex max-w-6xl flex-col gap-8 portrait:max-w-none portrait:gap-[4vh]">
           <div className="flex items-center gap-6">
             <LogoPlate ctx={ctx} lang={lang} />
-            <span className="rounded-full px-5 py-2 text-2xl font-semibold" style={{ backgroundColor: `${b.on}1f` }}>
+            <span
+              className="rounded-full px-5 py-2 text-2xl font-semibold portrait:text-[3vw]"
+              style={{ backgroundColor: `${b.on}1f` }}
+            >
               {pickText(ctx.branch.name, lang)}
             </span>
             <div className="ms-auto">
@@ -184,13 +191,15 @@ export function Home({
             </div>
           </div>
           <div className="space-y-3 text-center">
-            <h1 className="text-6xl leading-tight font-extrabold tracking-tight">{welcome || t("chooseService")}</h1>
-            {welcome && <p className="text-3xl opacity-90">{t("chooseService")}</p>}
+            <h1 className="text-6xl leading-tight font-extrabold tracking-tight portrait:text-[8vw]">
+              {welcome || t("chooseService")}
+            </h1>
+            {welcome && <p className="text-3xl opacity-90 portrait:text-[4vw]">{t("chooseService")}</p>}
           </div>
         </div>
       </header>
-      <main className="relative z-10 mx-auto -mt-10 w-full max-w-6xl flex-1 px-8 pb-10">
-        <div className="grid content-start gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <main className="relative z-10 mx-auto -mt-10 flex w-full max-w-6xl flex-1 flex-col px-8 pb-10 portrait:-mt-[5vh] portrait:max-w-none portrait:px-[4vw] portrait:pb-[3vh]">
+        <div className="grid content-start gap-5 sm:grid-cols-2 lg:grid-cols-3 portrait:flex-1 portrait:auto-rows-[minmax(11rem,1fr)] portrait:grid-cols-1! portrait:gap-[2.2vh]">
           {ctx.reasons.map((r) => {
             const staff = r.state === "ask_staff";
             return (
@@ -200,21 +209,21 @@ export function Home({
                 disabled={staff}
                 onClick={() => onPick(r)}
                 className={cn(
-                  "bg-dsp-surface border-dsp-line text-dsp-strong flex min-h-[9rem] items-center gap-5 rounded-3xl border-2 p-6 text-start shadow-lg transition active:scale-[0.97]",
+                  "bg-dsp-surface border-dsp-line text-dsp-strong flex min-h-[9rem] items-center gap-5 rounded-3xl border-2 p-6 text-start shadow-lg transition active:scale-[0.97] portrait:min-h-[11rem] portrait:gap-[3vw] portrait:p-[3vw]",
                   staff ? "[&>*]:opacity-55" : "hover:border-dsp-accent",
                 )}
               >
                 <span
-                  className="grid size-24 shrink-0 place-items-center rounded-2xl text-white shadow-md"
+                  className="grid size-24 shrink-0 place-items-center rounded-2xl text-white shadow-md portrait:size-[14vw]"
                   style={{ backgroundColor: r.color }}
                 >
-                  <EntityIcon name={r.icon} className="size-12" />
+                  <EntityIcon name={r.icon} className="size-12 portrait:size-[7vw]" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-3xl leading-tight font-bold">{pickText(r.name, lang)}</span>
-                  {staff && <span className="text-dsp-muted mt-2 block text-xl">{t("askStaff")}</span>}
+                  <span className="block text-3xl leading-tight font-bold portrait:text-[4.6vw]">{pickText(r.name, lang)}</span>
+                  {staff && <span className="text-dsp-muted mt-2 block text-xl portrait:text-[3vw]">{t("askStaff")}</span>}
                 </span>
-                {!staff && <Chevron className="text-dsp-muted size-10 shrink-0" aria-hidden />}
+                {!staff && <Chevron className="text-dsp-muted size-10 shrink-0 portrait:size-[6vw]" aria-hidden />}
               </button>
             );
           })}
@@ -264,8 +273,11 @@ export function Form({
 
   return (
     <div className="bg-dsp-bg text-dsp-text flex min-h-dvh flex-col">
-      <header className="rounded-b-[2.5rem] px-8 py-6 shadow-xl" style={{ background: b.hero, color: b.on }}>
-        <div className="mx-auto flex max-w-6xl items-center gap-5">
+      <header
+        className="rounded-b-[2.5rem] px-8 py-6 shadow-xl portrait:px-[4vw] portrait:py-[3vh]"
+        style={{ background: b.hero, color: b.on }}
+      >
+        <div className="mx-auto flex max-w-6xl items-center gap-5 portrait:max-w-none portrait:gap-[2.5vw]">
           <button
             type="button"
             onClick={onBack}
@@ -275,29 +287,37 @@ export function Form({
             <BackIcon className="size-8" aria-hidden />
             {t("back")}
           </button>
-          <span className="grid size-16 place-items-center rounded-2xl bg-white/95 shadow-md" style={{ color: reason.color }}>
-            <EntityIcon name={reason.icon} className="size-9" />
+          <span
+            className="grid size-16 place-items-center rounded-2xl bg-white/95 shadow-md portrait:size-[10vw]"
+            style={{ color: reason.color }}
+          >
+            <EntityIcon name={reason.icon} className="size-9 portrait:size-[6vw]" />
           </span>
-          <h1 className="text-4xl font-extrabold">{pickText(reason.name, lang)}</h1>
+          <h1 className="text-4xl font-extrabold portrait:text-[5vw]">{pickText(reason.name, lang)}</h1>
           <div className="ms-auto hidden sm:block">
             <LogoPlate ctx={ctx} lang={lang} size="md" />
           </div>
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-8">
-        <div className={cn("grid flex-1 gap-8", hasPhone && "lg:grid-cols-[minmax(0,1fr)_22rem]")}>
-          <div className="space-y-5">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-8 portrait:max-w-none portrait:gap-[2.5vh] portrait:p-[4vw]">
+        <div
+          className={cn(
+            "grid flex-1 gap-8 portrait:grid-cols-1! portrait:content-between portrait:gap-[3vh]",
+            hasPhone && "lg:grid-cols-[minmax(0,1fr)_22rem]",
+          )}
+        >
+          <div className="space-y-5 portrait:space-y-[2.5vh]">
             {reason.intakeFields.map((f) => {
               const isPhone = f.key === "phone";
               return (
                 <div key={f.key} className="space-y-2">
-                  <label htmlFor={`k-${f.key}`} className="text-dsp-strong text-2xl font-semibold">
+                  <label htmlFor={`k-${f.key}`} className="text-dsp-strong text-2xl font-semibold portrait:text-[3.6vw]">
                     {fieldLabel(f, lang, t)}
                     {f.required ? (
                       <span className="text-dsp-hot"> *</span>
                     ) : (
-                      <span className="text-dsp-muted text-lg"> ({t("optional")})</span>
+                      <span className="text-dsp-muted text-lg portrait:text-[2.8vw]"> ({t("optional")})</span>
                     )}
                   </label>
                   {isPhone ? (
@@ -307,7 +327,7 @@ export function Form({
                       dir="ltr"
                       onClick={() => setActive("phone")}
                       className={cn(
-                        "tabular bg-dsp-surface text-dsp-strong flex min-h-[5.5rem] w-full items-center justify-center rounded-2xl border-2 px-6 text-5xl tracking-widest",
+                        "tabular bg-dsp-surface text-dsp-strong flex min-h-[5.5rem] w-full items-center justify-center rounded-2xl border-2 px-6 text-5xl tracking-widest portrait:min-h-[9vh] portrait:text-[7vw]",
                         active === "phone" ? "border-dsp-accent ring-dsp-ring ring-4" : "border-dsp-line",
                       )}
                     >
@@ -327,17 +347,17 @@ export function Form({
                       dir={f.key === "email" ? "ltr" : undefined}
                       autoComplete="off"
                       maxLength={120}
-                      className="bg-dsp-surface text-dsp-strong border-dsp-line focus:border-dsp-accent focus:ring-dsp-ring min-h-[5rem] w-full rounded-2xl border-2 px-6 text-3xl outline-none focus:ring-4"
+                      className="bg-dsp-surface text-dsp-strong border-dsp-line focus:border-dsp-accent focus:ring-dsp-ring min-h-[5rem] w-full rounded-2xl border-2 px-6 text-3xl outline-none focus:ring-4 portrait:min-h-[8vh] portrait:text-[4vw]"
                     />
                   )}
                 </div>
               );
             })}
             {needsConsent && (
-              <label className="bg-dsp-surface border-dsp-line flex items-start gap-4 rounded-2xl border p-5 text-xl">
+              <label className="bg-dsp-surface border-dsp-line flex items-start gap-4 rounded-2xl border p-5 text-xl portrait:gap-[3vw] portrait:p-[3vw] portrait:text-[3vw]">
                 <input
                   type="checkbox"
-                  className="mt-1 size-9 shrink-0"
+                  className="mt-1 size-9 shrink-0 portrait:size-[6vw]"
                   style={{ accentColor: b.primary }}
                   checked={consent}
                   onChange={(e) => setConsent(e.target.checked)}
@@ -346,14 +366,14 @@ export function Form({
               </label>
             )}
             {error && (
-              <p role="alert" className="text-dsp-hot flex items-center gap-3 text-2xl font-semibold">
+              <p role="alert" className="text-dsp-hot flex items-center gap-3 text-2xl font-semibold portrait:text-[3.4vw]">
                 <CircleAlert className="size-8 shrink-0" aria-hidden />
                 {error}
               </p>
             )}
           </div>
           {hasPhone && (
-            <div className="self-start">
+            <div className="self-start portrait:self-stretch">
               <Keypad
                 digits={digits}
                 t={t}
@@ -370,7 +390,7 @@ export function Form({
           type="button"
           disabled={busy || !!missing || (needsConsent && !consent)}
           onClick={() => onSubmit(Object.fromEntries(Object.entries(values).filter(([, v]) => v.trim())), consent)}
-          className={cn(BIG_BUTTON, "min-h-[5.5rem] w-full text-3xl shadow-xl")}
+          className={cn(BIG_BUTTON, "min-h-[5.5rem] w-full text-3xl shadow-xl portrait:min-h-[10vh] portrait:text-[4.6vw]")}
           style={b.actionStyle}
         >
           {busy ? t("issuing") : t("getNumber")}
@@ -428,29 +448,33 @@ export function Result({
 
   const wait = ctx.options.showWait ? waitLine(result, ctx.waitDisplay, lang, digits) : null;
   return (
-    <div className="bg-dsp-bg text-dsp-text grid min-h-dvh place-items-center p-6">
-      <div className="w-full max-w-3xl space-y-5 text-center">
+    <div className="bg-dsp-bg text-dsp-text grid min-h-dvh place-items-center p-6 portrait:p-[4vw]">
+      <div className="w-full max-w-3xl space-y-5 text-center portrait:max-w-none portrait:space-y-[3vh]">
         {result.duplicate && (
-          <p className="bg-dsp-surface border-dsp-line mx-auto w-fit rounded-full border px-8 py-3 text-2xl">{t("duplicate")}</p>
+          <p className="bg-dsp-surface border-dsp-line mx-auto w-fit rounded-full border px-8 py-3 text-2xl portrait:text-[3.4vw]">
+            {t("duplicate")}
+          </p>
         )}
         <div className="bg-dsp-surface border-dsp-line overflow-hidden rounded-[2rem] border shadow-2xl">
           <div className="flex items-center justify-between gap-4 px-8 py-5" style={{ background: b.hero, color: b.on }}>
             <LogoPlate ctx={ctx} lang={lang} size="md" />
-            <span className="text-xl font-medium">{pickText(ctx.branch.name, lang)}</span>
+            <span className="text-xl font-medium portrait:text-[3vw]">{pickText(ctx.branch.name, lang)}</span>
           </div>
           <div className="space-y-6 px-8 pt-8 pb-6">
-            <p className="text-dsp-soft text-3xl font-semibold">{reason ? pickText(reason.name, lang) : ""}</p>
+            <p className="text-dsp-soft text-3xl font-semibold portrait:text-[4.6vw]">
+              {reason ? pickText(reason.name, lang) : ""}
+            </p>
             <div>
-              <p className="text-dsp-muted text-2xl">{t("yourNumber")}</p>
+              <p className="text-dsp-muted text-2xl portrait:text-[3.6vw]">{t("yourNumber")}</p>
               <p
-                className="text-dsp-strong tabular mx-auto mt-2 w-fit rounded-[2rem] border-4 px-10 py-4 text-[8.5rem] leading-none font-extrabold tracking-tight"
+                className="text-dsp-strong tabular mx-auto mt-2 w-fit rounded-[2rem] border-4 px-10 py-4 text-[8.5rem] leading-none font-extrabold tracking-tight portrait:px-[5vw] portrait:py-[2vh] portrait:text-[21vw]"
                 style={{ borderColor: b.primary, backgroundColor: `color-mix(in srgb, ${b.primary} 14%, transparent)` }}
                 dir="ltr"
               >
                 {applyDigits(result.ticket.displayNumber, digits)}
               </p>
             </div>
-            <p className="text-3xl">
+            <p className="text-3xl portrait:text-[4.4vw]">
               {result.ahead > 0 ? t("ahead", { count: applyDigits(String(result.ahead), digits) }) : t("youAreNext")}
               {wait && (
                 <span className="text-dsp-muted">
@@ -465,7 +489,7 @@ export function Result({
                 </span>
               )}
             </p>
-            {wait?.disclaimer && <p className="text-dsp-muted -mt-3 text-lg">{wait.disclaimer}</p>}
+            {wait?.disclaimer && <p className="text-dsp-muted -mt-3 text-lg portrait:text-[2.8vw]">{wait.disclaimer}</p>}
           </div>
           {qr && (
             <>
@@ -477,8 +501,10 @@ export function Result({
               </div>
               <div className="flex items-center justify-center gap-6 px-8 py-6">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qr} alt="" className="size-44 rounded-xl bg-white p-2 shadow-md" />
-                <p className="text-dsp-soft max-w-xs text-start text-2xl">{t("scanQr")}</p>
+                <img src={qr} alt="" className="size-44 rounded-xl bg-white p-2 shadow-md portrait:size-[26vw]" />
+                <p className="text-dsp-soft max-w-xs text-start text-2xl portrait:max-w-[42vw] portrait:text-[3.4vw]">
+                  {t("scanQr")}
+                </p>
               </div>
             </>
           )}
@@ -498,7 +524,7 @@ export function Result({
             {t("done")}
           </button>
         </div>
-        <p className="text-dsp-muted text-xl" aria-live="off">
+        <p className="text-dsp-muted text-xl portrait:text-[3vw]" aria-live="off">
           {t("returning", { seconds: applyDigits(String(Math.max(0, left)), digits) })}
         </p>
       </div>
