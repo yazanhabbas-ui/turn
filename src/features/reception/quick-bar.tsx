@@ -1,6 +1,6 @@
 "use client";
 
-import { Printer, X } from "lucide-react";
+import { Printer, QrCode, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { EntityIcon } from "@/components/app/entity-icon";
@@ -151,11 +151,14 @@ export function IssuedBanner({
   result,
   ctx,
   onPrint,
+  onShowQr,
   onDismiss,
 }: {
   result: IssueResult | null;
   ctx: ReceptionContext;
   onPrint: () => void;
+  /** Opens the confirmation with the QR code (for a visitor to scan from the screen when nothing is printed). */
+  onShowQr?: () => void;
   onDismiss: () => void;
 }) {
   const t = useTranslations("reception");
@@ -190,6 +193,12 @@ export function IssuedBanner({
           {bannerWait && ` · ${bannerWait.next ? bannerWait.value : `${bannerWait.label}: ${bannerWait.value}`}`}
         </span>
       </span>
+      {onShowQr && ctx.ticketing.showQrOnTicket && ctx.visitorStatus.enabled && (
+        <Button variant="outline" onClick={onShowQr}>
+          <QrCode aria-hidden />
+          {t("showQr")}
+        </Button>
+      )}
       <Button variant="outline" onClick={onPrint}>
         <Printer aria-hidden />
         {t("print")}

@@ -1,8 +1,9 @@
 "use client";
 
 import { Printer } from "lucide-react";
+import QRCode from "qrcode";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { applyDigits } from "@/domain/i18n/digits";
@@ -32,6 +33,20 @@ export function IssuedDialog({
   const tq = useTranslations("queue");
   const locale = useLocale();
   const newRef = useRef<HTMLButtonElement>(null);
+  // Without a printer the visitor can scan this from the screen to follow the turn on their own phone.
+  const [qr, setQr] = useState<string | null>(null);
+  const showQr = !!result && ctx.ticketing.showQrOnTicket && ctx.visitorStatus.enabled;
+  const token = result?.ticket.publicToken;
+  useEffect(() => {
+    if (!showQr || !token) return setQr(null);
+    let cancelled = false;
+    void QRCode.toDataURL(`${window.location.origin}/t/${token}`, { margin: 1, width: 360, errorCorrectionLevel: "M" }).then(
+      (d) => !cancelled && setQr(d),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [showQr, token]);
   useEffect(() => {
     if (result) setTimeout(() => newRef.current?.focus(), 50);
   }, [result]);
@@ -71,6 +86,13 @@ export function IssuedDialog({
           )}
         </p>
         {wait?.disclaimer && <p className="text-muted-foreground -mt-2 text-xs">{wait.disclaimer}</p>}
+        {qr && (
+          <div className="flex items-center justify-center gap-4 rounded-2xl border p-3 text-start">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qr} alt="" className="size-32 rounded-lg bg-white p-1" />
+            <p className="text-muted-foreground max-w-48 text-sm">{t("scanToTrack")}</p>
+          </div>
+        )}
         <label className="text-muted-foreground mx-auto flex items-center gap-2 text-sm">
           <input
             type="checkbox"

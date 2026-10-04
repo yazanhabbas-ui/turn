@@ -1421,6 +1421,7 @@
   },
   "reception": {
     "title": "الاستقبال",
+    "showQr": "إظهار رمز QR",
     "chooseReason": "اختر سبب الزيارة",
     "search": "ابحث في الأسباب…",
     "shortcut": "مفتاح {key}",
@@ -1673,6 +1674,17 @@
   },
   "visitorStatus": {
     "title": "دورك",
+    "yourNumber": "رقمك",
+    "calledAs": "سيُنادى عليك بـ",
+    "calledAsHint": "انتبه لهذه الأرقام وراقب الشاشة.",
+    "updatedAt": "آخر تحديث {time}",
+    "refresh": "تحديث",
+    "steps": {
+      "waiting": "انتظار",
+      "called": "نداء",
+      "serving": "خدمة",
+      "done": "انتهى"
+    },
     "waiting": "يرجى الانتظار، سننادي على رقمك",
     "called": "حان دورك! تفضل إلى",
     "serving": "تتم خدمتك الآن",

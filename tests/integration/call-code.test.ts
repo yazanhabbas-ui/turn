@@ -10,6 +10,7 @@ import { updateSetting } from "@/server/admin/settings-admin";
 import { setClock } from "@/server/clock";
 import { AppError } from "@/server/http/errors";
 import { callNext, issueTicket, setAgentStatus, ticketAction } from "@/server/queue/tickets";
+import { publicTicketStatus } from "@/server/queue/views";
 import { actorFor, resetDemo } from "./fixtures";
 import { prepareTestDatabase } from "./helpers";
 
@@ -95,6 +96,10 @@ describe.runIf(available)("calling by phone digits and restarting numbers (datab
 
       const issued = (await issue("general", { callPhone: "+963 944 123 472" })).ticket;
       expect(issued.callCode).toBe("472");
+      // The visitor's own page says which digits to listen for, and carries the organization's look.
+      const page = await publicTicketStatus(issued.publicToken);
+      expect(page?.callCode).toBe("472");
+      expect(page?.branding.primaryColor).toMatch(/^#[0-9a-f]{6}$/i);
       // Eastern Arabic digits work too.
       const second = (await issue("general", { callPhone: "٠٥٠١٢٣٤٥٩٣٨" })).ticket;
       expect(second.callCode).toBe("938");

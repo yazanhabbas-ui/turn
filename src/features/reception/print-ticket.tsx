@@ -12,6 +12,12 @@ import { waitLine } from "../queue/wait-text";
 
 export type PrintJob = { ticket: Ticket; ahead: number; estimatedWaitMinutes: number; waitLow?: number; waitHigh?: number };
 
+/** What the QR code on the ticket is for, in the ticket's language (it prints in the visitor's language). */
+const QR_CAPTION: Record<string, string> = {
+  ar: "امسح الرمز لمتابعة دورك مباشرة",
+  en: "Scan to follow your turn live",
+};
+
 /** Link printed as a QR code: the visitor's live status page on this server. */
 export function statusUrl(ticket: Ticket) {
   return `${window.location.origin}/t/${ticket.publicToken}`;
@@ -110,8 +116,11 @@ export function PrintTicket({ job, ctx, onDone }: { job: PrintJob | null; ctx: R
           </div>
         )}
         {qr && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={qr} alt="" className="ticket-qr" />
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qr} alt="" className="ticket-qr" />
+            <div className="ticket-qr-caption">{QR_CAPTION[lang] ?? QR_CAPTION.en}</div>
+          </>
         )}
         {ctx.wifi.enabled && ctx.wifi.ssid && (
           <div className="ticket-wifi">

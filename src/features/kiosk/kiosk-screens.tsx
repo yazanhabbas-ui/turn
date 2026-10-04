@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, CircleAlert, Hand, Pr
 import QRCode from "qrcode";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { EntityIcon } from "@/components/app/entity-icon";
-import { onColorLarge } from "@/domain/branding/contrast";
+import { brandHero } from "@/domain/branding/hero";
 import { applyDigits } from "@/domain/i18n/digits";
 import { groupDigits, pressKey, type KeypadKey } from "@/domain/kiosk/keypad";
 import { dirOf, pickText } from "@/i18n/locales";
@@ -21,15 +21,7 @@ const BIG_BUTTON = "min-h-[4.5rem] rounded-2xl px-8 text-2xl font-bold transitio
  * the brand accent as a soft glow, and text that is white or near-black depending on how pale the colour is.
  */
 export function brandOf(ctx: Pick<KioskContext, "branding">) {
-  const primary = ctx.branding.primaryColor || "#0f766e";
-  const accent = ctx.branding.accentColor || "#b45309";
-  const on = onColorLarge(primary);
-  const pale = on !== "#ffffff";
-  const base = pale
-    ? `linear-gradient(135deg, color-mix(in srgb, ${primary} 78%, #fff), ${primary})`
-    : `linear-gradient(135deg, ${primary}, color-mix(in srgb, ${primary} 66%, #000))`;
-  const hero = `radial-gradient(circle at 92% 8%, color-mix(in srgb, ${accent} 55%, transparent) 0, transparent 42%), ${base}`;
-  return { primary, accent, on, hero, actionStyle: { backgroundColor: primary, color: on } };
+  return brandHero(ctx.branding);
 }
 
 /** The logo on a white plate; without a logo, the first letter of the name on the brand colour. */

@@ -267,6 +267,11 @@
     margin: 3mm auto 1mm;
     image-rendering: pixelated;
   }
+  #print-root .ticket-qr-caption {
+    font-size: 9pt;
+    font-weight: 600;
+    margin-bottom: 2mm;
+  }
   #print-root .ticket-wifi {
     margin: 3mm 0 1mm;
     padding-top: 2mm;

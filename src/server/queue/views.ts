@@ -526,6 +526,7 @@ export async function publicTicketStatus(token: string) {
     ? await db().select({ number: halls.number, name: halls.name }).from(halls).where(eq(halls.id, t.hallId))
     : [];
   const [branch] = await db().select({ name: branches.name }).from(branches).where(eq(branches.id, t.branchId));
+  const brand = await getSetting(t.organizationId, "branding", t.branchId);
   let position: Position | null = null;
   if (t.status === "WAITING") {
     const bctx = await db().transaction((tx) => loadBranchContext(tx, t.branchId));
@@ -533,8 +534,18 @@ export async function publicTicketStatus(token: string) {
   }
   return {
     displayNumber: t.displayNumber,
+    /** Last digits of the visitor's phone when the branch calls by them: what to listen and look for. */
+    callCode: t.callCode,
     status: t.status,
     language: t.language,
+    /** The organization's look for the page: logo, name and colours. */
+    branding: {
+      companyName: brand.companyName,
+      logoUrl: brand.logoUrl,
+      logoDarkUrl: brand.logoDarkUrl,
+      primaryColor: brand.primaryColor,
+      accentColor: brand.accentColor,
+    },
     reason: reason ? { name: reason.name, color: reason.color, icon: reason.icon } : null,
     branch: branch?.name ?? {},
     desk: desk ?? null,

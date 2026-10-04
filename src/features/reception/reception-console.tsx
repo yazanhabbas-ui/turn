@@ -239,7 +239,13 @@ export function ReceptionConsole() {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]">
         <div className="space-y-4">
-          <IssuedBanner result={last} ctx={c} onPrint={() => last && setPrintJob(last)} onDismiss={() => setLast(null)} />
+          <IssuedBanner
+            result={last}
+            ctx={c}
+            onPrint={() => last && setPrintJob(last)}
+            onShowQr={() => last && (setIssued(last), setLast(null))}
+            onDismiss={() => setLast(null)}
+          />
           <QuickBar
             ctx={c}
             priorityKey={priorityKey}

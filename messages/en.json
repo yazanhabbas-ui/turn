@@ -1421,6 +1421,7 @@
   },
   "reception": {
     "title": "Reception",
+    "showQr": "Show QR code",
     "chooseReason": "Choose the visit reason",
     "search": "Search reasons…",
     "shortcut": "Key {key}",
@@ -1673,6 +1674,17 @@
   },
   "visitorStatus": {
     "title": "Your turn",
+    "yourNumber": "Your number",
+    "calledAs": "You will be called as",
+    "calledAsHint": "Listen for these digits and watch the screen.",
+    "updatedAt": "Updated {time}",
+    "refresh": "Refresh",
+    "steps": {
+      "waiting": "Waiting",
+      "called": "Called",
+      "serving": "Serving",
+      "done": "Done"
+    },
     "waiting": "Please wait, we will call you",
     "called": "It's your turn! Please go to",
     "serving": "You are being served",
