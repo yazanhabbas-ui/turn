@@ -1,0 +1,10 @@
+import { chromium } from "@playwright/test";
+const base = "http://localhost:3000";
+const b = await chromium.launch();
+const ctx = await b.newContext({ viewport: { width: 1000, height: 820 }, colorScheme: "light", locale: "ar-SA" });
+await ctx.request.post(base + "/api/v1/auth/login", { data: { email: "admin@dor.local", password: "Dor@Demo2026" }, headers: { origin: base } });
+const p = await ctx.newPage();
+await p.goto(base + "/admin/settings?section=reception", { waitUntil: "domcontentloaded" });
+await p.waitForTimeout(2200);
+await p.screenshot({ path: process.env.TEMP + "/groups-ar.png", clip: { x: 600, y: 480, width: 400, height: 340 } });
+await b.close();

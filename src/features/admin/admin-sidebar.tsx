@@ -104,11 +104,13 @@ function SettingsMenu({ item, active, organization }: { item: (typeof ITEMS)[num
       {shown && (
         <div data-settings-menu className="border-sidebar-border ms-5 mt-1 space-y-2 border-s ps-2">
           {GROUPS.filter((g) => sections.some((s) => s.group === g)).map((g) => (
-            <div key={g}>
-              <div className="text-muted-foreground px-2 pt-1 pb-0.5 text-[11px] font-semibold tracking-wide">
-                {ts(`groups.${g}`)}
+            <div key={g} role="group" aria-label={ts(`groups.${g}`)}>
+              {/* A group title, not a link: bold and dark with a rule after it, and its settings indented below. */}
+              <div className="text-foreground mt-2 flex items-center gap-2 px-2 pb-1 text-xs font-bold" aria-hidden>
+                <span>{ts(`groups.${g}`)}</span>
+                <span className="bg-border h-px flex-1" />
               </div>
-              <ul>
+              <ul className="ps-2">
                 {sections
                   .filter((s) => s.group === g)
                   .map((s) => (
