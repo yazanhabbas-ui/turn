@@ -9,6 +9,7 @@ import { getBranding } from "@/server/branding";
 export async function AuthCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   const locale = await getLocale();
   const branding = await getBranding();
+  const companyName = pickText(branding.companyName, locale);
   const darkLogo = branding.logoDarkUrl && branding.logoDarkUrl !== branding.logoUrl ? branding.logoDarkUrl : null;
   return (
     <div className="from-brand/10 to-background flex min-h-dvh flex-col bg-gradient-to-b">
@@ -22,18 +23,20 @@ export async function AuthCard({ title, subtitle, children }: { title: string; s
             {branding.logoUrl ? (
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={branding.logoUrl} alt="" className={cn("mx-auto h-14 w-auto", darkLogo && "dark:hidden")} />
+                <img src={branding.logoUrl} alt={companyName} className={cn("mx-auto h-14 w-auto", darkLogo && "dark:hidden")} />
                 {darkLogo && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={darkLogo} alt="" className="mx-auto hidden h-14 w-auto dark:block" />
+                  <img src={darkLogo} alt={companyName} className="mx-auto hidden h-14 w-auto dark:block" />
                 )}
               </>
             ) : (
-              <div className="bg-brand mx-auto grid size-14 place-items-center rounded-2xl text-2xl font-bold text-white">
-                {pickText(branding.companyName, locale).slice(0, 1)}
-              </div>
+              <>
+                <div className="bg-brand mx-auto grid size-14 place-items-center rounded-2xl text-2xl font-bold text-white">
+                  {companyName.slice(0, 1)}
+                </div>
+                <p className="text-muted-foreground mt-3 text-sm font-medium">{companyName}</p>
+              </>
             )}
-            <p className="text-muted-foreground mt-3 text-sm font-medium">{pickText(branding.companyName, locale)}</p>
           </div>
           <div className="bg-card rounded-2xl border p-6 shadow-sm">
             <h1 className="text-xl font-bold">{title}</h1>
