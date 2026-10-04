@@ -184,10 +184,8 @@ function ScopedSettings({
   );
 
   const meta = (section: (typeof SECTIONS)[number]): string => {
-    if (scope.kind === "organization")
-      return t(
-        section.scope === "organization" ? "appliesOrganization" : section.scope === "city" ? "appliesCity" : "appliesBranch",
-      );
+    // At the organization level the badge would only repeat what the page already says, so it is left out there.
+    if (scope.kind === "organization") return "";
     const info = section.keys.length ? sourcesQuery.data?.sources[section.keys[0]!] : undefined;
     return info?.overridable ? sourceLabel(info.source) : t("sourceOrganization");
   };

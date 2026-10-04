@@ -76,17 +76,14 @@ export function ScopeSwitcher({
   const cityBranches = branchList.filter((b) => b.cityId === cityId);
 
   return (
-    <div
-      className="bg-card mb-5 flex flex-wrap items-end gap-x-4 gap-y-3 rounded-xl border p-3 shadow-sm md:p-4"
-      role="group"
-      aria-label={t("label")}
-    >
-      <div className="self-center text-sm font-semibold max-sm:w-full">{t("label")}</div>
+    <div className="mb-4 flex flex-wrap items-center gap-2" role="group" aria-label={t("label")}>
+      <div className="text-muted-foreground me-1 text-sm max-sm:w-full">{t("label")}</div>
       {access.organization && (
         <Button
           type="button"
           variant={scope.kind === "organization" ? "default" : "outline"}
           aria-pressed={scope.kind === "organization"}
+          size="sm"
           className="max-lg:h-10"
           onClick={() => change({ kind: "organization" })}
         >
@@ -95,14 +92,11 @@ export function ScopeSwitcher({
         </Button>
       )}
       {cityList.length > 0 && (
-        <label className="flex min-w-40 flex-col gap-1 text-xs font-medium max-sm:flex-1">
-          <span className="text-muted-foreground flex items-center gap-1">
-            <Building2 className="size-3.5" aria-hidden />
-            {t("city")}
-          </span>
+        <div className="flex min-w-40 items-center gap-1.5 max-sm:flex-1">
+          <Building2 className="text-muted-foreground size-4 shrink-0" aria-hidden />
           <NativeSelect
             aria-label={t("city")}
-            className={cn("max-lg:h-10", scope.kind !== "organization" && "border-brand")}
+            className={cn("h-8 max-lg:h-10", scope.kind !== "organization" && "border-brand")}
             value={cityId}
             onChange={(e) => {
               const id = e.target.value;
@@ -121,17 +115,14 @@ export function ScopeSwitcher({
               </option>
             ))}
           </NativeSelect>
-        </label>
+        </div>
       )}
       {cityId && cityBranches.length > 0 && (
-        <label className="flex min-w-40 flex-col gap-1 text-xs font-medium max-sm:flex-1">
-          <span className="text-muted-foreground flex items-center gap-1">
-            <MapPin className="size-3.5" aria-hidden />
-            {t("branch")}
-          </span>
+        <div className="flex min-w-40 items-center gap-1.5 max-sm:flex-1">
+          <MapPin className="text-muted-foreground size-4 shrink-0" aria-hidden />
           <NativeSelect
             aria-label={t("branch")}
-            className={cn("max-lg:h-10", scope.kind === "branch" && "border-brand")}
+            className={cn("h-8 max-lg:h-10", scope.kind === "branch" && "border-brand")}
             value={scope.kind === "branch" ? scope.id : ""}
             onChange={(e) => {
               const id = e.target.value;
@@ -146,7 +137,7 @@ export function ScopeSwitcher({
               </option>
             ))}
           </NativeSelect>
-        </label>
+        </div>
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, X } from "lucide-react";
+import { ChevronDown, Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -47,6 +47,18 @@ export function SettingsShell({
   const [pending, setPending] = useState<(() => void) | null>(null);
   const dirty = useRef(new Set<string>());
   const searchRef = useRef<HTMLInputElement>(null);
+  // Only the group of the open section is expanded at first, so the menu stays short; the others open on a click.
+  const activeGroup = sections.find((s) => s.id === active)?.group;
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(activeGroup ? [activeGroup] : []));
+  useEffect(() => {
+    if (activeGroup) setOpenGroups((prev) => (prev.has(activeGroup) ? prev : new Set(prev).add(activeGroup)));
+  }, [activeGroup]);
+  const toggleGroup = (g: string) =>
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(g)) next.add(g);
+      return next;
+    });
 
   // Back/forward or a link changing ?section= after the first render.
   useEffect(() => {
@@ -146,7 +158,7 @@ export function SettingsShell({
       <div className="mx-auto max-w-6xl">
         <PageHeader title={t("title")} description={t("description")} />
         {topBar}
-        <div className="gap-8 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+        <div className="gap-6 lg:grid lg:grid-cols-[14rem_minmax(0,1fr)]">
           <aside className="mb-5 space-y-3 lg:sticky lg:top-20 lg:mb-0 lg:max-h-[calc(100dvh-6rem)] lg:self-start lg:overflow-y-auto lg:pe-1">
             <div className="relative">
               <Search
@@ -250,13 +262,22 @@ export function SettingsShell({
                     ))}
                   </NativeSelect>
                 </div>
-                <nav className="hidden space-y-4 lg:block" aria-label={t("ui.navLabel")}>
+                <nav className="hidden space-y-1 lg:block" aria-label={t("ui.navLabel")}>
                   {GROUPS.filter((g) => sections.some((s) => s.group === g)).map((g) => (
                     <div key={g}>
-                      <div className="text-muted-foreground mb-1 px-2.5 text-xs font-semibold tracking-wide">
+                      <button
+                        type="button"
+                        aria-expanded={openGroups.has(g)}
+                        onClick={() => toggleGroup(g)}
+                        className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 flex min-h-9 w-full items-center justify-between rounded-lg px-2.5 text-start text-xs font-semibold tracking-wide outline-none focus-visible:ring-3"
+                      >
                         {t(`groups.${g}`)}
-                      </div>
-                      <ul className="space-y-0.5">
+                        <ChevronDown
+                          className={cn("size-4 shrink-0 transition-transform", !openGroups.has(g) && "-rotate-90 rtl:rotate-90")}
+                          aria-hidden
+                        />
+                      </button>
+                      <ul className={cn("space-y-0.5 pb-1", !openGroups.has(g) && "hidden")}>
                         {sections
                           .filter((s) => s.group === g)
                           .map((s) => {
@@ -295,9 +316,11 @@ export function SettingsShell({
               <div className="min-w-0">
                 <h2 className="text-lg leading-tight font-bold">{title(current.id)}</h2>
                 <p className="text-muted-foreground mt-0.5 text-sm">{t(`sectionDescriptions.${current.id}`)}</p>
-                <Badge variant="outline" className="mt-2">
-                  {t("ui.appliesTo")}: {meta(current)}
-                </Badge>
+                {meta(current) && (
+                  <Badge variant="outline" className="mt-2">
+                    {t("ui.appliesTo")}: {meta(current)}
+                  </Badge>
+                )}
               </div>
             </header>
             <div key={active} className="space-y-4">
