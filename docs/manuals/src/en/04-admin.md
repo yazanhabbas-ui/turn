@@ -259,6 +259,11 @@ The **Applies to** switcher decides the level you are editing. Values are inheri
 
 The **service day**: the **Daily numbering reset time** (in **Tickets**) is the branch-local time at which ticket numbers start again from 1.
 
+Two more options in **Tickets**:
+
+- **Restart numbers after**: during the day, after this ticket number the next one starts again at 1 (set 100 and the line goes `A-100`, then `A-001`). **0** keeps counting until the daily reset. A number still held by a waiting visitor is skipped, so two visitors never share a number.
+- **Call visitors by the last digits of their phone number** (with **Digits called**, 3 by default): for desks without a printer. Reception types the visitor's phone number and the screens and the voice call its last digits instead of the ticket number. Only the last digits are stored. Two visitors in the line cannot have the same digits.
+
 ![Settings](shot:admin-settings)
 
 ### 4.14 Notifications and message templates

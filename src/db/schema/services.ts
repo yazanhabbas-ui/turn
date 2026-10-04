@@ -191,6 +191,8 @@ export const ticketCounters = pgTable(
     prefix: text("prefix").notNull(),
     serviceDay: date("service_day").notNull(),
     lastNumber: integer("last_number").notNull().default(0),
+    /** How many times the numbers restarted at the start of the range during the day (setting `ticketing.numberResetAfter`). */
+    cycle: integer("cycle").notNull().default(0),
   },
   (t) => [primaryKey({ columns: [t.branchId, t.prefix, t.serviceDay] })],
 );

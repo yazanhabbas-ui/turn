@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { applyDigits } from "@/domain/i18n/digits";
 import { pickText } from "@/i18n/locales";
+import { CallCode } from "../queue/bits";
 import type { ReceptionContext } from "../queue/types";
 import { waitLine } from "../queue/wait-text";
 import type { IssueResult } from "./issue-panel";
@@ -49,6 +50,11 @@ export function IssuedDialog({
         <p className="text-brand tabular text-7xl leading-none font-bold tracking-tight" aria-label={t("yourNumber")}>
           {applyDigits(result.ticket.displayNumber, digits)}
         </p>
+        {result.ticket.callCode && (
+          <p className="text-lg">
+            {t("calledByPhone")} <CallCode code={result.ticket.callCode} className="text-xl" />
+          </p>
+        )}
         <p className="text-lg">
           {tq("ahead", { count: result.ahead })}
           {wait && (

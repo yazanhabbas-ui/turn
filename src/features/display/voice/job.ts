@@ -18,6 +18,8 @@ export type PlanInput = {
   packs: Record<string, Record<string, string>>;
   digits: DigitSystem;
   displayNumber: string;
+  /** Last digits of the visitor's phone: when set the call names those digits instead of the ticket number. */
+  callCode?: string | null;
   deskNumber: string | null;
   /** The language the visitor chose at reception. */
   ticketLanguage: string;
@@ -43,6 +45,7 @@ export function planCall(input: PlanInput): PlannedStep[] {
       announceDesk: v.announceDesk,
     },
     displayNumber: input.displayNumber,
+    callCode: input.callCode ?? null,
     deskNumber: input.deskNumber,
     ticketLanguage: input.ticketLanguage,
     digits: input.digits,

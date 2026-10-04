@@ -9,6 +9,8 @@ export type TicketStatus =
 export type Ticket = {
   id: string;
   displayNumber: string;
+  /** Last digits of the visitor's phone, called instead of the ticket number (setting `ticketing.callByPhone`). */
+  callCode: string | null;
   status: TicketStatus;
   branchId: string;
   queueId: string;
@@ -78,7 +80,7 @@ export type ReceptionContext = {
   agents: { id: string; displayName: L; status: string; reasons: string[] }[];
   modes: Record<string, "pull" | "push" | "hybrid" | "manual">;
   privacy: { consentText: L; requireConsent: boolean };
-  ticketing: { numberPad: number; separator: string; showQrOnTicket: boolean };
+  ticketing: { numberPad: number; separator: string; showQrOnTicket: boolean; callByPhone: boolean; callByPhoneDigits: number };
   visitorStatus: { enabled: boolean };
   /** Free Wi-Fi printed on the ticket when enabled. */
   wifi: {

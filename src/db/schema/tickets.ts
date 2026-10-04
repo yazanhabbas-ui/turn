@@ -102,6 +102,10 @@ export const tickets = pgTable(
     appointmentId: uuid("appointment_id").references(() => appointments.id),
     prefix: text("prefix").notNull(),
     number: integer("number").notNull(),
+    /** Which run of numbers within the service day: 0 until the numbers restart (A-100 then A-001), then 1, 2 ... */
+    cycle: integer("cycle").notNull().default(0),
+    /** Last digits of the visitor's phone number, announced instead of the ticket number when no ticket is printed. */
+    callCode: text("call_code"),
     /** Formatted ticket number, e.g. "A-014". */
     displayNumber: text("display_number").notNull(),
     /** Branch-local business day the ticket belongs to (numbers reset per service day). */
@@ -142,7 +146,7 @@ export const tickets = pgTable(
     updatedAt: updatedAt(),
   },
   (t) => [
-    uniqueIndex("tickets_branch_day_number_uq").on(t.branchId, t.serviceDay, t.prefix, t.number),
+    uniqueIndex("tickets_branch_day_number_uq").on(t.branchId, t.serviceDay, t.prefix, t.cycle, t.number),
     uniqueIndex("tickets_idempotency_uq").on(t.organizationId, t.idempotencyKey),
     index("tickets_queue_status_idx").on(t.queueId, t.status),
     index("tickets_branch_day_status_idx").on(t.branchId, t.serviceDay, t.status),

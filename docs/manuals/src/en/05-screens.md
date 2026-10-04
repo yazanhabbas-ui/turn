@@ -50,6 +50,8 @@ Three parts, one under another:
 
 A waiting-room screen is a full-screen page. It has a header with the clock and date, the call area (the latest call as large numbers, with the desk), a list of recent calls or desks, the waiting counts, rotating slides and a ticker line at the bottom. A small badge shows the connection state (**Connected**, **Reconnecting…**, **No network connection**) and whether sound is on.
 
+> **Note:** If the administrator turned on **Call visitors by the last digits of their phone number**, the screen shows **Phone ending in 472** (the last digits typed by reception) instead of the ticket number, and the voice reads those digits one by one. The recorded packs have no clips for that sentence, so the sentence voice or the browser voice speaks it.
+
 ## 4. Everyday tasks
 
 ### 4.1 Add a waiting-room screen and pair it

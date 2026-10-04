@@ -4,6 +4,7 @@ import { CalendarCheck, UsersRound } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { toWesternDigits } from "@/domain/i18n/digits";
 import { ErrorState, LoadingRows } from "@/components/admin/form";
 import { useErrorMessage } from "@/components/admin/use-api";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,7 @@ import { IssuedDialog } from "./issued-dialog";
 import { IssuePanel, ReasonPicker, issueRequest, newKey, type IssueResult } from "./issue-panel";
 import { LiveQueue } from "./live-queue";
 import { PrintTicket, type PrintJob } from "./print-ticket";
-import { IssuedBanner, QuickBar } from "./quick-bar";
+import { CallPhoneBar, IssuedBanner, QuickBar } from "./quick-bar";
 
 const BRANCH_KEY = "dor.reception.branch";
 const AUTOPRINT_KEY = "dor.reception.autoPrint";
@@ -46,6 +47,10 @@ export function ReceptionConsole() {
   const issuing = useRef(false);
   const message = useErrorMessage();
   const [checkIn, setCheckIn] = useState(false);
+  // Calling by phone: typed before tapping a reason, cleared after each ticket.
+  const [callPhone, setCallPhone] = useState("");
+  const [callPhoneInvalid, setCallPhoneInvalid] = useState(false);
+  const callPhoneRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try {
@@ -89,6 +94,8 @@ export function ReceptionConsole() {
 
   const onIssued = useCallback(
     (r: IssueResult) => {
+      setCallPhone("");
+      setCallPhoneInvalid(false);
       setSelected(null);
       setAppointment(null);
       setPriorityKey(null);
@@ -101,14 +108,29 @@ export function ReceptionConsole() {
     [autoPrint, state, ctx, reception?.afterIssue],
   );
 
+  // Calling by phone needs the visitor's phone number first; say so and put the cursor in the field when it is missing.
+  const phoneReady = useCallback(
+    (c: ReceptionContext) => {
+      if (!c.ticketing.callByPhone) return true;
+      const digits = toWesternDigits(callPhone).replace(/\D/g, "").length;
+      if (digits >= c.ticketing.callByPhoneDigits) return true;
+      setCallPhoneInvalid(true);
+      callPhoneRef.current?.focus();
+      toast.error(t("callPhoneNeeded"));
+      return false;
+    },
+    [callPhone, t],
+  );
+
   // The fast path: a reason with nothing to type issues on the first tap.
   const issueNow = useCallback(
     async (r: NonNullable<typeof reason>) => {
       const c = ctx.data;
       if (!c || issuing.current) return;
+      if (!phoneReady(c)) return;
       issuing.current = true;
       try {
-        onIssued(await issueRequest(c, r, { priorityKey, language: visitorLanguage, idempotencyKey: newKey() }));
+        onIssued(await issueRequest(c, r, { priorityKey, language: visitorLanguage, callPhone, idempotencyKey: newKey() }));
       } catch (err) {
         // Anything the quick path cannot settle by itself (a missing field, a rule) opens the form with the message.
         if (err instanceof ApiError && (err.details?.reason === "missing_field" || err.details?.reason === "invalid_field")) {
@@ -118,7 +140,7 @@ export function ReceptionConsole() {
         issuing.current = false;
       }
     },
-    [ctx.data, onIssued, priorityKey, visitorLanguage, message],
+    [ctx.data, onIssued, priorityKey, visitorLanguage, message, callPhone, phoneReady],
   );
 
   const pick = useCallback(
@@ -232,6 +254,18 @@ export function ReceptionConsole() {
               }
             }}
           />
+          {c.ticketing.callByPhone && (
+            <CallPhoneBar
+              digits={c.ticketing.callByPhoneDigits}
+              value={callPhone}
+              onChange={(v) => {
+                setCallPhone(v);
+                setCallPhoneInvalid(false);
+              }}
+              inputRef={callPhoneRef}
+              invalid={callPhoneInvalid}
+            />
+          )}
           <ReasonPicker ctx={c} selected={selected} onSelect={pick} />
           {reason && (
             <IssuePanel
@@ -240,6 +274,7 @@ export function ReceptionConsole() {
               appointmentId={appointment?.id}
               priorityKey={priorityKey}
               language={visitorLanguage}
+              callPhone={callPhone}
               onIssued={onIssued}
               onClear={() => (setSelected(null), setAppointment(null))}
             />

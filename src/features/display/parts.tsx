@@ -13,6 +13,8 @@ import type { ConnectionState, DisplayState } from "./use-display";
 export type Call = {
   ticketId: string;
   displayNumber: string;
+  /** `displayNumber` is the last digits of the visitor's phone, not a ticket number. */
+  byPhone?: boolean;
   deskNumber: string | null;
   at: number;
   recall: boolean;
@@ -140,6 +142,7 @@ export function NowServing({
 }: Pick<LayoutProps, "state" | "lang" | "t" | "call" | "flashing"> & { size?: "hero" | "xl" }) {
   const latest = state.recent[0];
   const number = call?.displayNumber ?? latest?.displayNumber ?? null;
+  const byPhone = call ? !!call.byPhone : !!latest?.byPhone;
   const desk = call ? call.deskNumber : (latest?.deskNumber ?? null);
   // A group called to a hall is shown as one card: the hall and every number.
   const hall = call ? call.hall : hallOfRecent(state, latest);
@@ -175,6 +178,7 @@ export function NowServing({
       )}
     >
       <p className="text-dsp-muted text-[3vh] font-medium">{t("nowServing")}</p>
+      {number && byPhone && <p className="text-dsp-soft text-[3.4vh] font-semibold">{t("phoneEnding")}</p>}
       {number ? (
         <>
           <p
@@ -234,6 +238,7 @@ export function DeskList({ state, lang, t, call, flashing }: Pick<LayoutProps, "
                 )}
                 dir="ltr"
               >
+                {d.byPhone && <span className="text-dsp-muted me-3 text-[2.4vh] font-semibold">{t("phoneEnding")}</span>}
                 {num(d.displayNumber, state)}
                 {d.otherNumbers.length > 0 && (
                   <span className="text-dsp-muted ms-3 text-[3.4vh] font-bold">

@@ -79,6 +79,15 @@ export const SETTINGS = {
         .regex(/^\d{2}:\d{2}$/)
         .default("03:00"),
       showQrOnTicket: z.boolean().default(true),
+      /**
+       * After this ticket number the numbers start again at the beginning of the range during the day (A-100, then
+       * A-001). 0 = the numbers only restart at the daily reset time. A number still in use by a waiting visitor is skipped.
+       */
+      numberResetAfter: z.number().int().min(0).max(9999).default(0),
+      /** Call visitors by the last digits of their phone number (for desks without a ticket printer). Reception types the phone. */
+      callByPhone: z.boolean().default(false),
+      /** How many of the last digits are called. */
+      callByPhoneDigits: z.number().int().min(2).max(6).default(3),
     })
     .prefault({}),
   security: z

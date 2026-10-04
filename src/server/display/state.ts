@@ -57,6 +57,7 @@ export async function displayState(display: DisplayRow) {
     .select({
       id: tickets.id,
       displayNumber: tickets.displayNumber,
+      callCode: tickets.callCode,
       status: tickets.status,
       deskId: tickets.deskId,
       hallId: tickets.hallId,
@@ -69,6 +70,7 @@ export async function displayState(display: DisplayRow) {
     .select({
       id: tickets.id,
       displayNumber: tickets.displayNumber,
+      callCode: tickets.callCode,
       status: tickets.status,
       deskId: tickets.deskId,
       hallId: tickets.hallId,
@@ -99,9 +101,11 @@ export async function displayState(display: DisplayRow) {
       name: d.name,
       zone: d.zone,
       status: here.length ? (here.some((x) => x.status === "CALLED") ? "called" : "serving") : "free",
-      displayNumber: t?.displayNumber ?? null,
+      // With calling by phone the screens show the last digits of the phone, not the ticket number.
+      displayNumber: t ? (t.callCode ?? t.displayNumber) : null,
+      byPhone: !!t?.callCode,
       /** Further visitors at the same desk (agents that serve several at once). */
-      otherNumbers: here.slice(1).map((x) => x.displayNumber),
+      otherNumbers: here.slice(1).map((x) => x.callCode ?? x.displayNumber),
       ticketId: t?.id ?? null,
     };
   });
@@ -221,7 +225,8 @@ export async function displayState(display: DisplayRow) {
     })
     .map((t) => ({
       ticketId: t.id,
-      displayNumber: t.displayNumber,
+      displayNumber: t.hallId ? t.displayNumber : (t.callCode ?? t.displayNumber),
+      byPhone: !t.hallId && !!t.callCode,
       status: t.status,
       deskNumber: t.hallId ? null : (deskById.get(t.deskId!)?.number ?? null),
       hallId: t.hallId ?? null,

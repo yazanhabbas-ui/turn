@@ -12,6 +12,8 @@ export type QueueEvent =
       branchId: string;
       ticketId: string;
       displayNumber: string;
+      /** Last digits of the visitor's phone; when set, screens and the voice call it instead of the ticket number. */
+      callCode?: string | null;
       deskId: string | null;
       deskNumber: string | null;
       agentId: string;

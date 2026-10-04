@@ -118,6 +118,8 @@ export function issueRequest(
     consent?: boolean;
     assignToAgentId?: string | null;
     appointmentId?: string | null;
+    /** Calling by phone: the visitor's phone number, of which the last digits are called. */
+    callPhone?: string;
     idempotencyKey: string;
   },
 ) {
@@ -130,6 +132,7 @@ export function issueRequest(
       language: opts.language,
       fields: opts.fields ?? {},
       consent: opts.consent ?? false,
+      ...(opts.callPhone ? { callPhone: opts.callPhone } : {}),
       assignToAgentId: opts.assignToAgentId ?? null,
       appointmentId: opts.appointmentId ?? null,
       source: opts.appointmentId ? "appointment" : "reception",
@@ -145,6 +148,7 @@ export function IssuePanel({
   appointmentId,
   priorityKey,
   language,
+  callPhone,
   onIssued,
   onClear,
   submit,
@@ -166,6 +170,8 @@ export function IssuePanel({
   /** Chosen in the bar above the reasons; null = the reason's default. */
   priorityKey: string | null;
   language: string;
+  /** Calling by phone: typed above the reasons. */
+  callPhone?: string;
   onIssued: (r: IssueResult) => void;
   onClear: () => void;
 }) {
@@ -219,6 +225,7 @@ export function IssuePanel({
             consent,
             assignToAgentId: assignTo || null,
             appointmentId,
+            callPhone,
             idempotencyKey: key.current,
           });
       key.current = newKey();

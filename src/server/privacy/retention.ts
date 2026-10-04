@@ -105,8 +105,8 @@ export async function runRetention(organizationId: string, opts: RetentionOption
       "id",
       null,
       sql`t.organization_id = ${org} and t.status in ${FINAL_TICKET} and coalesce(t.finished_at, t.arrived_at) < ${tickets}
-        and (t.intake <> '{}'::jsonb or t.notes is not null)`,
-      { set: sql`intake = '{}'::jsonb, notes = null, updated_at = now()` },
+        and (t.intake <> '{}'::jsonb or t.notes is not null or t.call_code is not null)`,
+      { set: sql`intake = '{}'::jsonb, notes = null, call_code = null, updated_at = now()` },
     );
     counts.tickets += await step(
       dryRun,

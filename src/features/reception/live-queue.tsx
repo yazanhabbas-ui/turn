@@ -23,7 +23,7 @@ import { pickText } from "@/i18n/locales";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { queueAgentOptions } from "../queue/agent-options";
-import { Elapsed, StatusBadge } from "../queue/bits";
+import { CallCode, Elapsed, StatusBadge } from "../queue/bits";
 import type { QueueState, ReceptionContext, Ticket } from "../queue/types";
 
 type Filter = "active" | "waiting" | "called" | "done" | "all";
@@ -160,6 +160,7 @@ export function LiveQueue({
                 <div className="tabular text-lg font-bold" dir="ltr">
                   {x.displayNumber}
                 </div>
+                <CallCode code={x.callCode} className="mt-0.5" />
                 {priority && priority.key !== "normal" && (
                   <span className="rounded px-1 text-[10px] font-semibold text-white" style={{ backgroundColor: priority.color }}>
                     {pickText(priority.name, locale)}

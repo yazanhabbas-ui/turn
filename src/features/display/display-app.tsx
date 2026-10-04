@@ -95,7 +95,8 @@ function Screen({
     (e: CallEvent) => {
       setCall({
         ticketId: e.ticketId,
-        displayNumber: e.displayNumber,
+        displayNumber: e.callCode ?? e.displayNumber,
+        byPhone: !!e.callCode,
         deskNumber: e.deskNumber,
         at: Date.now(),
         recall: e.recall,
@@ -115,6 +116,7 @@ function Screen({
         deviceToken: token,
         digits: s.regional.digitsVoice,
         displayNumber: e.displayNumber,
+        callCode: e.callCode ?? null,
         deskNumber: e.deskNumber,
         ticketLanguage: e.language,
         recall: e.recall,

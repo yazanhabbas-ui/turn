@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, type DbOrTx, type Tx } from "@/db/client";
 import {
@@ -21,12 +21,13 @@ import { dispatch, expiredReservations, selectTicketForAgent } from "@/domain/di
 import { orderTickets } from "@/domain/distribution/ordering";
 import { nameSkeleton, normalizeArabic } from "@/domain/i18n/arabic-normalize";
 import { formatTicketNumber } from "@/domain/i18n/digits";
-import { nextNumber } from "@/domain/tickets/numbering";
+import { callCodeOf, nextCyclicNumber } from "@/domain/tickets/numbering";
 import { isReasonHiddenInCity } from "./city-reasons";
 import { minutesSinceEnd, shiftState } from "@/domain/shifts/window";
 import { normalizePhone } from "@/domain/tickets/phone";
 import {
   ACTIVE_WITH_AGENT,
+  TERMINAL,
   EVENT_TYPE,
   InvalidTransitionError,
   transition,
@@ -214,6 +215,11 @@ export const issueInput = z.object({
   /** Values for the reason's intake fields (name, phone, company, national_id_last4, email, notes, custom…). */
   fields: z.record(z.string(), z.string().max(500)).default({}),
   consent: z.boolean().default(false),
+  /**
+   * Phone number whose last digits are called when the setting `ticketing.callByPhone` is on (reception types it, also when
+   * the reason has no phone field). Only the last digits are kept, not the number.
+   */
+  callPhone: z.string().max(30).optional(),
   /** Manual mode: the receptionist picks the agent. */
   assignToAgentId: uuid.nullable().optional(),
   appointmentId: uuid.nullable().optional(),
@@ -367,7 +373,28 @@ export async function issueTicketWith(actor: QueueActor, input: IssueInput, opts
       }
     }
 
-    // Number: atomic per (branch, prefix, service day).
+    const ticketing = await getSetting(org, "ticketing", bctx.branch.id, tx);
+
+    // Calling by phone: the last digits of the phone number stand in for the ticket number on screens and in the voice.
+    let callCode: string | null = null;
+    if (ticketing.callByPhone) {
+      const digits = ticketing.callByPhoneDigits;
+      callCode = input.callPhone ? callCodeOf(input.callPhone, digits) : null;
+      if (!callCode && (input.callPhone || input.source === "reception"))
+        throw new AppError("validation", { reason: "call_code_required", field: "callPhone", digits });
+      if (callCode) {
+        const [clash] = await tx
+          .select({ id: tickets.id })
+          .from(tickets)
+          .where(
+            and(eq(tickets.branchId, bctx.branch.id), eq(tickets.callCode, callCode), notInArray(tickets.status, [...TERMINAL])),
+          )
+          .limit(1);
+        if (clash) throw new AppError("conflict", { reason: "call_code_in_use" });
+      }
+    }
+
+    // Number: atomic per (branch, prefix, service day). With `numberResetAfter` the numbers start over (A-100, A-001).
     const prefix = queue.prefix || reason.prefix;
     const [counter] = await tx
       .insert(ticketCounters)
@@ -377,11 +404,33 @@ export async function issueTicketWith(actor: QueueActor, input: IssueInput, opts
         set: { lastNumber: sql`${ticketCounters.lastNumber}` },
       })
       .returning();
-    const number = nextNumber(counter.lastNumber, { start: queue.numberStart, end: queue.numberEnd });
-    if (number === null) throw new AppError("conflict", { reason: "range_exhausted" });
+    const wrap = ticketing.numberResetAfter > 0;
+    const lastAllowed = wrap ? Math.min(queue.numberEnd, ticketing.numberResetAfter) : queue.numberEnd;
+    let taken: Set<number> | undefined;
+    if (wrap) {
+      const rows = await tx
+        .select({ number: tickets.number })
+        .from(tickets)
+        .where(
+          and(
+            eq(tickets.branchId, bctx.branch.id),
+            eq(tickets.serviceDay, bctx.serviceDay),
+            eq(tickets.prefix, prefix),
+            notInArray(tickets.status, [...TERMINAL]),
+          ),
+        );
+      taken = new Set(rows.map((r) => r.number));
+    }
+    const step = nextCyclicNumber(
+      counter.lastNumber,
+      counter.cycle,
+      { start: queue.numberStart, end: lastAllowed },
+      { wrap, inUse: (n) => taken?.has(n) ?? false },
+    );
+    if (!step) throw new AppError("conflict", { reason: "range_exhausted" });
     await tx
       .update(ticketCounters)
-      .set({ lastNumber: number })
+      .set({ lastNumber: step.number, cycle: step.cycle })
       .where(
         and(
           eq(ticketCounters.branchId, bctx.branch.id),
@@ -389,7 +438,7 @@ export async function issueTicketWith(actor: QueueActor, input: IssueInput, opts
           eq(ticketCounters.serviceDay, bctx.serviceDay),
         ),
       );
-    const ticketing = await getSetting(org, "ticketing", bctx.branch.id, tx);
+    const number = step.number;
 
     const visitor = await upsertVisitor(ctx, org, fields, input.language);
     let appointmentAt: Date | null = null;
@@ -415,6 +464,8 @@ export async function issueTicketWith(actor: QueueActor, input: IssueInput, opts
         appointmentId: input.appointmentId ?? null,
         prefix,
         number,
+        cycle: step.cycle,
+        callCode,
         displayNumber: formatTicketNumber(prefix, number, { pad: ticketing.numberPad, separator: ticketing.separator }),
         serviceDay: bctx.serviceDay,
         status: "WAITING",
@@ -746,6 +797,7 @@ async function announce(ctx: Ctx, t: TicketRow, recall: boolean) {
     branchId: t.branchId,
     ticketId: t.id,
     displayNumber: t.displayNumber,
+    callCode: t.callCode,
     deskId: t.deskId,
     deskNumber: desk?.number ?? null,
     agentId: t.servingAgentId!,
@@ -1170,6 +1222,8 @@ function breakCtx(ctx: Ctx, p: { organizationId: string; branchId: string }) {
 export type TicketView = {
   id: string;
   displayNumber: string;
+  /** Last digits of the visitor's phone, called instead of the ticket number (setting `ticketing.callByPhone`). */
+  callCode: string | null;
   status: TicketStatus;
   branchId: string;
   queueId: string;
@@ -1211,6 +1265,7 @@ export function viewOf(t: TicketRow, v: VisitorRow | null | undefined): TicketVi
   return {
     id: t.id,
     displayNumber: t.displayNumber,
+    callCode: t.callCode,
     status: t.status,
     branchId: t.branchId,
     queueId: t.queueId,

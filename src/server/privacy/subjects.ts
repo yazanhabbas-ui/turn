@@ -349,8 +349,13 @@ export async function eraseSubject(actor: Actor, id: string, input: z.infer<type
         (
           await tx
             .update(tickets)
-            .set({ intake: {}, notes: null })
-            .where(and(inArray(tickets.id, ids), sql`(${tickets.intake} <> '{}'::jsonb or ${tickets.notes} is not null)`))
+            .set({ intake: {}, notes: null, callCode: null })
+            .where(
+              and(
+                inArray(tickets.id, ids),
+                sql`(${tickets.intake} <> '{}'::jsonb or ${tickets.notes} is not null or ${tickets.callCode} is not null)`,
+              ),
+            )
         ).rowCount ?? 0;
       cleared.comments =
         (

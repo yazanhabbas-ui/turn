@@ -5,10 +5,12 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { EntityIcon } from "@/components/app/entity-icon";
 import { Button } from "@/components/ui/button";
-import { applyDigits } from "@/domain/i18n/digits";
+import { Input } from "@/components/ui/input";
+import { applyDigits, toWesternDigits } from "@/domain/i18n/digits";
 import { LOCALE_CODES, LOCALES, pickText } from "@/i18n/locales";
 import { cn } from "@/lib/utils";
 import type { ReceptionContext } from "../queue/types";
+import { CallCode } from "../queue/bits";
 import { waitLine } from "../queue/wait-text";
 import type { IssueResult } from "./issue-panel";
 
@@ -86,6 +88,62 @@ export function QuickBar({
   );
 }
 
+/**
+ * Calling by phone (Settings → Tickets): the visitor's phone number is typed BEFORE tapping a reason; its last digits are
+ * what the screens and the voice call. Cleared after every ticket. Only the last digits are kept, not the number.
+ */
+export function CallPhoneBar({
+  digits,
+  value,
+  onChange,
+  inputRef,
+  invalid,
+}: {
+  digits: number;
+  value: string;
+  onChange: (v: string) => void;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  invalid: boolean;
+}) {
+  const t = useTranslations("reception");
+  const typed = toWesternDigits(value).replace(/\D/g, "");
+  const code = typed.length >= digits ? typed.slice(-digits) : null;
+  return (
+    <div
+      className={cn(
+        "bg-card flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border-2 px-4 py-3",
+        invalid ? "border-destructive" : "border-brand/40",
+      )}
+    >
+      <label htmlFor="call-phone" className="font-semibold">
+        {t("callPhone")}
+      </label>
+      <Input
+        id="call-phone"
+        ref={inputRef}
+        type="tel"
+        inputMode="tel"
+        dir="ltr"
+        autoComplete="off"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="05xxxxxxxx"
+        aria-invalid={invalid}
+        className="h-11 w-56 text-lg"
+      />
+      <span className="text-muted-foreground text-sm" aria-live="polite">
+        {code ? (
+          <>
+            {t("callPhoneWillCall")} <CallCode code={code} className="text-lg" />
+          </>
+        ) : (
+          t("callPhoneHint", { digits })
+        )}
+      </span>
+    </div>
+  );
+}
+
 const BANNER_MS = 12_000;
 
 /** Non-blocking confirmation of the last ticket: the receptionist can keep tapping the next reason right away. */
@@ -120,6 +178,11 @@ export function IssuedBanner({
       <span className="text-brand tabular text-4xl leading-none font-bold">
         {applyDigits(result.ticket.displayNumber, ctx.regional.digitsScreen)}
       </span>
+      {result.ticket.callCode && (
+        <span className="flex items-center gap-2 text-sm">
+          {t("calledByPhone")} <CallCode code={result.ticket.callCode} className="text-2xl" />
+        </span>
+      )}
       <span className="min-w-0 flex-1">
         <span className="block font-medium">{pickText(reason?.name, locale)}</span>
         <span className="text-muted-foreground text-sm">

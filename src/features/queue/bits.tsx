@@ -1,6 +1,6 @@
 "use client";
 
-import { Wifi, WifiOff } from "lucide-react";
+import { Phone, Wifi, WifiOff } from "lucide-react";
 import { useNow, useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { ConnectionState } from "./use-queue";
@@ -93,6 +93,26 @@ export function ConnectionPill({ state }: { state: ConnectionState }) {
       {state === "connected" ? <Wifi className="size-3.5" aria-hidden /> : <WifiOff className="size-3.5" aria-hidden />}
       {label}
       {state === "connected" && <span className="bg-status-serving size-1.5 animate-pulse rounded-full" aria-hidden />}
+    </span>
+  );
+}
+
+/** The last digits of the visitor's phone, which are called instead of the ticket number. Nothing when there is none. */
+export function CallCode({ code, className }: { code: string | null | undefined; className?: string }) {
+  const t = useTranslations("queue");
+  if (!code) return null;
+  return (
+    <span
+      dir="ltr"
+      title={t("callCodeTitle")}
+      aria-label={t("callCodeAria", { code })}
+      className={cn(
+        "bg-brand/10 text-brand tabular inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-sm font-semibold",
+        className,
+      )}
+    >
+      <Phone className="size-3.5" aria-hidden />
+      {code}
     </span>
   );
 }

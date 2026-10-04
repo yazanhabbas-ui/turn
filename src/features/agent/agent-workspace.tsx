@@ -19,7 +19,7 @@ import { pickText } from "@/i18n/locales";
 import { Link } from "@/i18n/navigation";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { ConnectionPill, Elapsed, formatElapsed, SlaTimer, StatusBadge } from "../queue/bits";
+import { CallCode, ConnectionPill, Elapsed, formatElapsed, SlaTimer, StatusBadge } from "../queue/bits";
 import type { AgentWorkspace, BreakEvent, Ticket } from "../queue/types";
 import { useLiveQuery } from "../queue/use-queue";
 import { HallPanel } from "./hall-panel";
@@ -378,6 +378,7 @@ export function AgentWorkspaceView() {
                     )}
                   >
                     <span dir="ltr">{x.displayNumber}</span>
+                    <CallCode code={x.callCode} />
                     <span className="text-muted-foreground text-xs font-normal">
                       {t(x.status === "CALLED" ? "tabCalled" : "tabServing")}
                     </span>
@@ -526,6 +527,7 @@ export function AgentWorkspaceView() {
                       <span className="tabular font-bold" dir="ltr">
                         {x.displayNumber}
                       </span>
+                      <CallCode code={x.callCode} />
                       <span className="text-muted-foreground text-xs">{pickText(reasonOf(x.reasonId)?.name, locale)}</span>
                     </div>
                     <VisitBadges visitor={x.visitor} />
@@ -761,6 +763,7 @@ function CurrentTicket({
           <div className="text-brand tabular text-6xl leading-none font-bold" dir="ltr">
             {ticket.displayNumber}
           </div>
+          {ticket.callCode && <CallCode code={ticket.callCode} className="mt-2 text-xl" />}
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <StatusBadge status={ticket.status} />
             {ticket.recallCount > 0 && (

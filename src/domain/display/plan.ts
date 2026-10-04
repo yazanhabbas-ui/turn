@@ -1,5 +1,6 @@
-import type { DigitSystem } from "../i18n/digits";
+import { applyDigits, type DigitSystem } from "../i18n/digits";
 import { renderTemplate } from "../templates/render";
+import { ARABIC_UNITS } from "./arabic-words";
 import {
   arabicDeskWords,
   arabicTicketWords,
@@ -28,8 +29,24 @@ export type PlannedStep = { locale: string; text: string; keys: string[]; units?
 export function withoutDesk(template: string): string {
   const parts = template.split(/(?<=[،,.;:؛])\s*/u);
   const kept = parts.filter((p) => !p.includes("{desk}"));
-  if (kept.length && kept.some((p) => p.includes("{ticket}"))) return kept.join(" ").replace(/[،,.;:؛\s]+$/u, "");
+  if (kept.length && kept.some((p) => p.includes("{ticket}") || p.includes("{code}")))
+    return kept.join(" ").replace(/[،,.;:؛\s]+$/u, "");
   return "{ticket}";
+}
+
+/**
+ * What is said when visitors are called by the last digits of their phone (setting `ticketing.callByPhone`), used when no
+ * voice template named `ticket_called_by_phone` exists. `{code}` is the digits, read one by one.
+ */
+export const BY_PHONE_PHRASES: Record<string, string> = {
+  ar: "صاحب الهاتف المنتهي بالأرقام {code}، الرجاء التوجه إلى المكتب {desk}",
+  en: "The phone number ending in {code}, please go to desk {desk}",
+};
+
+/** The digits of a call code, one by one: Arabic words ("أربعة، سبعة، اثنان") or spaced digits in other languages. */
+export function callCodeWords(code: string, locale: string): string {
+  const digits = [...code].filter((c) => c >= "0" && c <= "9");
+  return locale === "ar" ? digits.map((d) => ARABIC_UNITS[Number(d)]).join("، ") : digits.join(" ");
 }
 
 /**
@@ -43,19 +60,43 @@ export function planAnnouncement(input: {
   event: "ticket_called" | "ticket_recalled";
   settings: PlanSettings;
   displayNumber: string;
+  /** Last digits of the visitor's phone: the call names these instead of the ticket number. */
+  callCode?: string | null;
   deskNumber: string | null;
   ticketLanguage: string;
   digits: DigitSystem;
   agent?: string | null;
   reason?: string | null;
 }): PlannedStep[] {
-  const set = input.templates[input.event] ?? input.templates.ticket_called ?? {};
+  const byPhone = !!input.callCode;
+  const set = byPhone
+    ? { ...BY_PHONE_PHRASES, ...(input.templates.ticket_called_by_phone ?? {}) }
+    : (input.templates[input.event] ?? input.templates.ticket_called ?? {});
   const { ticketReading: reading, announceDesk } = input.settings;
   const steps: PlannedStep[] = [];
   for (const locale of callSequence(input.settings.callLanguages, input.ticketLanguage)) {
     const template = set[locale];
     if (!template) continue;
     const body = announceDesk ? template : withoutDesk(template);
+    if (byPhone) {
+      // Recorded packs have no clips for the digits sentence, so the voice that can speak a sentence takes it.
+      steps.push({
+        locale,
+        text: renderTemplate(body, {
+          code: callCodeWords(input.callCode!, locale),
+          ticket: callCodeWords(input.callCode!, locale),
+          desk: input.deskNumber
+            ? locale === "ar"
+              ? arabicDeskWords(input.deskNumber)
+              : applyDigits(input.deskNumber, input.digits)
+            : "",
+          agent: input.agent ?? "",
+          reason: input.reason ?? "",
+        }),
+        keys: [],
+      });
+      continue;
+    }
     if (locale === "ar") {
       const units = buildArabicUnits({ ticket: input.displayNumber, desk: input.deskNumber, reading, includeDesk: announceDesk });
       steps.push({

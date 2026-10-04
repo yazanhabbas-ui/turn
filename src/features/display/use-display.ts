@@ -10,6 +10,8 @@ export type ConnectionState = "connected" | "connecting" | "offline";
 export type CallEvent = {
   ticketId: string;
   displayNumber: string;
+  /** Last digits of the visitor's phone: shown and spoken instead of the ticket number. */
+  callCode?: string | null;
   deskNumber: string | null;
   reasonId: string;
   language: string;

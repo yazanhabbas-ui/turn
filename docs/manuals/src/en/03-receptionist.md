@@ -106,6 +106,19 @@ Each reason has its own fields. The common ones are **Visitor name**, **Mobile n
 
 For most reasons you do nothing: the next free agent calls the ticket. For some reasons your administrator uses manual assignment. Then the form shows **Assign to agent**. Choose an agent, or leave **Next available agent**. This list also appears for you when your role has the reassign permission.
 
+### Calling visitors by the last digits of their phone number
+
+If your administrator turned on **Call visitors by the last digits of their phone number** (**Settings > Tickets**), a **Visitor phone number** field appears above the visit reasons. This is for desks with no ticket printer.
+
+1. Type the visitor's phone number in **Visitor phone number**. The line next to it shows how it will be called, for example **Will be called as 472**.
+2. Choose the visit reason as usual.
+3. The confirmation shows the ticket number and **Will be called by the last digits of the phone**. Tell the visitor to listen for those digits.
+4. When the turn comes, the screens show **Phone ending in 472** and the voice reads the digits one by one.
+
+> **Note:** Only the last digits are kept, not the full number. If the field is empty or too short, the ticket is not issued and the message **Type the visitor's phone number first.** appears.
+
+> **Tip:** If another visitor in the line already has the same last digits, you get **Another visitor in the line has a phone number ending in the same digits. Ask for another number.** Ask the visitor for a different number (for example a relative's).
+
 ### Print a ticket
 
 Tickets print on a thermal receipt printer (80 mm). The printed ticket shows:
