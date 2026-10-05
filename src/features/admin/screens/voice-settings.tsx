@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Field } from "@/components/admin/form";
 import { api, useApiMutation } from "@/components/admin/use-api";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { buildArabicUnits, TICKET_READINGS, unitsText } from "@/domain/display/arabic-speech";
@@ -257,8 +258,10 @@ export function VoiceSettingsForm({
           />
         </div>
         <fieldset className="space-y-2">
-          <legend className="mb-1 text-sm font-medium">{t("voiceNames")}</legend>
-          <p className="text-muted-foreground text-xs">{t("voiceNamesHint")}</p>
+          <legend className="mb-1 flex items-center gap-1.5 text-sm font-medium">
+            {t("voiceNames")}
+            <InfoTip>{t("voiceNamesHint")}</InfoTip>
+          </legend>
           <div className="grid gap-2 sm:grid-cols-2">
             {(["ar", "en"] as const).map((code) => (
               <Input

@@ -26,7 +26,7 @@ export function AreaMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={<Button variant="secondary" size="sm" aria-label={label} className={cn("max-w-36 min-w-0", className)} />}
+        render={<Button variant="secondary" size="sm" aria-label={label} className={cn("max-w-28 min-w-0 sm:max-w-36", className)} />}
       >
         <span className="truncate">{here?.label ?? label}</span>
         <ChevronDown aria-hidden />

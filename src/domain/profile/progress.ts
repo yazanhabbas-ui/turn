@@ -1,4 +1,5 @@
 import { averageScore, satisfiedPct } from "../feedback/csat";
+import { isNegative, NEGATIVE_DEFAULT, negativePct } from "../feedback/negative";
 import { agentTimes, mean } from "../reports/compute";
 import { zonedParts, zonedToUtc } from "../schedule/time";
 
@@ -23,9 +24,23 @@ export type ProgressFact = {
 export type DayCount = { date: string; count: number };
 
 /** A visitor's answer about a visit the agent served. */
-export type ProgressFeedback = { agentId: string | null; score: number; comment: string | null; at: number };
+export type ProgressFeedback = {
+  agentId: string | null;
+  score: number;
+  comment: string | null;
+  at: number;
+  /** Ticket number the answer belongs to (shown with the comment so the agent can find the visit). */
+  displayNumber?: string;
+};
 
-export type CsatStats = { avg: number | null; responses: number; satisfiedPct: number | null };
+export type CsatStats = {
+  avg: number | null;
+  responses: number;
+  satisfiedPct: number | null;
+  /** Answers at or below the negative threshold (D63), as a count and a share. */
+  negative: number;
+  negativePct: number | null;
+};
 
 export type CsatPeriod = {
   current: CsatStats;
@@ -82,6 +97,8 @@ export type ProgressInput = {
     branchActiveDays: string[];
     /** Visitor feedback on the agent's visits, and on the whole branch (aggregated only); omitted when feedback is off. */
     feedback?: { own: ProgressFeedback[]; branch: ProgressFeedback[] | null };
+    /** Scores up to this are negative (default 2). */
+    negativeThreshold?: number;
     /** Hall sessions the agent hosted and finished (D62), with the visitors who came to each. */
     hosted?: { closedAt: number; visitors: number }[];
   };
@@ -102,9 +119,11 @@ export type Progress = {
     /** Visitor satisfaction; null when feedback is off. */
     csat: null | {
       periods: Record<Period, CsatPeriod>;
+      /** Scores up to this count as negative (the `feedback.lowScoreThreshold` setting). */
+      threshold: number;
       trend: { date: string; avg: number | null; responses: number }[];
       /** The latest comments on the agent's own visits. */
-      recent: { at: number; score: number; comment: string }[];
+      recent: { at: number; score: number; comment: string; displayNumber: string | null }[];
     };
     /** Hall sessions hosted and visitors received in them per period; absent when the agent hosted none in the window. */
     hosted?: Record<Period, { sessions: number; visitors: number }>;
@@ -257,9 +276,16 @@ export function computeProgress(input: ProgressInput): Progress {
     let csat: NonNullable<Progress["agent"]>["csat"] = null;
     if (a.feedback) {
       const fb = a.feedback;
+      const threshold = a.negativeThreshold ?? NEGATIVE_DEFAULT;
       const stats = (list: ProgressFeedback[]): CsatStats => {
         const scores = list.map((x) => x.score);
-        return { avg: averageScore(scores), responses: scores.length, satisfiedPct: scores.length ? satisfiedPct(scores) : null };
+        return {
+          avg: averageScore(scores),
+          responses: scores.length,
+          satisfiedPct: scores.length ? satisfiedPct(scores) : null,
+          negative: scores.filter((x) => isNegative(x, threshold)).length,
+          negativePct: negativePct(scores, threshold),
+        };
       };
       const between = (list: ProgressFeedback[], from: number, to: number) => list.filter((x) => x.at >= from && x.at < to);
       const csatPeriods = {} as Record<Period, CsatPeriod>;
@@ -278,6 +304,7 @@ export function computeProgress(input: ProgressInput): Progress {
       }
       csat = {
         periods: csatPeriods,
+        threshold,
         trend: Array.from({ length: days }, (_, i) => addDays(today, i - days + 1)).map((date) => ({
           date,
           avg: averageScore(byDate.get(date) ?? []),
@@ -287,7 +314,7 @@ export function computeProgress(input: ProgressInput): Progress {
           .filter((x) => x.comment)
           .sort((x, y) => y.at - x.at)
           .slice(0, 5)
-          .map((x) => ({ at: x.at, score: x.score, comment: x.comment! })),
+          .map((x) => ({ at: x.at, score: x.score, comment: x.comment!, displayNumber: x.displayNumber ?? null })),
       };
     }
 

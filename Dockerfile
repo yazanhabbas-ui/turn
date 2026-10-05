@@ -43,6 +43,8 @@ COPY --chown=node:node public ./public
 COPY --chown=node:node drizzle ./drizzle
 COPY --chown=node:node messages ./messages
 COPY --chown=node:node src ./src
+# The user manuals (PDF) served by the Help center; the rest of docs/ stays out of the image.
+COPY --chown=node:node docs/manuals/pdf ./docs/manuals/pdf
 COPY --chown=node:node docker/entrypoint.sh ./docker/entrypoint.sh
 RUN chmod +x docker/entrypoint.sh
 USER node

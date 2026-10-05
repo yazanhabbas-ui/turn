@@ -1,5 +1,6 @@
 "use client";
 
+import { InfoTip } from "@/components/ui/info-tip";
 import { Label } from "@/components/ui/label";
 
 /** A titled group of voice settings. */
@@ -17,8 +18,10 @@ export function SettingCard({
   return (
     <section id={id} className="bg-card space-y-4 rounded-xl border p-4 shadow-sm md:p-6">
       <div className="space-y-1">
-        <h3 className="text-base font-semibold">{title}</h3>
-        {hint && <p className="text-muted-foreground text-sm">{hint}</p>}
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-base font-semibold">{title}</h3>
+          {hint && <InfoTip>{hint}</InfoTip>}
+        </div>
       </div>
       {children}
     </section>
@@ -50,7 +53,10 @@ export function Range({
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between gap-3">
-        <Label htmlFor={id}>{label}</Label>
+        <div className="flex items-center gap-1.5">
+          <Label htmlFor={id}>{label}</Label>
+          {hint && <InfoTip>{hint}</InfoTip>}
+        </div>
         <span className="text-sm font-medium tabular-nums" dir="ltr">
           {display}
         </span>
@@ -65,7 +71,6 @@ export function Range({
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
       />
-      {hint && <p className="text-muted-foreground text-xs">{hint}</p>}
     </div>
   );
 }

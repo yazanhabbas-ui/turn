@@ -5,9 +5,11 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { useApiQuery } from "@/components/admin/use-api";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { MAX_REPORT_DAYS, REPORT_PRESETS, customRange, type AgentReport, type ReportPreset } from "@/domain/profile/agent-report";
 import { cn } from "@/lib/utils";
+import { RatingSummary } from "./rating-summary";
 import { ReportDetails } from "./report-details";
 import {
   ComparisonTable,
@@ -47,8 +49,6 @@ export function ReportsPanel() {
 
   return (
     <div className="space-y-4">
-      <p className="text-muted-foreground text-sm">{t("hint")}</p>
-
       <div className="no-print flex flex-wrap items-end gap-3">
         <div role="tablist" aria-label={t("period.label")} className="bg-muted inline-flex rounded-lg p-1">
           {[...REPORT_PRESETS, "custom" as const].map((k) => (
@@ -66,6 +66,7 @@ export function ReportsPanel() {
             </button>
           ))}
         </div>
+        <InfoTip className="mb-2">{t("hint")}</InfoTip>
         {mode === "custom" && (
           <form
             className="flex flex-wrap items-end gap-2"
@@ -118,6 +119,21 @@ export function ReportsPanel() {
             </div>
           </div>
 
+          {r.csat && (
+            <RatingSummary
+              period={t("period.shown", { from: f.day(r.range.from), to: f.day(r.range.to) })}
+              data={{
+                avg: r.csat.avg,
+                responses: r.csat.responses,
+                satisfiedPct: r.csat.satisfiedPct,
+                negativeCount: r.csat.negativeCount,
+                negativePct: r.csat.negativePct,
+                threshold: r.csat.threshold,
+                previousAvg: r.csat.previousAvg,
+                branchAvg: r.csat.branchAvg,
+              }}
+            />
+          )}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {[
               [t("summary.served"), f.int(r.totals.served)],

@@ -21,8 +21,7 @@ export function HallsSection({ initial }: { initial: SettingValue<"halls"> }) {
     <SettingForm k="halls" initial={initial}>
       {(v, set) => (
         <>
-          <p className="text-muted-foreground text-sm">{t("hallsIntro")}</p>
-          <SettingCard title={t("cards.hallsGeneral")} columns={2}>
+          <SettingCard title={t("cards.hallsGeneral")} description={t("hallsIntro")} columns={2}>
             <div className="sm:col-span-2">
               <Check
                 id="hl-enabled"

@@ -9,6 +9,7 @@ import { api, useApiMutation, useApiQuery } from "@/components/admin/use-api";
 import { ENTITY_ICON_KEYS, EntityIcon } from "@/components/app/entity-icon";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { AgentPicker } from "@/components/admin/agent-picker";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -49,8 +50,10 @@ const EMPTY: Form = {
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
     <section className="bg-card rounded-xl border p-4 shadow-sm md:p-5">
-      <h2 className="font-semibold">{title}</h2>
-      {hint && <p className="text-muted-foreground mt-1 text-sm">{hint}</p>}
+      <div className="flex items-center gap-1.5">
+        <h2 className="font-semibold">{title}</h2>
+        {hint && <InfoTip>{hint}</InfoTip>}
+      </div>
       <div className="mt-4 space-y-4">{children}</div>
     </section>
   );
@@ -282,9 +285,9 @@ export function ReasonEditor({ id, canManage }: { id: string | null; canManage: 
               checked={form.isFeatured}
               onChange={(e) => set("isFeatured", e.target.checked)}
             />
-            <span>
+            <span className="inline-flex items-center gap-1.5">
               <span className="font-medium">{t("featured")}</span>
-              <span className="text-muted-foreground block text-xs">{t("featuredHint")}</span>
+              <InfoTip>{t("featuredHint")}</InfoTip>
             </span>
           </label>
         </Section>
@@ -434,7 +437,7 @@ export function ReasonEditor({ id, canManage }: { id: string | null; canManage: 
         </Section>
 
         <Section title={t("deliverySection")} hint={t("deliveryHint")}>
-          <Field label={t("delivery")} htmlFor="rs-delivery">
+          <Field label={t("delivery")} htmlFor="rs-delivery" hint={form.delivery === "hall" ? t("deliveryHallHint") : undefined}>
             <NativeSelect
               id="rs-delivery"
               className="sm:w-64"
@@ -445,20 +448,19 @@ export function ReasonEditor({ id, canManage }: { id: string | null; canManage: 
               <option value="hall">{t("deliveryHall")}</option>
             </NativeSelect>
           </Field>
-          {form.delivery === "hall" && <p className="text-muted-foreground text-xs">{t("deliveryHallHint")}</p>}
         </Section>
 
         <Section title={t("kioskSection")} hint={t("kioskSectionHint")}>
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-1.5 text-sm">
             <input
               type="checkbox"
-              className="accent-brand size-4"
+              className="accent-brand mr-0.5 size-4"
               checked={form.requiresStaff}
               onChange={(e) => set("requiresStaff", e.target.checked)}
             />
             {t("requiresStaff")}
+            <InfoTip>{t("requiresStaffHint")}</InfoTip>
           </label>
-          <p className="text-muted-foreground text-xs">{t("requiresStaffHint")}</p>
         </Section>
 
         <Section title={t("assignments")} hint={t("assignmentsHint")}>

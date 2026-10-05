@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import type { SettingValue } from "@/server/settings/registry";
 import { SettingCard } from "../setting-card";
-import { Check, NumField } from "../setting-field";
+import { Check } from "../setting-field";
 import { SettingForm } from "../setting-form";
 
 export function VisitorStatusSection({ initial }: { initial: SettingValue<"visitorStatus"> }) {
@@ -20,14 +20,6 @@ export function VisitorStatusSection({ initial }: { initial: SettingValue<"visit
               onChange={(enabled) => set({ enabled })}
             />
           </div>
-          <NumField
-            id="vs-turns"
-            label={t("notifyTurnsAway")}
-            value={v.notifyTurnsAway}
-            min={1}
-            max={10}
-            onChange={(notifyTurnsAway) => set({ notifyTurnsAway })}
-          />
         </SettingCard>
       )}
     </SettingForm>

@@ -2,11 +2,12 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { Angry, Frown, Laugh, Loader2, Meh, Smile, Star, type LucideIcon } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useLocale } from "next-intl";
 import { useEffect, useId, useRef, useState } from "react";
 import { pickText } from "@/i18n/locales";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { usePageText } from "../pagecontent/page-text";
 
 export type FeedbackCardConfig = {
   style: "stars" | "faces";
@@ -37,7 +38,7 @@ export function FeedbackCard({
   /** Opened from the feedback link: scroll to the card and focus it. */
   autoFocus?: boolean;
 }) {
-  const t = useTranslations("visitorStatus.feedback");
+  const t = usePageText("visitor");
   const locale = useLocale();
   const uid = useId();
   const rootRef = useRef<HTMLElement>(null);
@@ -81,7 +82,7 @@ export function FeedbackCard({
         className="bg-card mt-8 w-full max-w-sm rounded-2xl border p-5 text-center shadow-sm outline-none"
       >
         <Smile className="text-brand mx-auto size-10" aria-hidden />
-        <p className="mt-3 text-lg font-semibold">{pickText(config.thanks, locale) || t("thanks")}</p>
+        <p className="mt-3 text-lg font-semibold">{pickText(config.thanks, locale) || t("feedback.thanks")}</p>
       </section>
     );
   }
@@ -102,7 +103,7 @@ export function FeedbackCard({
       >
         <fieldset>
           <legend id={`${uid}-title`} className="w-full text-center text-lg font-semibold">
-            {pickText(config.prompt, locale) || t("prompt")}
+            {pickText(config.prompt, locale) || t("feedback.prompt")}
           </legend>
           <div className="mt-4 flex justify-center gap-1.5 sm:gap-2">
             {SCORES.map((n) => {
@@ -124,7 +125,7 @@ export function FeedbackCard({
                     checked={score === n}
                     onChange={() => setScore(n)}
                     className="sr-only"
-                    aria-label={t(`scores.${n}`)}
+                    aria-label={t(`feedback.scores.${n}`)}
                   />
                   {config.style === "stars" ? (
                     <Star className={cn("size-9", lit && "fill-current")} aria-hidden />
@@ -136,13 +137,13 @@ export function FeedbackCard({
             })}
           </div>
           <p className="text-muted-foreground mt-2 h-5 text-center text-sm" aria-live="polite">
-            {score !== null ? t(`scores.${score}`) : ""}
+            {score !== null ? t(`feedback.scores.${score}`) : ""}
           </p>
         </fieldset>
 
         {config.askNps && (
           <fieldset>
-            <legend className="text-sm font-medium">{pickText(config.npsPrompt, locale) || t("npsPrompt")}</legend>
+            <legend className="text-sm font-medium">{pickText(config.npsPrompt, locale) || t("feedback.npsPrompt")}</legend>
             <div className="mt-2 grid grid-cols-6 gap-1.5" dir="ltr">
               {Array.from({ length: 11 }, (_, n) => (
                 <label
@@ -165,8 +166,8 @@ export function FeedbackCard({
               ))}
             </div>
             <div className="text-muted-foreground mt-1 flex justify-between text-xs">
-              <span>{t("npsLow")}</span>
-              <span>{t("npsHigh")}</span>
+              <span>{t("feedback.npsLow")}</span>
+              <span>{t("feedback.npsHigh")}</span>
             </div>
           </fieldset>
         )}
@@ -174,7 +175,7 @@ export function FeedbackCard({
         {config.askComment && (
           <div>
             <label htmlFor={`${uid}-comment`} className="text-sm font-medium">
-              {pickText(config.commentPrompt, locale) || t("commentPrompt")}
+              {pickText(config.commentPrompt, locale) || t("feedback.commentPrompt")}
             </label>
             <textarea
               id={`${uid}-comment`}
@@ -189,7 +190,7 @@ export function FeedbackCard({
 
         {failed && (
           <p role="alert" className="text-destructive text-sm">
-            {t("failed")}
+            {t("feedback.failed")}
           </p>
         )}
         <button
@@ -198,7 +199,7 @@ export function FeedbackCard({
           className="bg-brand focus-visible:ring-ring/60 flex h-12 w-full items-center justify-center gap-2 rounded-xl px-4 text-base font-semibold text-white outline-none focus-visible:ring-3 disabled:opacity-50"
         >
           {send.isPending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-          {t("submit")}
+          {t("feedback.submit")}
         </button>
       </form>
     </section>

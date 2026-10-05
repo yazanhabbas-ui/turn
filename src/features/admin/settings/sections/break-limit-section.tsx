@@ -20,8 +20,7 @@ export function BreakLimitSection({ initial }: { initial: SettingValue<"breaks">
           v.maxOnBreak.mode === "count" ? v.maxOnBreak.value : Math.max(1, Math.floor((example * v.maxOnBreak.value) / 100));
         return (
           <>
-            <p className="text-muted-foreground text-sm">{t("breakLimitIntro")}</p>
-            <SettingCard title={t("cards.breakLimit")}>
+            <SettingCard title={t("cards.breakLimit")} description={t("breakLimitIntro")}>
               <Check
                 id="bl-enabled"
                 label={t("breakLimitEnabled")}

@@ -55,8 +55,7 @@ export function AlertsSection({ initial }: { initial: SettingValue<"alerts"> }) 
     <SettingForm k="alerts" initial={initial}>
       {(v, set) => (
         <>
-          <p className="text-muted-foreground text-sm">{t("alertsIntro")}</p>
-          <SettingCard title={t("cards.alertsSwitch")}>
+          <SettingCard title={t("cards.alertsSwitch")} description={t("alertsIntro")}>
             <Check
               id="al-enabled"
               label={t("alertsEnabled")}

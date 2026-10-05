@@ -5,7 +5,9 @@ import { tickets } from "@/db/schema";
 import { StopForm } from "@/features/visitor/stop-form";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/locales";
 import { redirect } from "@/i18n/navigation";
+import { resolveText } from "@/domain/pagecontent/text";
 import { verifyStop } from "@/server/notifications/optout";
+import { visitorTextsForTicket } from "@/server/pagecontent/service";
 
 export const dynamic = "force-dynamic";
 
@@ -25,13 +27,18 @@ export default async function StopPage({
   const { locale, token } = await params;
   const { s } = await searchParams;
   setRequestLocale(locale);
-  const t = await getTranslations("visitorStatus.stop");
+  const t = await getTranslations("visitorStatus");
+  const texts = await visitorTextsForTicket(token);
   const [ticket] = await db().select({ language: tickets.language }).from(tickets).where(eq(tickets.publicToken, token));
   if (!ticket || !s || !verifyStop(token, s)) {
-    return <p className="text-muted-foreground mx-auto mt-24 max-w-sm px-5 text-center">{t("invalid")}</p>;
+    return (
+      <p className="text-muted-foreground mx-auto mt-24 max-w-sm px-5 text-center">
+        {resolveText(texts, "stop.invalid", locale, {}, (id) => t(id))}
+      </p>
+    );
   }
   if (locale === DEFAULT_LOCALE && ticket.language !== locale && isLocale(ticket.language)) {
     redirect({ href: `/t/${token}/stop?s=${s}`, locale: ticket.language });
   }
-  return <StopForm token={token} sig={s} />;
+  return <StopForm token={token} sig={s} texts={texts} />;
 }

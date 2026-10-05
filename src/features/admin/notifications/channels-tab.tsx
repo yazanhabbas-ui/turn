@@ -7,6 +7,7 @@ import { ErrorState, Field, LoadingRows } from "@/components/admin/form";
 import { api, useApiMutation, useApiQuery } from "@/components/admin/use-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { SettingCard } from "../settings/setting-card";
@@ -47,6 +48,7 @@ export function ChannelsTab({ canTest }: { canTest: boolean }) {
               <div className="flex items-center gap-2">
                 <Icon className="text-muted-foreground size-5" aria-hidden />
                 <h3 className="font-semibold">{t(`channels.${p.channel}`)}</h3>
+                <InfoTip>{t(`setup.${p.channel}`)}</InfoTip>
                 <Badge
                   variant={p.state === "configured" ? "default" : p.state === "mock" ? "secondary" : "outline"}
                   className="ms-auto"
@@ -54,7 +56,6 @@ export function ChannelsTab({ canTest }: { canTest: boolean }) {
                   {t(`status.${p.state}`)}
                 </Badge>
               </div>
-              <p className="text-muted-foreground text-xs">{t(`setup.${p.channel}`)}</p>
               {p.provider && (
                 <p className="text-xs" dir="ltr">
                   {p.provider}

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { DEFAULT_PASSWORD_POLICY } from "@/domain/auth/password-policy";
+import { pageContentSchema } from "@/domain/pagecontent/schema";
 import { NOTIFICATION_CHANNELS, NOTIFICATION_EVENTS } from "@/domain/notifications/policy";
 
 const localized = z.record(z.string(), z.string());
@@ -150,7 +151,10 @@ export const SETTINGS = {
       askComment: z.boolean().default(true),
       /** Also ask "how likely are you to recommend us" on a 0-10 scale. */
       askNps: z.boolean().default(false),
-      /** Scores at or below this raise a low-score alert (see Alerts). */
+      /**
+       * What counts as a negative rating: scores up to this value (D63). One threshold for everything: low-score
+       * alerts, the report's comment list, the wallboard panel and the agent's own views.
+       */
       lowScoreThreshold: z.number().int().min(1).max(4).default(2),
       prompt: localized.default({ ar: "كيف كانت تجربتك معنا؟", en: "How was your visit?" }),
       commentPrompt: localized.default({
@@ -230,6 +234,14 @@ export const SETTINGS = {
       showClock: z.boolean().default(true),
       /** Today's average satisfaction tile (when visitor feedback is on). */
       showCsat: z.boolean().default(true),
+      /** The "Negative ratings" panel (needs visitor feedback on): ticket, desk, agent and reason of recent low scores. */
+      showNegativeRatings: z.boolean().default(true),
+      /** How many negative ratings the panel lists. */
+      negativeRatingsCount: z.number().int().min(1).max(10).default(5),
+      /** Look-back window of the panel in hours (a data window, not a working-hours rule). */
+      negativeRatingsHours: z.number().int().min(1).max(168).default(24),
+      /** Also show the visitor's comment (shortened) on the panel; off by default. */
+      showNegativeComment: z.boolean().default(false),
       /** Text and tile size for big screens, in percent. */
       textScale: z.number().int().min(80).max(160).default(100),
     })
@@ -390,6 +402,8 @@ export const SETTINGS = {
       ratePerMinute: z.number().int().min(1).max(120).default(12),
     })
     .prefault({}),
+  /** Wording and options of the kiosk and of the visitor status page (D66). Only changed texts are stored. */
+  pageContent: pageContentSchema,
   /** Report definitions. */
   reports: z
     .object({
@@ -486,6 +500,7 @@ export const BRANCH_OVERRIDABLE: readonly SettingKey[] = [
   "waitEstimate",
   "notifications",
   "halls",
+  "pageContent",
 ];
 
 /**
@@ -518,6 +533,7 @@ export const CITY_OVERRIDABLE: readonly SettingKey[] = [
   "voice",
   "alerts",
   "reports",
+  "pageContent",
 ];
 
 for (const k of BRANCH_OVERRIDABLE)

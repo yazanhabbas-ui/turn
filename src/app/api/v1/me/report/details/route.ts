@@ -13,6 +13,7 @@ export const GET = route({}, async ({ actor, query }) =>
     detailsQuery.parse({
       outcome: query.get("outcome") || undefined,
       reasonId: query.get("reasonId") || undefined,
+      negativeOnly: query.get("negativeOnly") === "1" ? true : undefined,
       before: query.get("before") || undefined,
       limit: query.get("limit") ? Number(query.get("limit")) : undefined,
     }),

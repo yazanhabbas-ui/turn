@@ -1,3 +1,4 @@
+import { InfoTip } from "@/components/ui/info-tip";
 import { cn } from "@/lib/utils";
 
 /** A titled group of related fields inside a section. Two columns on wide screens via `columns`. */
@@ -19,8 +20,10 @@ export function SettingCard({
     <section className={cn("bg-card rounded-xl border shadow-sm", className)}>
       {(title || description) && (
         <header className="border-b px-4 py-3 md:px-5">
-          {title && <h3 className="text-sm font-semibold">{title}</h3>}
-          {description && <p className="text-muted-foreground mt-0.5 text-xs">{description}</p>}
+          <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+            {title}
+            {description && <InfoTip>{description}</InfoTip>}
+          </h3>
         </header>
       )}
       <div

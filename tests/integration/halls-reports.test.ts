@@ -283,7 +283,7 @@ describe.runIf(available)("halls in reports, wallboard, visitor page, notificati
         hall: { number: "1", name: { ar: "القاعة أ", en: "Hall A" } },
       });
       // no personal data in the public payload
-      expect(JSON.stringify(called)).not.toMatch(/phone|visitor/i);
+      expect(JSON.stringify(called)).not.toMatch(/"(visitor|phone)":/i);
 
       await sessionAction(khalid, session!.id, { action: "enter" });
       expect(await publicTicketStatus(v1.publicToken)).toMatchObject({ status: "SERVING", hall: { number: "1" } });

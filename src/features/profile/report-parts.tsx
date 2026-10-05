@@ -4,6 +4,7 @@ import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { axisStyle, baseOption, CHART_THEME, EChart } from "@/components/charts/echart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { InfoTip } from "@/components/ui/info-tip";
 import type { AgentReport, DailyRow, ReportStats } from "@/domain/profile/agent-report";
 import { pickText } from "@/i18n/locales";
 import { cn } from "@/lib/utils";
@@ -225,8 +226,10 @@ export function HourChart({ report }: { report: AgentReport }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("byHour.title")}</CardTitle>
-        <p className="text-muted-foreground text-xs">{t("byHour.hint")}</p>
+        <div className="flex items-center gap-1.5">
+          <CardTitle>{t("byHour.title")}</CardTitle>
+          <InfoTip>{t("byHour.hint")}</InfoTip>
+        </div>
       </CardHeader>
       <CardContent>
         <EChart option={option} height={220} ariaLabel={t("byHour.aria")} />
@@ -249,8 +252,10 @@ export function DistributionChart({ report }: { report: AgentReport }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("distribution.title")}</CardTitle>
-        <p className="text-muted-foreground text-xs">{t("distribution.hint")}</p>
+        <div className="flex items-center gap-1.5">
+          <CardTitle>{t("distribution.title")}</CardTitle>
+          <InfoTip>{t("distribution.hint")}</InfoTip>
+        </div>
       </CardHeader>
       <CardContent>
         <EChart option={option} height={220} ariaLabel={t("distribution.aria")} />
@@ -307,8 +312,10 @@ export function ComparisonTable({ report }: { report: AgentReport }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("comparison.title")}</CardTitle>
-        <p className="text-muted-foreground text-xs">{t("comparison.hint")}</p>
+        <div className="flex items-center gap-1.5">
+          <CardTitle>{t("comparison.title")}</CardTitle>
+          <InfoTip>{t("comparison.hint")}</InfoTip>
+        </div>
       </CardHeader>
       <CardContent className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -361,8 +368,10 @@ export function SatisfactionBlock({ report }: { report: AgentReport }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("csat.title")}</CardTitle>
-        <p className="text-muted-foreground text-xs">{t("csat.hint")}</p>
+        <div className="flex items-center gap-1.5">
+          <CardTitle>{t("csat.title")}</CardTitle>
+          <InfoTip>{t("csat.hint")}</InfoTip>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {!csat ? (
@@ -371,22 +380,6 @@ export function SatisfactionBlock({ report }: { report: AgentReport }) {
           <p className="text-muted-foreground text-sm">{t("csat.none")}</p>
         ) : (
           <>
-            <dl className="grid grid-cols-3 gap-3 text-sm">
-              <div>
-                <dt className="text-muted-foreground">{t("csat.avg")}</dt>
-                <dd className="text-xl font-bold tabular-nums">
-                  {csat.avg === null ? t("none") : t("csat.outOf", { n: f.score(csat.avg) })}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">{t("csat.responses")}</dt>
-                <dd className="text-xl font-bold tabular-nums">{f.int(csat.responses)}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">{t("csat.satisfied")}</dt>
-                <dd className="text-xl font-bold tabular-nums">{f.pct(csat.satisfiedPct)}</dd>
-              </div>
-            </dl>
             <div>
               <h4 className="text-muted-foreground mb-2 text-xs font-medium">{t("csat.distribution")}</h4>
               <ul className="space-y-1">
@@ -409,7 +402,11 @@ export function SatisfactionBlock({ report }: { report: AgentReport }) {
                     <li key={`${c.displayNumber}-${c.at}`} className="border-s-2 ps-3 text-sm">
                       <p>{c.comment}</p>
                       <p className="text-muted-foreground mt-0.5 text-xs">
-                        {t("csat.commentMeta", { number: c.displayNumber, score: c.score })}
+                        {t("csat.commentMeta", {
+                          number: c.displayNumber,
+                          score: c.score,
+                          date: format.dateTime(new Date(c.at), { dateStyle: "medium", timeZone: report.range.timezone }),
+                        })}
                       </p>
                     </li>
                   ))}

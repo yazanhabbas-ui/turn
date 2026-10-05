@@ -110,7 +110,9 @@ export function initRealtime(server: HttpServer): Server {
       // Waiting-room screens authenticate with their device token instead of a user session.
       const deviceToken = socket.handshake.auth?.deviceToken;
       if (typeof deviceToken === "string") {
-        socket.data.display = await authenticateDevice(deviceToken);
+        // A self check-in kiosk says so; its token is refused for any other kind and the other way round.
+        if (socket.handshake.auth?.kind === "kiosk") socket.data.kiosk = await authenticateDevice(deviceToken, { ip }, "kiosk");
+        else socket.data.display = await authenticateDevice(deviceToken);
         return next();
       }
       const token = readCookie(socket.handshake.headers.cookie, sessionCookieName());
@@ -133,6 +135,12 @@ export function initRealtime(server: HttpServer): Server {
       if (n <= 0) socketsPerIp.delete(ip);
       else socketsPerIp.set(ip, n);
     });
+    const kiosk = socket.data.kiosk as { branchId: string; organizationId: string } | undefined;
+    if (kiosk) {
+      // A kiosk only hears "refetch your context" for its own branch or organization (D66); it receives no queue events.
+      socket.join([`kiosk:${kiosk.branchId}`, `kiosks:${kiosk.organizationId}`]);
+      return;
+    }
     const display = socket.data.display as { id: string; branchId: string; organizationId: string } | undefined;
     if (display) {
       // Read-only: a screen only receives events for its own branch.

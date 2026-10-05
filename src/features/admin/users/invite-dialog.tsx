@@ -1,6 +1,5 @@
 "use client";
 
-import { CheckCircle2, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { CopyField, Field, LocalizedInput } from "@/components/admin/form";
@@ -14,35 +13,15 @@ import type { L, Lookups } from "../types";
 import { useText } from "../use-lookups";
 
 export const INVITES = "/api/v1/admin/invites";
-const CHANNELS = ["email", "whatsapp", "sms"] as const;
-type Channel = (typeof CHANNELS)[number];
+type Channel = "email" | "whatsapp" | "sms";
 export type InviteResult = { link: string; deliveries: { channel: Channel; status: "queued" | "not_configured" }[] };
-
-export function ChannelLabel({ channel }: { channel: Channel }) {
-  const t = useTranslations("invites");
-  return <>{t(channel === "email" ? "channelEmail" : channel === "whatsapp" ? "channelWhatsapp" : "channelSms")}</>;
-}
 
 /** Shows the invite link with copy button and what happened on each delivery channel. */
 export function InviteResultView({ result }: { result: InviteResult }) {
   const t = useTranslations("invites");
-  const tc = useTranslations("invites");
   return (
     <div className="space-y-3">
       <CopyField label={t("linkReady")} value={result.link} />
-      {result.deliveries.map((d) => (
-        <p key={d.channel} className="flex items-center gap-2 text-sm">
-          {d.status === "queued" ? (
-            <CheckCircle2 className="text-status-serving size-4" aria-hidden />
-          ) : (
-            <TriangleAlert className="text-status-called size-4" aria-hidden />
-          )}
-          {tc(d.status === "queued" ? "deliveryQueued" : "deliveryNotConfigured", {
-            channel:
-              d.channel === "email" ? t("channelEmail") : d.channel === "whatsapp" ? t("channelWhatsapp") : t("channelSms"),
-          })}
-        </p>
-      ))}
     </div>
   );
 }
@@ -98,15 +77,12 @@ export function InviteDialog({
           displayName: form.displayName,
           roleId: form.roleId,
           branchId: form.branchId || null,
-          channels: form.channels.filter((c) => (c === "email" ? form.email : form.phone)),
+          channels: [],
           locale: form.locale,
         },
       }),
     { invalidate: [[INVITES]], onSuccess: (r) => setResult(r) },
   );
-
-  const toggle = (c: Channel) =>
-    setForm((f) => ({ ...f, channels: f.channels.includes(c) ? f.channels.filter((x) => x !== c) : [...f.channels, c] }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -189,23 +165,6 @@ export function InviteDialog({
                 </NativeSelect>
               </Field>
             </div>
-            <fieldset>
-              <legend className="mb-1.5 text-sm font-medium">{t("sendVia")}</legend>
-              <div className="flex flex-wrap gap-4">
-                {CHANNELS.map((c) => (
-                  <label key={c} className="flex items-center gap-1.5 text-sm">
-                    <input
-                      type="checkbox"
-                      className="accent-brand size-4"
-                      checked={form.channels.includes(c)}
-                      onChange={() => toggle(c)}
-                    />
-                    <ChannelLabel channel={c} />
-                  </label>
-                ))}
-              </div>
-              <p className="text-muted-foreground mt-1 text-xs">{t("linkOnly")}</p>
-            </fieldset>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 {tc("cancel")}

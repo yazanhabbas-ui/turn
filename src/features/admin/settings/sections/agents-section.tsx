@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { InfoTip } from "@/components/ui/info-tip";
 import type { SettingValue } from "@/server/settings/registry";
 import type { Shift } from "../../types";
 import { SettingCard } from "../setting-card";
@@ -12,11 +13,10 @@ export function AgentsSection({ initial, shifts }: { initial: SettingValue<"agen
   const t = useTranslations("settings");
   return (
     <div className="space-y-4">
-      <p className="text-muted-foreground text-sm">{t("agentsIntro")}</p>
       <SettingForm k="agentWork" initial={initial}>
         {(v, set) => (
           <>
-            <SettingCard title={t("cards.workload")} columns={2}>
+            <SettingCard title={t("cards.workload")} description={t("agentsIntro")} columns={2}>
               <div className="sm:col-span-2">
                 <Check
                   id="aw-multi"
@@ -40,8 +40,12 @@ export function AgentsSection({ initial, shifts }: { initial: SettingValue<"agen
             </SettingCard>
             <SettingCard title={t("cards.shiftRules")}>
               <fieldset id="aw-shift" className="space-y-2">
-                <legend className="text-sm font-semibold">{t("shiftMode")}</legend>
-                <p className="text-muted-foreground text-xs">{t("shiftModeHint")}</p>
+                <legend className="text-sm font-semibold">
+                  <span className="flex items-center gap-1.5">
+                    {t("shiftMode")}
+                    <InfoTip>{t("shiftModeHint")}</InfoTip>
+                  </span>
+                </legend>
                 <div className="space-y-1" role="radiogroup" aria-label={t("shiftMode")}>
                   {(["off", "guide", "strict"] as const).map((m) => (
                     <label key={m} className="flex min-h-8 items-start gap-2.5 py-1 text-sm">
@@ -52,9 +56,9 @@ export function AgentsSection({ initial, shifts }: { initial: SettingValue<"agen
                         checked={v.shiftMode === m}
                         onChange={() => set({ shiftMode: m })}
                       />
-                      <span>
+                      <span className="flex items-center gap-1.5">
                         {t(`shiftMode_${m}`)}
-                        <span className="text-muted-foreground block text-xs">{t(`shiftMode_${m}_hint`)}</span>
+                        <InfoTip>{t(`shiftMode_${m}_hint`)}</InfoTip>
                       </span>
                     </label>
                   ))}

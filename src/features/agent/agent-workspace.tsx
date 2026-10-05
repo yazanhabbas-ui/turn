@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AgentPicker } from "@/components/admin/agent-picker";
 import { queueAgentOptions } from "../queue/agent-options";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Input } from "@/components/ui/input";
@@ -275,7 +276,7 @@ export function AgentWorkspaceView() {
             </button>
           ))}
         </div>
-        <span className="text-muted-foreground text-xs">{t(`statusHint.${data.profile.status}`)}</span>
+        <InfoTip>{t(`statusHint.${data.profile.status}`)}</InfoTip>
         {data.breaks.enabled && data.breaks.limit != null && (
           <span className="text-muted-foreground bg-muted/60 rounded-full px-2.5 py-1 text-xs">
             {t("breakHint", { count: data.breaks.onBreak, limit: data.breaks.limit })}

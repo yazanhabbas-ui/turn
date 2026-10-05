@@ -6,8 +6,10 @@ import { useFormatter, useTranslations } from "next-intl";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { EmptyState, ErrorState, PageHeader } from "@/components/admin/form";
 import { api } from "@/components/admin/use-api";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ExportSectionId } from "@/domain/reports/sections";
 import type { Forecast, ReportData } from "@/domain/reports/types";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -42,6 +44,7 @@ import {
   ThroughputChart,
   WeekdayChart,
 } from "./report-charts";
+import { RatingsPanel } from "./ratings-panel";
 import { ReportFilters } from "./report-filters";
 import {
   AgentsTable,
@@ -55,6 +58,9 @@ import {
 } from "./report-tables";
 import { SchedulesPanel } from "./schedules-panel";
 import { useReportFormat } from "./use-report-format";
+
+const TABS = ["overview", "volume", "staff", "reasons", "satisfaction", "ratings", "repeat", "forecast"] as const;
+type TabId = (typeof TABS)[number];
 
 /** The current filter query when the viewer may export (enables the per-section download buttons), else null. */
 const ExportQuery = createContext<string | null>(null);
@@ -104,6 +110,7 @@ export function ReportsPage({ canExport, canSchedule }: { canExport: boolean; ca
     return { ...parsed, from, to };
   }, [parsed, tz]);
   const query = toQuery(filters);
+  const [tab, setTab] = useState<TabId>("overview");
 
   const report = useQuery({
     queryKey: ["reports", "overview", query],
@@ -156,36 +163,57 @@ export function ReportsPage({ canExport, canSchedule }: { canExport: boolean; ca
 
         <ReportFilters filters={filters} meta={meta} timeZone={tz ?? "UTC"} onChange={onChange} />
 
-        <div className={cn("space-y-6 transition-opacity", stale && "opacity-60")} aria-busy={report.isFetching}>
-          {report.isError && !data ? (
-            <ErrorState onRetry={() => report.refetch()} />
-          ) : !data ? (
-            <ReportSkeleton />
-          ) : data.summary.visitors === 0 ? (
-            <EmptyState title={t("empty")} />
-          ) : (
-            <ReportBody
-              data={data}
-              reasons={meta?.reasons ?? []}
-              timeZone={report.data?.timezone ?? tz ?? "UTC"}
-              multiBranch={(meta?.branches.length ?? 0) > 1 && !filters.branchId}
-            />
-          )}
+        <Tabs value={tab} onValueChange={(v) => setTab(v as TabId)}>
+          <TabsList className="no-print h-auto w-full max-w-full justify-start overflow-x-auto sm:w-fit">
+            {TABS.map((id) => (
+              <TabsTrigger key={id} value={id} className="flex-none shrink-0 px-3">
+                {t(`tabs.${id}`)}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-          <ForecastCard query={forecast} />
+          <div className={cn("mt-4 space-y-6 transition-opacity", stale && "opacity-60")} aria-busy={report.isFetching}>
+            {TABS.filter((id) => id !== "ratings" && id !== "forecast").map((id) => (
+              <TabsContent key={id} value={id} className="space-y-6">
+                {report.isError && !data ? (
+                  <ErrorState onRetry={() => report.refetch()} />
+                ) : !data ? (
+                  <ReportSkeleton />
+                ) : data.summary.visitors === 0 ? (
+                  <EmptyState title={t("empty")} />
+                ) : (
+                  <ReportBody
+                    tab={id}
+                    data={data}
+                    reasons={meta?.reasons ?? []}
+                    timeZone={report.data?.timezone ?? tz ?? "UTC"}
+                    multiBranch={(meta?.branches.length ?? 0) > 1 && !filters.branchId}
+                  />
+                )}
+              </TabsContent>
+            ))}
+            <TabsContent value="ratings">
+              <Section title={t("ratings.title")} description={t("ratings.hint")}>
+                <RatingsPanel from={filters.from} to={filters.to} branchId={filters.branchId || undefined} />
+              </Section>
+            </TabsContent>
+            <TabsContent value="forecast">
+              <ForecastCard query={forecast} />
+            </TabsContent>
 
-          {canSchedule && (
-            <details className="no-print bg-card group ring-foreground/10 rounded-xl ring-1">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-sm font-semibold">
-                {t("schedules.title")}
-                <ChevronDown className="size-4 transition group-open:rotate-180" aria-hidden />
-              </summary>
-              <div className="border-t p-4">
-                <SchedulesPanel />
-              </div>
-            </details>
-          )}
-        </div>
+            {canSchedule && (
+              <details className="no-print bg-card group ring-foreground/10 rounded-xl ring-1">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-sm font-semibold">
+                  {t("schedules.title")}
+                  <ChevronDown className="size-4 transition group-open:rotate-180" aria-hidden />
+                </summary>
+                <div className="border-t p-4">
+                  <SchedulesPanel />
+                </div>
+              </details>
+            )}
+          </div>
+        </Tabs>
       </div>
     </ExportQuery.Provider>
   );
@@ -231,8 +259,10 @@ function Section({
   return (
     <Card className={cn("report-card", className)}>
       <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-        {description && <CardDescription>{description}</CardDescription>}
+        <CardTitle className="flex items-center gap-1.5 text-base">
+          {title}
+          {description && <InfoTip>{description}</InfoTip>}
+        </CardTitle>
         {query !== null && exports && (
           <CardAction>
             <SectionDownload query={query} sections={exports} label={title} empty={empty} />
@@ -259,21 +289,34 @@ function Tile({
 }) {
   return (
     <div className="report-card bg-card ring-foreground/10 flex flex-col gap-1 rounded-xl p-4 ring-1">
-      <p className="text-muted-foreground text-xs font-medium">{label}</p>
+      <p className="text-muted-foreground flex items-center gap-1 text-xs font-medium">
+        {label}
+        {hint && <InfoTip>{hint}</InfoTip>}
+      </p>
       <p className="tabular text-2xl leading-tight font-bold">{value}</p>
       {sub && <p className="text-muted-foreground text-xs">{sub}</p>}
       {badge}
-      {hint && <p className="text-muted-foreground mt-1 text-[11px] leading-snug">{hint}</p>}
+    </div>
+  );
+}
+
+function KpiGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">{title}</h3>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">{children}</div>
     </div>
   );
 }
 
 function ReportBody({
+  tab,
   data,
   reasons,
   timeZone,
   multiBranch,
 }: {
+  tab: TabId;
   data: ReportData;
   reasons: ReportMeta["reasons"];
   timeZone: string;
@@ -287,158 +330,189 @@ function ReportBody({
 
   return (
     <>
-      {query !== null && (
-        <div className="no-print flex justify-end">
-          <SectionDownload query={query} sections={["summary"]} label={t("kpi.title")} />
-        </div>
-      )}
-      <section aria-label={t("kpi.title")} className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
-        <Tile label={t("kpi.visitors")} value={f.num(s.visitors)} />
-        <Tile
-          label={t("kpi.served")}
-          value={f.num(s.served)}
-          sub={t("kpi.servedSub", { noShow: f.num(s.noShow), cancelled: f.num(s.cancelled) })}
-        />
-        <Tile label={t("kpi.avgWait")} value={f.minutes(s.wait.avg)} />
-        <Tile label={t("kpi.medianWait")} value={f.minutes(s.wait.median)} />
-        <Tile label={t("kpi.p90Wait")} value={f.minutes(s.wait.p90)} />
-        <Tile label={t("kpi.maxWait")} value={f.minutes(s.wait.max)} />
-        <Tile label={t("kpi.avgService")} value={f.minutes(s.service.avg)} />
-        <Tile label={t("kpi.p90Service")} value={f.minutes(s.service.p90)} />
-        <Tile label={t("kpi.sla")} value={f.pct(s.slaPct)} hint={t("kpi.slaHint")} />
-        <Tile
-          label={t("kpi.serviceLevel")}
-          value={f.pct(s.serviceLevel.pct)}
-          sub={t("kpi.serviceLevelSub", { target: f.num(s.serviceLevel.targetPct), minutes: f.num(s.serviceLevel.minutes) })}
-          badge={
-            <span
-              className={cn(
-                "mt-1 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-                met
-                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                  : "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-              )}
-            >
-              {met ? <Check className="size-3" aria-hidden /> : <X className="size-3" aria-hidden />}
-              {met ? t("kpi.targetMet") : t("kpi.targetMissed")}
-            </span>
-          }
-        />
-        <Tile
-          label={t("kpi.abandonment")}
-          value={f.pct(s.abandonmentPct)}
-          sub={t("kpi.abandonmentSub", { wait: f.minutes(s.avgWaitBeforeAbandonMin) })}
-        />
-        <Tile label={t("kpi.recall")} value={f.pct(s.recallRatePct)} />
-        <Tile label={t("kpi.transfer")} value={f.pct(s.transferRatePct)} />
-        <Tile
-          label={t("kpi.returning")}
-          value={f.pct(s.returningPct)}
-          sub={t("kpi.returningSub", { first: f.pct(s.firstVisitPct), returning: f.pct(s.returningPct) })}
-        />
-        <Tile label={t("kpi.fairness")} value={f.num(s.fairnessIndex, 2)} hint={t("kpi.fairnessHint")} />
-        <Tile label={t("kpi.stillOpen")} value={f.num(s.stillOpen)} />
-        {data.csat.summary.responses > 0 && (
-          <>
-            <Tile
-              label={t("kpi.csat")}
-              value={data.csat.summary.avg === null ? "—" : t("csat.outOf", { n: f.num(data.csat.summary.avg, 1) })}
-              sub={t("kpi.csatSub", { n: f.num(data.csat.summary.responses) })}
-            />
-            <Tile
-              label={t("kpi.csatSatisfied")}
-              value={f.pct(data.csat.summary.satisfiedPct)}
-              hint={t("kpi.csatSatisfiedHint")}
-            />
-            <Tile label={t("kpi.csatRate")} value={f.pct(data.csat.summary.responseRatePct)} />
-            {data.csat.summary.nps && (
-              <Tile label={t("kpi.nps")} value={f.num(data.csat.summary.nps.score)} hint={t("kpi.npsHint")} />
-            )}
-          </>
-        )}
-      </section>
-
-      <Section title={t("sections.volume")} exports={["byDay", "byHour", "byBranch"]}>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <ChartBlock title={t("charts.perDay")} className="lg:col-span-2">
-            <DailyChart data={data.byDay} />
-          </ChartBlock>
-          <ChartBlock title={t("charts.perHour")}>
-            <HourChart data={data.byHour} />
-          </ChartBlock>
-          <ChartBlock title={t("charts.perWeekday")}>
-            <WeekdayChart data={data.byWeekday} />
-          </ChartBlock>
-          {multiBranch && data.byBranch.length > 1 && (
-            <ChartBlock title={t("charts.perBranch")}>
-              <BranchChart data={data.byBranch} />
-            </ChartBlock>
+      {tab === "overview" && (
+        <>
+          {query !== null && (
+            <div className="no-print flex justify-end">
+              <SectionDownload query={query} sections={["summary"]} label={t("kpi.title")} />
+            </div>
           )}
-          <ChartBlock title={t("charts.reasonMix")}>
-            <ReasonMixChart data={data.byReason} />
-          </ChartBlock>
-          <ChartBlock title={t("charts.reasonWeekly")} className="lg:col-span-2">
-            <ReasonWeeklyChart data={data.reasonMixWeekly} reasons={data.byReason} />
-          </ChartBlock>
-        </div>
-      </Section>
+          <section aria-label={t("kpi.title")} className="space-y-6">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <Tile label={t("kpi.visitors")} value={f.num(s.visitors)} />
+              <Tile
+                label={t("kpi.served")}
+                value={f.num(s.served)}
+                sub={t("kpi.servedSub", { noShow: f.num(s.noShow), cancelled: f.num(s.cancelled) })}
+              />
+              <Tile label={t("kpi.avgWait")} value={f.minutes(s.wait.avg)} />
+              <Tile
+                label={t("kpi.serviceLevel")}
+                value={f.pct(s.serviceLevel.pct)}
+                sub={t("kpi.serviceLevelSub", {
+                  target: f.num(s.serviceLevel.targetPct),
+                  minutes: f.num(s.serviceLevel.minutes),
+                })}
+                badge={
+                  <span
+                    className={cn(
+                      "mt-1 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                      met
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                        : "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+                    )}
+                  >
+                    {met ? <Check className="size-3" aria-hidden /> : <X className="size-3" aria-hidden />}
+                    {met ? t("kpi.targetMet") : t("kpi.targetMissed")}
+                  </span>
+                }
+              />
+            </div>
+            <KpiGroup title={t("kpi.groups.waiting")}>
+              <Tile label={t("kpi.medianWait")} value={f.minutes(s.wait.median)} />
+              <Tile label={t("kpi.p90Wait")} value={f.minutes(s.wait.p90)} />
+              <Tile label={t("kpi.maxWait")} value={f.minutes(s.wait.max)} />
+              <Tile label={t("kpi.sla")} value={f.pct(s.slaPct)} hint={t("kpi.slaHint")} />
+              <Tile
+                label={t("kpi.abandonment")}
+                value={f.pct(s.abandonmentPct)}
+                sub={t("kpi.abandonmentSub", { wait: f.minutes(s.avgWaitBeforeAbandonMin) })}
+              />
+            </KpiGroup>
+            <KpiGroup title={t("kpi.groups.service")}>
+              <Tile label={t("kpi.avgService")} value={f.minutes(s.service.avg)} />
+              <Tile label={t("kpi.p90Service")} value={f.minutes(s.service.p90)} />
+              <Tile label={t("kpi.fairness")} value={f.num(s.fairnessIndex, 2)} hint={t("kpi.fairnessHint")} />
+              <Tile label={t("kpi.stillOpen")} value={f.num(s.stillOpen)} />
+            </KpiGroup>
+            <KpiGroup title={t("kpi.groups.visitors")}>
+              <Tile label={t("kpi.recall")} value={f.pct(s.recallRatePct)} />
+              <Tile label={t("kpi.transfer")} value={f.pct(s.transferRatePct)} />
+              <Tile
+                label={t("kpi.returning")}
+                value={f.pct(s.returningPct)}
+                sub={t("kpi.returningSub", { first: f.pct(s.firstVisitPct), returning: f.pct(s.returningPct) })}
+              />
+            </KpiGroup>
+            {data.csat.summary.responses > 0 && (
+              <KpiGroup title={t("kpi.groups.satisfaction")}>
+                <Tile
+                  label={t("kpi.csat")}
+                  value={data.csat.summary.avg === null ? "—" : t("csat.outOf", { n: f.num(data.csat.summary.avg, 1) })}
+                  sub={t("kpi.csatSub", { n: f.num(data.csat.summary.responses) })}
+                />
+                <Tile
+                  label={t("kpi.csatSatisfied")}
+                  value={f.pct(data.csat.summary.satisfiedPct)}
+                  hint={t("kpi.csatSatisfiedHint")}
+                />
+                <Tile label={t("kpi.csatRate")} value={f.pct(data.csat.summary.responseRatePct)} />
+                {data.csat.summary.nps && (
+                  <Tile label={t("kpi.nps")} value={f.num(data.csat.summary.nps.score)} hint={t("kpi.npsHint")} />
+                )}
+              </KpiGroup>
+            )}
+          </section>
+        </>
+      )}
 
-      {data.bySource.length > 1 && (
+      {tab === "volume" && (
+        <>
+          <Section title={t("sections.volume")} exports={["byDay", "byHour", "byBranch"]}>
+            <div className="grid gap-6 lg:grid-cols-2">
+              <ChartBlock title={t("charts.perDay")} className="lg:col-span-2">
+                <DailyChart data={data.byDay} />
+              </ChartBlock>
+              <ChartBlock title={t("charts.perHour")}>
+                <HourChart data={data.byHour} />
+              </ChartBlock>
+              <ChartBlock title={t("charts.perWeekday")}>
+                <WeekdayChart data={data.byWeekday} />
+              </ChartBlock>
+              {multiBranch && data.byBranch.length > 1 && (
+                <ChartBlock title={t("charts.perBranch")}>
+                  <BranchChart data={data.byBranch} />
+                </ChartBlock>
+              )}
+              <ChartBlock title={t("charts.reasonMix")}>
+                <ReasonMixChart data={data.byReason} />
+              </ChartBlock>
+              <ChartBlock title={t("charts.reasonWeekly")} className="lg:col-span-2">
+                <ReasonWeeklyChart data={data.reasonMixWeekly} reasons={data.byReason} />
+              </ChartBlock>
+            </div>
+          </Section>
+        </>
+      )}
+
+      {tab === "volume" && data.bySource.length > 1 && (
         <Section title={t("sections.sources")} description={t("sources.hint")} exports={["bySource"]}>
           <SourceTable rows={data.bySource} />
         </Section>
       )}
 
-      {data.byHall.length > 0 && (
-        <Section title={t("sections.halls")} description={t("halls.hint")} exports={["byHall"]}>
-          <HallsTable rows={data.byHall} />
+      {tab === "staff" && (
+        <>
+          {data.byHall.length > 0 && (
+            <Section title={t("sections.halls")} description={t("halls.hint")} exports={["byHall"]}>
+              <HallsTable rows={data.byHall} />
+            </Section>
+          )}
+
+          {data.byShift.length > 0 && (
+            <Section title={t("sections.shifts")} description={t("shifts.hint")} exports={["byShift"]}>
+              <ShiftsTable shifts={data.byShift} />
+            </Section>
+          )}
+        </>
+      )}
+
+      {tab === "overview" && (
+        <Section title={t("sections.peak")} description={t("charts.peakHint")} exports={["heatmap"]}>
+          <PeakHeatmap data={data.heatmap} />
         </Section>
       )}
 
-      {data.byShift.length > 0 && (
-        <Section title={t("sections.shifts")} description={t("shifts.hint")} exports={["byShift"]}>
-          <ShiftsTable shifts={data.byShift} />
-        </Section>
-      )}
-
-      <Section title={t("sections.peak")} description={t("charts.peakHint")} exports={["heatmap"]}>
-        <PeakHeatmap data={data.heatmap} />
-      </Section>
-
-      <Section title={t("sections.queue")}>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <ChartBlock title={t("charts.queueLength")} className="lg:col-span-2">
-            <QueueLengthChart data={data.queueLengthByHour} />
-          </ChartBlock>
-          <ChartBlock title={t("charts.throughput")}>
-            <ThroughputChart data={data.byHour} />
-          </ChartBlock>
-          <ChartBlock title={t("charts.backlog")}>
-            <BacklogChart data={data.backlogByDay} />
-          </ChartBlock>
-        </div>
-      </Section>
-
-      <Section title={t("sections.agents")} exports={["byAgent"]} empty={data.agents.length === 0}>
-        {data.agents.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t("agents.empty")}</p>
-        ) : (
-          <div className="space-y-6">
-            <AgentsTable agents={data.agents} shifts={data.byShift} />
-            <ChartBlock title={t("charts.servedPerAgent")} description={t("charts.servedPerAgentHint")}>
-              <AgentServedChart data={data.agents} />
+      {tab === "volume" && (
+        <Section title={t("sections.queue")}>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <ChartBlock title={t("charts.queueLength")} className="lg:col-span-2">
+              <QueueLengthChart data={data.queueLengthByHour} />
+            </ChartBlock>
+            <ChartBlock title={t("charts.throughput")}>
+              <ThroughputChart data={data.byHour} />
+            </ChartBlock>
+            <ChartBlock title={t("charts.backlog")}>
+              <BacklogChart data={data.backlogByDay} />
             </ChartBlock>
           </div>
-        )}
-      </Section>
+        </Section>
+      )}
 
-      <Section title={t("sections.reasons")} exports={["byReason"]} empty={data.byReason.length === 0}>
-        <ReasonsTable reasons={data.byReason} />
-      </Section>
+      {tab === "staff" && (
+        <Section title={t("sections.agents")} exports={["byAgent"]} empty={data.agents.length === 0}>
+          {data.agents.length === 0 ? (
+            <p className="text-muted-foreground text-sm">{t("agents.empty")}</p>
+          ) : (
+            <div className="space-y-6">
+              <AgentsTable agents={data.agents} shifts={data.byShift} />
+              <ChartBlock title={t("charts.servedPerAgent")} description={t("charts.servedPerAgentHint")}>
+                <AgentServedChart data={data.agents} />
+              </ChartBlock>
+            </div>
+          )}
+        </Section>
+      )}
 
-      <CsatSection data={data.csat} agents={data.agents} reasons={reasons} timeZone={timeZone} />
+      {tab === "reasons" && (
+        <Section title={t("sections.reasons")} exports={["byReason"]} empty={data.byReason.length === 0}>
+          <ReasonsTable reasons={data.byReason} />
+        </Section>
+      )}
 
-      <RepeatSection data={data.repeat} reasons={reasons} timeZone={timeZone} />
+      {tab === "satisfaction" && <CsatSection data={data.csat} agents={data.agents} reasons={reasons} timeZone={timeZone} />}
+
+      {tab === "repeat" && <RepeatSection data={data.repeat} reasons={reasons} timeZone={timeZone} />}
     </>
   );
 }
@@ -513,8 +587,10 @@ function CsatSection({
             )}
           </div>
           <div className="min-w-0">
-            <h3 className="text-sm font-semibold">{t("lowComments")}</h3>
-            <p className="text-muted-foreground mb-1 text-xs">{t("lowCommentsHint")}</p>
+            <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+              {t("lowComments")}
+              <InfoTip>{t("lowCommentsHint")}</InfoTip>
+            </h3>
             {data.lowComments.length === 0 ? (
               <p className="text-muted-foreground mt-2 text-sm">{t("noLowComments")}</p>
             ) : (
@@ -589,8 +665,10 @@ function ChartBlock({
 }) {
   return (
     <div className={cn("min-w-0", className)}>
-      <h3 className="text-sm font-semibold">{title}</h3>
-      {description && <p className="text-muted-foreground mb-1 text-xs">{description}</p>}
+      <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+        {title}
+        {description && <InfoTip>{description}</InfoTip>}
+      </h3>
       <div className="mt-2">{children}</div>
     </div>
   );

@@ -13,8 +13,7 @@ export function ReceptionSection({ initial }: { initial: SettingValue<"reception
     <SettingForm k="reception" initial={initial}>
       {(v, set) => (
         <>
-          <p className="text-muted-foreground text-sm">{t("receptionIntro")}</p>
-          <SettingCard title={t("cards.issuing")} columns={2}>
+          <SettingCard title={t("cards.issuing")} description={t("receptionIntro")} columns={2}>
             <Check
               id="rc-onetap"
               label={t("oneTapIssue")}
@@ -44,7 +43,7 @@ export function ReceptionSection({ initial }: { initial: SettingValue<"reception
               onChange={(askLanguage) => set({ askLanguage })}
             />
           </SettingCard>
-          <SettingCard title={t("cards.afterIssue")} columns={2}>
+          <SettingCard title={t("cards.afterIssue")} description={t("receptionDataHint")} columns={2}>
             <Field label={t("afterIssue")} htmlFor="rc-after">
               <NativeSelect
                 id="rc-after"
@@ -80,7 +79,6 @@ export function ReceptionSection({ initial }: { initial: SettingValue<"reception
               </NativeSelect>
             </Field>
           </SettingCard>
-          <p className="text-muted-foreground text-sm">{t("receptionDataHint")}</p>
         </>
       )}
     </SettingForm>

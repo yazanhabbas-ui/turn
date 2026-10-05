@@ -508,10 +508,12 @@ export async function lookupAppointment(actor: Actor, branchId: string, code: st
 export async function publicTicketStatus(token: string) {
   const [t] = await db().select().from(tickets).where(eq(tickets.publicToken, token));
   if (!t) return null;
-  const [settings, waitSettings, feedbackSettings] = await Promise.all([
+  const [settings, waitSettings, feedbackSettings, pageContent, wifi] = await Promise.all([
     getSetting(t.organizationId, "visitorStatus", t.branchId),
     getSetting(t.organizationId, "waitEstimate", t.branchId),
     getSetting(t.organizationId, "feedback", t.branchId),
+    getSetting(t.organizationId, "pageContent", t.branchId),
+    getSetting(t.organizationId, "wifi", t.branchId),
   ]);
   if (!settings.enabled) return null;
   const [reason] = await db()
@@ -555,7 +557,20 @@ export async function publicTicketStatus(token: string) {
     groupVisit: reason?.delivery === "hall",
     position,
     waitDisplay: waitDisplayOf(waitSettings),
-    notifyOptIn: await canOfferUpdates(t),
+    notifyOptIn: !pageContent.visitor.hideNotifyOptIn && (await canOfferUpdates(t)),
+    /** Wording and options of the page (D66), merged over organization, city and branch. */
+    pageContent: pageContent.visitor,
+    /** The free Wi-Fi block, only when the page is set to show it and Wi-Fi is on for the branch. */
+    wifi:
+      pageContent.visitor.showWifi && wifi.enabled && wifi.ssid
+        ? {
+            ssid: wifi.ssid,
+            password: wifi.password,
+            title: wifi.title,
+            ssidLabel: wifi.ssidLabel,
+            passwordLabel: wifi.passwordLabel,
+          }
+        : null,
     arrivedAt: t.arrivedAt.toISOString(),
     calledAt: t.calledAt?.toISOString() ?? null,
     /** The rating card, only for a completed visit while feedback is on. */

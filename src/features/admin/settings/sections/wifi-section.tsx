@@ -15,11 +15,10 @@ export function WifiSection({ initial }: { initial: SettingValue<"wifi"> }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-muted-foreground text-sm">{t("wifiIntro")}</p>
       <SettingForm k="wifi" initial={initial}>
         {(v, set) => (
           <>
-            <SettingCard title={t("cards.wifiNetwork")} columns={2}>
+            <SettingCard title={t("cards.wifiNetwork")} description={t("wifiIntro")} columns={2}>
               <div className="sm:col-span-2">
                 <Check
                   id="wf-enabled"

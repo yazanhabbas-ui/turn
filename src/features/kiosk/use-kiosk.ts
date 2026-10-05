@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { io } from "socket.io-client";
 import type { KioskContext } from "@/server/kiosk/service";
 
 export type { KioskContext };
@@ -63,9 +64,19 @@ export function useKioskContext(token: string, onRevoked: () => void) {
     const id = setInterval(() => void refetch(), REFRESH_MS);
     const online = () => void refetch();
     window.addEventListener("online", online);
+    // A change made in Admin → Settings reaches the kiosk at once; the 30 s poll above stays as the safety net.
+    const socket = io({
+      path: "/socket.io",
+      auth: { deviceToken: token, kind: "kiosk" },
+      transports: ["websocket", "polling"],
+      reconnectionDelayMax: 10_000,
+    });
+    socket.on("kiosk.refresh", () => void refetch());
+    socket.on("connect_error", () => undefined);
     return () => {
       clearInterval(id);
       window.removeEventListener("online", online);
+      socket.close();
     };
   }, [refetch]);
 

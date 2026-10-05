@@ -1,5 +1,6 @@
 "use client";
 
+import { InfoTip } from "@/components/ui/info-tip";
 import { useTranslations } from "next-intl";
 import { Field } from "@/components/admin/form";
 import { Input } from "@/components/ui/input";
@@ -33,9 +34,9 @@ export function Check({
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
       />
-      <span>
+      <span className="flex items-center gap-1.5">
         {label}
-        {hint && <span className="text-muted-foreground block text-xs">{hint}</span>}
+        {hint && <InfoTip>{hint}</InfoTip>}
       </span>
     </label>
   );

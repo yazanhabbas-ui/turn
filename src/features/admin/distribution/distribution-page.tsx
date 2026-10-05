@@ -8,6 +8,7 @@ import { ErrorState, Field, LoadingRows, PageHeader } from "@/components/admin/f
 import { api, useApiMutation, useApiQuery } from "@/components/admin/use-api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { MODES, PUSH_STRATEGIES, resolveConfig, type DistributionConfig, type PushStrategy } from "@/domain/distribution/config";
@@ -31,8 +32,10 @@ type Scope = { key: string; scope: Rule["scope"]; branchId: string | null; queue
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
     <section className="bg-card rounded-xl border p-4 shadow-sm md:p-5">
-      <h2 className="font-semibold">{title}</h2>
-      {hint && <p className="text-muted-foreground mt-1 text-sm">{hint}</p>}
+      <div className="flex items-center gap-1.5">
+        <h2 className="font-semibold">{title}</h2>
+        {hint && <InfoTip>{hint}</InfoTip>}
+      </div>
       <div className="mt-4 space-y-4">{children}</div>
     </section>
   );
@@ -367,8 +370,12 @@ function RuleEditor({ scope, rules, queues }: { scope: Scope; rules: Rule[]; que
         </div>
         <Check label={t("lanesFirst")} checked={cfg.ordering.lanesFirst} onChange={(v) => set("ordering", { lanesFirst: v })} />
         <fieldset>
-          <legend className="text-sm font-medium">{t("aging")}</legend>
-          <p className="text-muted-foreground mb-2 text-xs">{t("agingHint")}</p>
+          <legend className="mb-2 text-sm font-medium">
+            <span className="flex items-center gap-1.5">
+              {t("aging")}
+              <InfoTip>{t("agingHint")}</InfoTip>
+            </span>
+          </legend>
           <div className="space-y-2">
             {cfg.ordering.aging.map((a, i) => (
               <div key={i} className="flex items-end gap-2">

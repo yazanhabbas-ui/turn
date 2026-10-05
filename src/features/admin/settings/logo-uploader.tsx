@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { ConfirmButton } from "@/components/admin/confirm-button";
 import { useErrorMessage } from "@/components/admin/use-api";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -137,8 +138,10 @@ export function LogoUploader({
   const dark = variant === "dark";
   return (
     <div className="space-y-3">
-      <div className="text-sm font-medium">{dark ? t("titleDark") : t("titleLight")}</div>
-      {dark && <p className="text-muted-foreground text-xs">{t("darkHint")}</p>}
+      <div className="flex items-center gap-1.5 text-sm font-medium">
+        {dark ? t("titleDark") : t("titleLight")}
+        <InfoTip>{dark ? `${t("darkHint")} ${t("hint")}` : t("hint")}</InfoTip>
+      </div>
 
       {value && (
         <div className="space-y-2">
@@ -221,7 +224,6 @@ export function LogoUploader({
             </div>
           </>
         )}
-        <p className="text-muted-foreground text-xs">{t("hint")}</p>
       </div>
 
       {error && (

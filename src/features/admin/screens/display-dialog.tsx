@@ -6,6 +6,7 @@ import { Field } from "@/components/admin/form";
 import { api, useApiMutation, useApiQuery } from "@/components/admin/use-api";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import type { SettingKey, SettingValue } from "@/server/settings/registry";
@@ -209,8 +210,12 @@ export function DisplayDialog({
                 </div>
               </fieldset>
               <fieldset className="space-y-3 rounded-lg border p-3">
-                <legend className="px-1 text-sm font-semibold">{t("config.voice")}</legend>
-                <p className="text-muted-foreground text-xs">{t("config.voiceHint")}</p>
+                <legend className="px-1 text-sm font-semibold">
+                  <span className="flex items-center gap-1.5">
+                    {t("config.voice")}
+                    <InfoTip>{t("config.voiceHint")}</InfoTip>
+                  </span>
+                </legend>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <Field label={t("config.voiceEnabled")} htmlFor="d-ven">
                     <NativeSelect

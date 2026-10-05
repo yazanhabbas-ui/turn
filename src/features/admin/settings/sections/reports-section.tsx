@@ -12,8 +12,7 @@ export function ReportsSection({ initial }: { initial: SettingValue<"reports"> }
     <SettingForm k="reports" initial={initial}>
       {(v, set) => (
         <>
-          <p className="text-muted-foreground text-sm">{t("reportsIntro")}</p>
-          <SettingCard title={t("cards.serviceLevel")} columns={2}>
+          <SettingCard title={t("cards.serviceLevel")} description={t("reportsIntro")} columns={2}>
             <NumField
               id="rp-slm"
               label={t("serviceLevelMinutes")}

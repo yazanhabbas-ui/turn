@@ -16,6 +16,7 @@ playwright-report
 test-results
 tests
 docs
+!docs/manuals/pdf
 assets
 voice-samples
 scripts

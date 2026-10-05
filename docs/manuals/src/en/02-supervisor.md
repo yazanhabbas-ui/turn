@@ -9,6 +9,7 @@ With the standard Supervisor role you can:
 - Watch the **Live wallboard**: people waiting, desks, agent status, long waits and alerts, in real time.
 - **Acknowledge alerts** when you have dealt with them.
 - Open **Reports**, filter them, and download them as Excel, CSV or PDF.
+- Read the **visitor ratings** with the visitor, the agent, the stars and the comment.
 - Look at the branches, desks, halls, visit reasons, users and agent groups of your organization (view only).
 - Manage your own profile, language, password and two-step verification.
 
@@ -119,28 +120,53 @@ Open **Reports**. The page is called **Reports** and says "Waiting times, servic
 
 The filters are kept in the page address, so you can bookmark or share a link with the filters already set.
 
-**What the report contains** (sections with no data are left out):
+The page has eight **tabs** under the filters: **Overview**, **Volume & queue**, **Staff**, **Reasons**, **Satisfaction**, **Visitor ratings**, **Repeat visitors** and **Forecast**. The filters and the **Download** button stay above the tabs and apply to all of them. On a phone the tabs scroll sideways.
 
-- **Key figures**: **Total visitors**, **Served** (with no-shows and cancelled), **Average wait**, **Median wait**, **90th percentile wait**, **Longest wait**, **Average service time**, **SLA compliance**, **Service level** with **Target met** or **Below target**, **Abandonment**, **Recall rate**, **Transfer rate**, **Returning visitors**, **Fairness index** and **Still open**. With feedback on, also **Visitor satisfaction** and the recommend score.
-- **Visitor volume**: visitors per day, by hour, by weekday, per branch and by visit reason.
-- **How tickets were issued**, **By shift** and **Halls (group sessions)** where they apply.
-- **Peak hours**: a weekday-by-hour map. Darker cells are busier.
-- **Queue length and throughput**: people waiting by hour, visitors served per hour, still waiting at the end of the day.
-- **Agents**: a table per agent with **Served**, **No-show**, **Transferred out**, **Transferred in**, **Avg service**, **Logged in**, **Break**, **Serving**, **Idle**, **Utilisation** and **Satisfaction**, and a chart of visitors served per agent. An even spread means work is shared fairly.
-- **Visit reasons**: visitors, waits, service times and SLA per reason.
-- **Visitor satisfaction** and **Repeat visits**: scores, comments on low scores and visitors who came back. A visitor's mobile number is partly hidden unless your role may see personal data.
+**What each tab contains** (sections with no data are left out):
+
+- **Overview**: the **Key figures**, grouped in four blocks, and **Peak hours**, a weekday-by-hour map where darker cells are busier. The first row shows **Total visitors**, **Served** (with no-shows and cancelled), **Average wait** and **Service level** with **Target met** or **Below target**. Then:
+  - **Waiting**: **Median wait**, **90th percentile wait**, **Longest wait**, **SLA compliance** and **Abandonment**.
+  - **Service**: **Average service time**, **90th percentile service time**, **Fairness index** and **Still open**.
+  - **Visitors**: **Recall rate**, **Transfer rate** and **Returning visitors**.
+  - **Satisfaction**: **Visitor satisfaction** and the recommend score, only when visitor feedback is on.
+- **Volume & queue**: visitors per day, by hour, by weekday, per branch and by visit reason; **How tickets were issued** where it applies; and **Queue length and throughput** (people waiting by hour, visitors served per hour, still waiting at the end of the day).
+- **Staff**: a table per agent with **Served**, **No-show**, **Transferred out**, **Transferred in**, **Avg service**, **Logged in**, **Break**, **Serving**, **Idle**, **Utilisation** and **Satisfaction**, and a chart of visitors served per agent. An even spread means work is shared fairly. **By shift** and **Halls (group sessions)** also sit here where they apply.
+- **Reasons**: visitors, waits, service times and SLA per visit reason.
+- **Satisfaction**: scores, and comments on low scores.
+- **Visitor ratings**: every rating with who gave it (see "Read visitor ratings" below).
+- **Repeat visitors**: visitors who came back. A visitor's mobile number is partly hidden unless your role may see personal data.
 - **Forecast**: expected visitors for the next 7 days and tomorrow by hour, with the number of agents suggested. It needs enough history. Otherwise you see "Not enough history to forecast yet."
+
+Many figures have a small **(?)** icon next to them. Hover over it, focus it with the keyboard or tap it to read what the figure means.
+
+### Read visitor ratings
+
+The visitor ratings list shows each rating a visitor gave after a visit. You see it in two places, if your role may view reports:
+
+- On the **Administration** overview, in the card **Visitor ratings by agent**. This card has its own **From** and **To** dates and an **Agent** drop-down.
+- In **Reports**, in the **Visitor ratings** tab. Here the dates follow the filters of the page, and the tab has its own **Agent** drop-down.
+
+Each row shows:
+
+- the **ticket** and the time of the rating;
+- the visitor's **name** and **phone**, as reception or the kiosk recorded them, and where it was entered (**Reception**, **Self check-in kiosk**, **Agent walk-in**, **Appointment** or **API**);
+- the **agent** and the desk;
+- the rating, from 1 to 5 stars;
+- the visitor's comment, if there is one.
+
+Above the list you see the number of ratings and their average, for example "12 ratings · average 4.3 / 5". The list shows the newest 500 ratings. If there are more, narrow the dates or choose one agent. On a phone every rating is a small card instead of a table row.
+
+The phone number is hidden except for its last 3 digits unless your role has the personal-data permission. Visitors who gave no name or phone show a dash.
 
 ### Branches, groups and other pages
 
 **Administration** opens an overview and a side menu. For the standard Supervisor role it contains these pages, all view only (the **Add** and edit buttons do not appear):
 
-- **Overview**: counts of branches, desks, users, visit reasons and roles, and a red warning if a branch has no way to issue tickets.
+- **Overview**: counts of branches, desks, users, visit reasons and roles, a red warning if a branch has no way to issue tickets, and the card **Visitor ratings by agent**.
 - **Users**: the list of people and their roles.
 - **Branches & desks**: branches, floors, desks and halls.
 - **Visit reasons**: the services and their targets.
 - **Agent groups**: teams of agents, each with a supervisor and members.
-- **Notifications**: the visitor messages setup.
 
 ![Agent groups](shot:supervisor-groups)
 
@@ -168,23 +194,30 @@ Acknowledge only after you acted. You need the permission to acknowledge alerts;
 
 1. On the wallboard, look at **Agents on break**.
 2. In **Desks**, find the cards that say **On break** and read how many minutes they have been so.
-3. For history, open **Reports**, go to **Agents** and read **Logged in**, **Break**, **Serving** and **Idle** for each agent.
+3. For history, open **Reports**, go to the **Staff** tab and read **Logged in**, **Break**, **Serving** and **Idle** for each agent.
 
 ### Find out why waits are long
 
 1. Open **Reports** and choose **Today** or **Yesterday**.
 2. Read **Average wait**, **90th percentile wait** and **Longest wait**.
-3. Open **Peak hours** and **Queue length and throughput** to see when the queue grows.
-4. In **Visit reasons**, find the reason with the highest waits.
-5. In **Agents**, check **Idle**, **Utilisation** and **Transferred out**.
-6. Use the **Forecast** to plan the agents needed tomorrow.
+3. Open **Peak hours** (in **Overview**) and **Queue length and throughput** (in **Volume & queue**) to see when the queue grows.
+4. In the **Reasons** tab, find the reason with the highest waits.
+5. In the **Staff** tab, check **Idle**, **Utilisation** and **Transferred out**.
+6. Use the **Forecast** tab to plan the agents needed tomorrow.
 
 ### Compare agents fairly
 
 1. Open **Reports**, and set the period.
-2. In **Agents**, compare **Served**, **Avg service** and **Satisfaction**.
-3. Look at the **Fairness index** in **Key figures**. A value near 1 means the work was shared evenly.
+2. In the **Staff** tab, compare **Served**, **Avg service** and **Satisfaction**.
+3. Look at the **Fairness index** in the **Service** block of the **Overview** tab. A value near 1 means the work was shared evenly.
 4. Use the **Agent** filter to see one person's numbers on their own.
+
+### Find out what visitors said about an agent
+
+1. Open **Reports** and set the dates, or use the card **Visitor ratings by agent** on the **Administration** overview.
+2. Open the **Visitor ratings** tab (in the card there is no tab).
+3. Choose the **Agent**.
+4. Read the stars and the comments. Look at the ticket and time if you need to find the visit.
 
 ### Download a report
 
@@ -255,7 +288,9 @@ If something is wrong, tell an administrator. You cannot edit these pages.
 | Reports        | Date presets                                                           | **Today**, **Yesterday**, **Last 7 days**, **Last 30 days**, **This month** |
 | Reports        | **Branch**, **Visit reason**, **Agent**, **Hall**, hours, **Weekdays** | Narrow the report                                                           |
 | Reports        | **Clear filters**                                                      | Resets the filters                                                          |
+| Reports        | Tabs (**Overview** to **Forecast**)                                    | Switch between the eight views of the report                                |
 | Reports        | **Download**                                                           | Opens the dialog to get Excel, CSV or PDF                                   |
+| Reports        | **Agent** (in **Visitor ratings**)                                     | Shows the ratings of one agent                                              |
 | Reports        | Download icon on a card                                                | Downloads only that section                                                 |
 | Administration | **Agent groups**, **Branches & desks**, **Users**                      | View teams, desks and people (read only)                                    |
 | Top bar        | Your name                                                              | Opens **My profile**                                                        |

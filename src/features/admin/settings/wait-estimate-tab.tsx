@@ -6,6 +6,7 @@ import { ErrorState, Field, LoadingRows, LocalizedInput } from "@/components/adm
 import { api, useApiMutation, useApiQuery } from "@/components/admin/use-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -61,8 +62,10 @@ function Check({
         onChange={(e) => onChange(e.target.checked)}
       />
       <span>
-        {label}
-        {hint && <span className="text-muted-foreground block text-xs">{hint}</span>}
+        <span className="inline-flex items-center gap-1.5">
+          {label}
+          {hint && <InfoTip>{hint}</InfoTip>}
+        </span>
       </span>
     </label>
   );
@@ -107,12 +110,10 @@ function Num({
  * is rounded, and how it is worded on the ticket. The level it applies to is picked at the top of the page.
  */
 export function WaitEstimateTab({ initial }: { initial: WaitSettings }) {
-  const t = useTranslations("settings");
   const scope = useSettingsScope();
 
   return (
     <div className="max-w-4xl space-y-4">
-      <p className="text-muted-foreground text-sm">{t("weIntro")}</p>
       <WaitForm initial={initial} scope={scope} />
     </div>
   );
@@ -145,7 +146,12 @@ function WaitForm({ initial, scope }: { initial: WaitSettings; scope: SettingsSc
     >
       <div className="bg-card space-y-4 rounded-xl border p-4 shadow-sm md:p-6">
         <fieldset className="space-y-2">
-          <legend className="text-sm font-semibold">{t("weMode")}</legend>
+          <legend className="text-sm font-semibold">
+            <span className="flex items-center gap-1.5">
+              {t("weMode")}
+              <InfoTip>{t("weIntro")}</InfoTip>
+            </span>
+          </legend>
           <div className="grid gap-3 md:grid-cols-3" role="radiogroup" aria-label={t("weMode")}>
             {MODES.map((m) => (
               <label
@@ -163,8 +169,10 @@ function WaitForm({ initial, scope }: { initial: WaitSettings; scope: SettingsSc
                   onChange={() => set({ mode: m })}
                 />
                 <span>
-                  <span className="font-medium">{t(`weMode_${m}`)}</span>
-                  <span className="text-muted-foreground block text-xs">{t(`weMode_${m}_hint`)}</span>
+                  <span className="flex items-center gap-1.5 font-medium">
+                    {t(`weMode_${m}`)}
+                    <InfoTip>{t(`weMode_${m}_hint`)}</InfoTip>
+                  </span>
                 </span>
               </label>
             ))}
@@ -390,8 +398,10 @@ function Preview({ v, branchId }: { v: WaitSettings; branchId: string | null }) 
 
       {v.mode === "analytics" && (
         <section className="bg-card space-y-3 rounded-xl border p-4 shadow-sm md:p-6">
-          <h3 className="text-sm font-semibold">{t("weTable")}</h3>
-          <p className="text-muted-foreground text-xs">{t("weTableHint", { days: v.lookbackDays })}</p>
+          <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+            {t("weTable")}
+            <InfoTip>{t("weTableHint", { days: v.lookbackDays })}</InfoTip>
+          </h3>
           {stats.isLoading ? (
             <LoadingRows rows={3} />
           ) : stats.isError ? (

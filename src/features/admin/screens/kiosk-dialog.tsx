@@ -6,6 +6,7 @@ import { Field } from "@/components/admin/form";
 import { api, useApiMutation } from "@/components/admin/use-api";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import type { DisplayThemeChoice } from "@/domain/branding/surface-theme";
@@ -78,7 +79,13 @@ export function KioskDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{kiosk ? t("kiosk.edit") : t("kiosk.add")}</DialogTitle>
+          <div className="flex items-center gap-1.5">
+            <DialogTitle>{kiosk ? t("kiosk.edit") : t("kiosk.add")}</DialogTitle>
+            <InfoTip>
+              <p>{t("kiosk.intro")}</p>
+              <p className="mt-1.5">{t("kiosk.settingsHint")}</p>
+            </InfoTip>
+          </div>
         </DialogHeader>
         <form
           className="space-y-4"
@@ -87,7 +94,6 @@ export function KioskDialog({
             save.mutate(undefined);
           }}
         >
-          <p className="text-muted-foreground text-sm">{t("kiosk.intro")}</p>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={tu("name")} htmlFor="k-name">
               <Input id="k-name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
@@ -120,7 +126,6 @@ export function KioskDialog({
               </NativeSelect>
             </Field>
           </div>
-          <p className="text-muted-foreground text-xs">{t("kiosk.settingsHint")}</p>
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {tc("cancel")}

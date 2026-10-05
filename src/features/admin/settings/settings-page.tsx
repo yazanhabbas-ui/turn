@@ -12,6 +12,7 @@ import { BrandingSection } from "./sections/branding-section";
 import { BreakLimitSection } from "./sections/break-limit-section";
 import { BreaksSection } from "./sections/breaks-section";
 import { FeedbackSection } from "./sections/feedback-section";
+import { PageContentSection } from "./sections/page-content-section";
 import { PrioritiesSection } from "./sections/priorities-section";
 import { PrivacySection } from "./sections/privacy-section";
 import { ReceptionSection } from "./sections/reception-section";
@@ -143,6 +144,8 @@ function ScopedSettings({
         return <WaitEstimateTab initial={s.waitEstimate} />;
       case "visitorStatus":
         return <VisitorStatusSection initial={s.visitorStatus} />;
+      case "pageContent":
+        return <PageContentSection initial={s.pageContent} all={s} />;
       case "feedback":
         return <FeedbackSection initial={s.feedback} />;
       case "priorities":

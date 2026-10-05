@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/admin/form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { SettingsShellContext, type SettingsShellApi } from "./settings-context";
@@ -271,8 +272,10 @@ export function SettingsShell({
               <Icon className="size-5" aria-hidden />
             </span>
             <div className="min-w-0">
-              <h2 className="text-lg leading-tight font-bold">{title(current.id)}</h2>
-              <p className="text-muted-foreground mt-0.5 text-sm">{t(`sectionDescriptions.${current.id}`)}</p>
+              <h2 className="flex items-center gap-1.5 text-lg leading-tight font-bold">
+                {title(current.id)}
+                <InfoTip>{t(`sectionDescriptions.${current.id}`)}</InfoTip>
+              </h2>
               {meta(current) && (
                 <Badge variant="outline" className="mt-2">
                   {t("ui.appliesTo")}: {meta(current)}

@@ -9,6 +9,7 @@ import { api, useApiMutation, useApiQuery } from "@/components/admin/use-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,8 +30,8 @@ export function AudioPacks() {
 
   return (
     <div className="max-w-3xl space-y-3">
-      <p className="text-muted-foreground text-sm">{t("packsHint")}</p>
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between gap-2">
+        <InfoTip>{t("packsHint")}</InfoTip>
         <Button variant="outline" size="sm" onClick={() => setEditing("new")}>
           <Plus aria-hidden />
           {t("addPack")}

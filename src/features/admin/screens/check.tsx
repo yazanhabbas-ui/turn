@@ -1,5 +1,7 @@
 "use client";
 
+import { InfoTip } from "@/components/ui/info-tip";
+
 export function Check({
   label,
   checked,
@@ -22,9 +24,9 @@ export function Check({
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
       />
-      <span>
+      <span className="inline-flex items-center gap-1.5">
         {label}
-        {hint && <span className="text-muted-foreground block text-xs">{hint}</span>}
+        {hint && <InfoTip>{hint}</InfoTip>}
       </span>
     </label>
   );

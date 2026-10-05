@@ -49,12 +49,6 @@
     "note": "Settings with the sections list, search box and the first section"
   },
   {
-    "name": "admin-notifications",
-    "user": "admin@dor.local",
-    "path": "/admin/notifications",
-    "note": "Notifications, Channels tab with WhatsApp, SMS and Email status"
-  },
-  {
     "name": "admin-audit",
     "user": "admin@dor.local",
     "path": "/admin/audit",

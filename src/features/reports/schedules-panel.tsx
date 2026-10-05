@@ -10,6 +10,7 @@ import { api, useApiMutation, useApiQuery } from "@/components/admin/use-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
@@ -121,7 +122,7 @@ export function SchedulesPanel() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-muted-foreground max-w-prose text-sm">{t("intro")}</p>
+        <InfoTip>{t("intro")}</InfoTip>
         <Button onClick={() => setEditing("new")}>
           <Plus aria-hidden />
           {t("add")}

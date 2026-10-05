@@ -116,6 +116,32 @@ export async function refreshScreens(organizationId: string, key: SettingKey, sc
   } else hub.to(`displays:${organizationId}`).emit("display.refresh", {});
 }
 
+/** Keys the self check-in kiosk shows or obeys: a change makes paired kiosks refetch their context at once. */
+const KIOSK_KEYS: readonly SettingKey[] = [
+  "pageContent",
+  "selfCheckin",
+  "branding",
+  "regional",
+  "privacy",
+  "displayTheme",
+  "waitEstimate",
+  "wifi",
+  "ticketing",
+  "visitorStatus",
+];
+
+/** Asks the kiosks a change reaches to refetch (room `kiosk:<branchId>` / `kiosks:<org>`). */
+export async function refreshKiosks(organizationId: string, key: SettingKey, scope: ScopeArg) {
+  if (!KIOSK_KEYS.includes(key)) return;
+  const hub = io();
+  if (!hub) return;
+  if (scope.branchId) hub.to(`kiosk:${scope.branchId}`).emit("kiosk.refresh", {});
+  else if (scope.cityId) {
+    const rows = await db().select({ id: branches.id }).from(branches).where(eq(branches.cityId, scope.cityId));
+    for (const b of rows) hub.to(`kiosk:${b.id}`).emit("kiosk.refresh", {});
+  } else hub.to(`kiosks:${organizationId}`).emit("kiosk.refresh", {});
+}
+
 /** Audit metadata for a scope: the city shows up in the action and in the recorded values, the branch in `branchId`. */
 function auditShape(scope: ScopeArg, kind: "updated" | "override_cleared") {
   return {
@@ -145,6 +171,7 @@ export async function updateSetting(
   const before = await getSettingSource(orgOf(actor), key, { branchId, cityId }).then((r) => r.value);
   await putSetting(orgOf(actor), key, value as never, { userId: actor.auth.user.id, branchId, cityId });
   await refreshScreens(orgOf(actor), key, { branchId, cityId });
+  await refreshKiosks(orgOf(actor), key, { branchId, cityId });
   const shape = auditShape({ branchId, cityId }, "updated");
   await audit({
     ...auditMeta(actor),
@@ -183,6 +210,7 @@ export async function clearSettingOverride(actor: Actor, key: string, branchId: 
     before: removed ? shape.wrap(removed.value) : undefined,
   });
   await refreshScreens(orgOf(actor), key, { branchId, cityId });
+  await refreshKiosks(orgOf(actor), key, { branchId, cityId });
 }
 
 /**
@@ -269,6 +297,7 @@ export async function copyCityConfiguration(actor: Actor, fromCityId: string, to
     return { settings: source.length, hiddenReasons: hidden.length };
   });
   for (const key of SCREEN_KEYS) await refreshScreens(org, key, { cityId: toCityId });
+  for (const key of KIOSK_KEYS) await refreshKiosks(org, key, { cityId: toCityId });
   return result;
 }
 

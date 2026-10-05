@@ -9,6 +9,7 @@ import { api, useApiMutation } from "@/components/admin/use-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import type { L, Shift } from "../types";
 import { LOOKUPS, useLookups, useText } from "../use-lookups";
@@ -62,10 +63,10 @@ export function ShiftsManager({ items }: { items: Shift[] }) {
   return (
     <div className="max-w-3xl space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold">{t("shifts")}</h3>
-          <p className="text-muted-foreground text-xs">{scopeCityId ? t("shiftsHintCity") : t("shiftsHint")}</p>
-        </div>
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+          {t("shifts")}
+          <InfoTip>{scopeCityId ? t("shiftsHintCity") : t("shiftsHint")}</InfoTip>
+        </h3>
         <Button variant="outline" size="sm" onClick={() => setEditing("new")}>
           <Plus aria-hidden />
           {t("addShift")}
@@ -142,7 +143,7 @@ export function ShiftsManager({ items }: { items: Shift[] }) {
                   onChange={(e) => setF({ ...f, startsAt: e.target.value })}
                 />
               </Field>
-              <Field label={t("shiftEnds")} htmlFor="sh-end">
+              <Field label={t("shiftEnds")} htmlFor="sh-end" hint={overnight ? t("shiftOvernightNote") : t("shiftEndsHint")}>
                 <Input
                   id="sh-end"
                   type="time"
@@ -153,7 +154,6 @@ export function ShiftsManager({ items }: { items: Shift[] }) {
                 />
               </Field>
             </div>
-            <p className="text-muted-foreground text-xs">{overnight ? t("shiftOvernightNote") : t("shiftEndsHint")}</p>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditing(null)}>
                 {tc("cancel")}

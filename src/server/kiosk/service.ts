@@ -27,7 +27,7 @@ export async function kioskContext(device: Device) {
   const config = parseDisplayConfig(device.config);
   const [branch] = await db().select().from(branches).where(eq(branches.id, branchId));
   if (!branch || branch.archivedAt) throw new AppError("unauthorized");
-  const [sc, privacy, regional, branding, ticketing, visitorStatus, wifi, wait, displayTheme] = await Promise.all([
+  const [sc, privacy, regional, branding, ticketing, visitorStatus, wifi, wait, displayTheme, pageContent] = await Promise.all([
     getSetting(org, "selfCheckin", branchId),
     getSetting(org, "privacy", branchId),
     getSetting(org, "regional", branchId),
@@ -37,6 +37,7 @@ export async function kioskContext(device: Device) {
     getSetting(org, "wifi", branchId),
     getSetting(org, "waitEstimate", branchId),
     getSetting(org, "displayTheme", branchId),
+    getSetting(org, "pageContent", branchId),
   ]);
   const [reasonRows, queueRows, printTpl] = await Promise.all([
     db()
@@ -67,6 +68,8 @@ export async function kioskContext(device: Device) {
           icon: r.icon,
           color: r.color,
           prefix: r.prefix,
+          /** Only sent when the kiosk is set to show descriptions (keeps the payload small). */
+          description: pageContent.kiosk.showReasonDescriptions ? (r.description ?? null) : null,
           /** `ask_staff`: shown as "please ask the agent"; no ticket can be taken here. */
           state: kioskReasonState(r),
           intakeFields: kioskFields(r).map((f) => ({ key: f.key, label: f.label, type: f.type, required: f.required })),
@@ -90,6 +93,8 @@ export async function kioskContext(device: Device) {
     privacy: { consentText: privacy.consentText, requireConsent: privacy.requireConsent },
     regional: { digitsScreen: regional.digitsScreen, digitsTicket: regional.digitsTicket },
     waitDisplay: waitDisplayOf(wait),
+    /** Wording and options chosen for this kiosk (D66): organization, city and branch layers already merged. */
+    pageContent: pageContent.kiosk,
     branding: {
       companyName: branding.companyName,
       logoUrl: branding.logoUrl,

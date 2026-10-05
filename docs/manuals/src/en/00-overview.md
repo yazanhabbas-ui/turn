@@ -35,7 +35,7 @@ Each person has one or more roles. A role decides which areas appear after you s
 | Agent                  | Calls and serves visitors at a desk, holds, transfers, completes tickets                                                    | **Agent workspace**                  | Agent manual         |
 | Supervisor             | Watches the queue live, reacts to alerts, reads reports, may reassign tickets                                               | **Live wallboard** and **Reports**   | Supervisor manual    |
 | City Admin             | Runs one city or one branch: users, branches, desks, visit reasons, screens, rules, reports                                 | **Administration**                   | Administrator manual |
-| Super Admin            | Everything a City Admin does, for all cities, plus organization-wide settings such as cities, roles, templates and security | **Administration**                   | Administrator manual |
+| Super Admin            | Everything a City Admin does, for all cities, plus organization-wide settings such as cities, roles, branding and security | **Administration**                   | Administrator manual |
 | Screen and kiosk setup | An administrator pairs the waiting-room screens and kiosks with a pairing code                                              | **Administration**, then **Screens** | Administrator manual |
 
 Good to know:
@@ -61,7 +61,15 @@ After too many wrong passwords your account is locked for a while (by default 5 
 ### Language, light and dark theme
 
 - Dor works in Arabic and English. Use the language button (it shows the other language) in the header. When you are signed in, your choice is saved on your profile. You can also change it on the **My account** page under **Interface language**.
-- The staff screens have a light/dark switch (**Switch to dark mode** / **Switch to light mode**). The first time, it follows your device setting.
+- The staff screens have a light/dark switch (**Switch to dark mode** / **Switch to light mode**). The first time, it follows your device setting. The dark mode takes a tint from your organization's brand colour.
+
+### Help icons: the (?) next to a field or figure
+
+Wherever a field, setting or figure needs an explanation, you see a small **(?)** icon next to its name instead of a paragraph of text. Hover over it with the mouse, move to it with the Tab key, or tap it on a phone, and the explanation appears. This is used across the administration pages, the settings, the reports and the profile pages. If another manual says to read the explanation of a field, this is where to find it.
+
+### Using Dor on a phone
+
+The header (the menu with your workspaces, the language button and **Sign out**) shrinks to icons on a small screen and scrolls when needed. The tabs on the reports page scroll sideways, and long lists such as visitor ratings turn into cards.
 
 ### Install Dor as an app (PWA)
 
@@ -104,7 +112,7 @@ Dor has no "forgot password" button on the sign-in page. Ask your administrator 
 
 There are two ways.
 
-**Accept an invitation.** An administrator invites you from **Invitations** and sends you a link. The page says "Join" followed by your organization and the role you were invited as. Enter your name and a password, confirm it and press **Create my account**. An invitation link expires (after 72 hours by default) and works once. If it fails, ask for a new link.
+**Accept an invitation.** An administrator invites you from **Users** and gives you a link (the administrator copies the link and sends it to you). The page says "Join" followed by your organization and the role you were invited as. Enter your name and a password, confirm it and press **Create my account**. An invitation link expires (after 72 hours by default) and works once. If it fails, ask for a new link.
 
 **Request an account yourself.**
 
@@ -113,7 +121,7 @@ There are two ways.
 1. On the sign-in page, press **Request an account**. This link appears only if your administrator allows requests.
 2. Enter **Your name**, **Email**, optional **Phone**, and a password twice.
 3. Press **Send request**.
-4. An administrator reviews the request, chooses your role and branch, and approves it. You then receive an email and can sign in with the password you chose.
+4. An administrator reviews the request, chooses your role and branch, and approves it. You can then sign in with the password you chose.
 
 If you see "Account requests are not open", ask your administrator for an invitation.
 
@@ -172,7 +180,7 @@ Notes:
 
 **How does a visitor follow their turn?** By scanning the QR code on the ticket (printed or on the reception or kiosk screen). The page shows people ahead and the estimated wait, and updates by itself.
 
-**Does the visitor get messages?** On the status page the visitor can give a phone number and agree to receive updates about their turn, and can later stop the messages. Whether messages are sent also depends on your administrator's notification settings.
+**Does the visitor get messages?** No. Dor does not send messages to visitors about their turn. The visitor follows the turn on the status page opened from the QR code, which updates by itself, and hears or sees the call on the waiting-room screen.
 
 **A visitor was called but is not here. What now?** The agent can recall them and finally mark **No-show**. If it was a mistake, use Undo quickly, or ask reception to send the ticket back to the queue.
 

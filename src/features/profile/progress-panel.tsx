@@ -5,8 +5,10 @@ import { useMemo, useState } from "react";
 import { useApiQuery } from "@/components/admin/use-api";
 import { axisStyle, baseOption, CHART_THEME, EChart } from "@/components/charts/echart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { InfoTip } from "@/components/ui/info-tip";
 import { PERIODS, type Change, type Period, type Progress } from "@/domain/profile/progress";
 import { cn } from "@/lib/utils";
+import { RatingSummary } from "./rating-summary";
 
 const th = CHART_THEME.light;
 
@@ -35,10 +37,25 @@ function ChangeNote({ change, period, lowerIsBetter = false }: { change: Change;
   );
 }
 
-function Tile({ label, value, note, sub }: { label: string; value: string; note?: React.ReactNode; sub?: React.ReactNode }) {
+function Tile({
+  label,
+  value,
+  note,
+  sub,
+  info,
+}: {
+  label: string;
+  value: string;
+  note?: React.ReactNode;
+  sub?: React.ReactNode;
+  info?: React.ReactNode;
+}) {
   return (
     <div className="bg-card rounded-xl border p-4">
-      <div className="text-muted-foreground text-sm">{label}</div>
+      <div className="text-muted-foreground flex items-center gap-1.5 text-sm">
+        {label}
+        {info && <InfoTip>{info}</InfoTip>}
+      </div>
       <div className="mt-1 text-2xl font-bold tabular-nums">{value}</div>
       {note && <div className="mt-1">{note}</div>}
       {sub && <div className="text-muted-foreground mt-0.5 text-xs">{sub}</div>}
@@ -157,6 +174,21 @@ export function ProgressPanel() {
 
       {p && (
         <>
+          {csat && csatNow && (
+            <RatingSummary
+              period={t(`periods.${period}`)}
+              data={{
+                avg: csatNow.current.avg,
+                responses: csatNow.current.responses,
+                satisfiedPct: csatNow.current.satisfiedPct,
+                negativeCount: csatNow.current.negative,
+                negativePct: csatNow.current.negativePct,
+                threshold: csat.threshold,
+                previousAvg: csatNow.previous.avg,
+                branchAvg: csatNow.branchAvg,
+              }}
+            />
+          )}
           {p.agent && cur && (
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <Tile
@@ -205,34 +237,10 @@ export function ProgressPanel() {
           {csat && csatNow && (
             <section className="space-y-3" aria-label={t("csatTitle")}>
               <div>
-                <h3 className="text-sm font-semibold">{t("csatTitle")}</h3>
-                <p className="text-muted-foreground text-xs">{t("csatHint")}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <Tile
-                  label={t("csatAvg")}
-                  value={
-                    csatNow.current.avg === null
-                      ? t("csatNone")
-                      : t("csatOutOf", { n: format.number(csatNow.current.avg, { maximumFractionDigits: 1 }) })
-                  }
-                  sub={
-                    csatNow.branchAvg !== null
-                      ? t("csatBranch", { value: format.number(csatNow.branchAvg, { maximumFractionDigits: 1 }) })
-                      : undefined
-                  }
-                />
-                <Tile label={t("csatResponses")} value={format.number(csatNow.current.responses)} />
-                <Tile label={t("csatSatisfied")} value={pct(csatNow.current.satisfiedPct)} />
-                <Tile
-                  label={t("csatPrevious")}
-                  value={
-                    csatNow.previous.avg === null
-                      ? t("csatNone")
-                      : t("csatOutOf", { n: format.number(csatNow.previous.avg, { maximumFractionDigits: 1 }) })
-                  }
-                  sub={t(`vs.${period}`)}
-                />
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-sm font-semibold">{t("csatTitle")}</h3>
+                  <InfoTip>{t("csatHint")}</InfoTip>
+                </div>
               </div>
               {csat.trend.some((d) => d.responses > 0) && (
                 <Card>
@@ -255,6 +263,8 @@ export function ProgressPanel() {
                         <li key={`${c.at}-${c.score}`} className="border-s-2 ps-3 text-sm">
                           <p>{c.comment}</p>
                           <p className="text-muted-foreground mt-0.5 text-xs">
+                            {c.displayNumber ? <span dir="ltr">{c.displayNumber}</span> : null}
+                            {c.displayNumber ? " · " : ""}
                             {t("csatScore", { n: c.score })} ·{" "}
                             {format.dateTime(new Date(c.at), { month: "short", day: "numeric" })}
                           </p>
@@ -295,7 +305,7 @@ export function ProgressPanel() {
                 value={format.number(p.agent.hosted[period].sessions)}
                 sub={t(`periods.${period}`)}
               />
-              <Tile label={t("hostedVisitors")} value={format.number(p.agent.hosted[period].visitors)} sub={t("hostedHint")} />
+              <Tile label={t("hostedVisitors")} value={format.number(p.agent.hosted[period].visitors)} info={t("hostedHint")} />
             </div>
           )}
 
@@ -311,7 +321,7 @@ export function ProgressPanel() {
                 value={p.agent.milestones.bestDay ? format.number(p.agent.milestones.bestDay.served) : t("none")}
                 sub={p.agent.milestones.bestDay ? day(p.agent.milestones.bestDay.date) : undefined}
               />
-              <Tile label={t("streak")} value={t("days", { n: p.agent.milestones.streakDays })} sub={t("streakHint")} />
+              <Tile label={t("streak")} value={t("days", { n: p.agent.milestones.streakDays })} info={t("streakHint")} />
             </div>
           )}
         </>

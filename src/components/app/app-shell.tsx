@@ -1,4 +1,4 @@
-import { ShieldAlert } from "lucide-react";
+import { BookOpen, ShieldAlert } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { can } from "@/domain/rbac/permissions";
 import { pickText } from "@/i18n/locales";
@@ -21,7 +21,7 @@ export async function AppShell({
   sidebar,
 }: {
   auth: AuthContext;
-  area?: AreaKey | "account" | "profile";
+  area?: AreaKey | "account" | "profile" | "help";
   children: React.ReactNode;
   sidebar?: React.ReactNode;
 }) {
@@ -35,7 +35,7 @@ export async function AppShell({
     <div className="flex min-h-dvh flex-col">
       <header className="bg-background/95 sticky top-0 z-30 border-b backdrop-blur">
         <div className="flex h-14 items-center gap-2 px-3 sm:gap-3 sm:px-4">
-          <Link href="/" className="text-brand flex shrink-0 items-center gap-2 font-bold">
+          <Link href="/" className="text-brand flex min-w-0 shrink items-center gap-2 font-bold">
             {branding.logoUrl ? (
               <>
                 {/* Both logos are rendered; CSS picks the one for the active theme, so there is no flash. */}
@@ -43,11 +43,11 @@ export async function AppShell({
                 <img
                   src={branding.logoUrl}
                   alt={pickText(branding.companyName, locale)}
-                  className={cn("h-8 w-auto", darkLogo && "dark:hidden")}
+                  className={cn("h-8 w-auto min-w-0 object-contain", darkLogo && "dark:hidden")}
                 />
                 {darkLogo && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={darkLogo} alt={pickText(branding.companyName, locale)} className="hidden h-8 w-auto dark:block" />
+                  <img src={darkLogo} alt={pickText(branding.companyName, locale)} className="hidden h-8 w-auto min-w-0 object-contain dark:block" />
                 )}
               </>
             ) : (
@@ -82,6 +82,17 @@ export async function AppShell({
             ))}
           </nav>
           <div className="ms-auto flex items-center gap-1">
+            <Link
+              href="/help"
+              title={t("help")}
+              aria-label={t("help")}
+              className={cn(
+                "text-muted-foreground hover:bg-muted hover:text-foreground inline-flex size-8 items-center justify-center rounded-md",
+                area === "help" && "bg-muted text-foreground",
+              )}
+            >
+              <BookOpen className="size-4" aria-hidden />
+            </Link>
             <ThemeToggle />
             <LanguageSwitcher signedIn compact />
             <Link

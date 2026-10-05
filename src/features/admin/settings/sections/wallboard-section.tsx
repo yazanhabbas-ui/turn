@@ -53,8 +53,7 @@ function WallboardForm({ initial }: { initial: SettingValue<"wallboard"> }) {
     <SettingForm k="wallboard" initial={initial}>
       {(v, set) => (
         <>
-          <p className="text-muted-foreground text-sm">{t("wallboardIntro")}</p>
-          <SettingCard title={t("cards.wallboardLook")} columns={2}>
+          <SettingCard title={t("cards.wallboardLook")} description={t("wallboardIntro")} columns={2}>
             <Field label={t("wallboardTheme")} htmlFor="wb-theme">
               <NativeSelect id="wb-theme" value={v.theme} onChange={(e) => set({ theme: e.target.value as typeof v.theme })}>
                 <option value="dark">{t("wallboardThemeDark")}</option>
@@ -97,6 +96,45 @@ function WallboardForm({ initial }: { initial: SettingValue<"wallboard"> }) {
               onChange={(showClock) => set({ showClock })}
             />
             <Check id="wb-csat" label={t("wallboardShowCsat")} checked={v.showCsat} onChange={(showCsat) => set({ showCsat })} />
+            <div className="sm:col-span-2">
+              <Check
+                id="wb-neg"
+                label={t("wallboardShowNegative")}
+                hint={t("wallboardShowNegativeHint")}
+                checked={v.showNegativeRatings}
+                onChange={(showNegativeRatings) => set({ showNegativeRatings })}
+              />
+            </div>
+            {v.showNegativeRatings && (
+              <>
+                <NumField
+                  id="wb-neg-count"
+                  label={t("wallboardNegativeCount")}
+                  value={v.negativeRatingsCount}
+                  min={1}
+                  max={10}
+                  onChange={(negativeRatingsCount) => set({ negativeRatingsCount })}
+                />
+                <NumField
+                  id="wb-neg-hours"
+                  label={t("wallboardNegativeHours")}
+                  hint={t("wallboardNegativeHoursHint")}
+                  value={v.negativeRatingsHours}
+                  min={1}
+                  max={168}
+                  onChange={(negativeRatingsHours) => set({ negativeRatingsHours })}
+                />
+                <div className="sm:col-span-2">
+                  <Check
+                    id="wb-neg-comment"
+                    label={t("wallboardShowNegativeComment")}
+                    hint={t("wallboardShowNegativeCommentHint")}
+                    checked={v.showNegativeComment}
+                    onChange={(showNegativeComment) => set({ showNegativeComment })}
+                  />
+                </div>
+              </>
+            )}
           </SettingCard>
           <p className="text-muted-foreground text-sm">{t("wallboardBrandHint")}</p>
         </>

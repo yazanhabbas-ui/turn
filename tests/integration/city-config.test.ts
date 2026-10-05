@@ -168,22 +168,23 @@ describe.runIf(available)("configuration per city (database)", () => {
     expect(row.actorUserId).toBe(damAdmin.auth.user.id);
   });
 
+  // Screens hear `display.refresh`; kiosks hear their own `kiosk.refresh` (D66, tested in page-content.test.ts).
   it("tells the screens of exactly the affected branches to refresh", async () => {
     const wall = { theme: "light" };
     await updateSetting(damAdmin, "wallboard", wall, null, damCity);
-    expect(emitted).toEqual([`screens:${damBranch}:display.refresh`]);
+    expect(emitted.filter((e) => e.endsWith(":display.refresh"))).toEqual([`screens:${damBranch}:display.refresh`]);
     emitted.length = 0;
     await updateSetting(damAdmin, "displayTheme", { theme: "light" }, damBranch);
-    expect(emitted).toEqual([`screens:${damBranch}:display.refresh`]);
+    expect(emitted.filter((e) => e.endsWith(":display.refresh"))).toEqual([`screens:${damBranch}:display.refresh`]);
     emitted.length = 0;
     await clearSettingOverride(damAdmin, "wallboard", null, damCity);
-    expect(emitted).toEqual([`screens:${damBranch}:display.refresh`]);
+    expect(emitted.filter((e) => e.endsWith(":display.refresh"))).toEqual([`screens:${damBranch}:display.refresh`]);
     emitted.length = 0;
     await updateSetting(superAdmin, "voice", { enabled: false });
-    expect(emitted).toEqual([`displays:${org}:display.refresh`]);
+    expect(emitted.filter((e) => e.endsWith(":display.refresh"))).toEqual([`displays:${org}:display.refresh`]);
     emitted.length = 0;
     await updateSetting(damAdmin, "ticketing", { numberPad: 5 }, null, damCity); // not a screen setting
-    expect(emitted).toEqual([]);
+    expect(emitted.filter((e) => e.endsWith(":display.refresh"))).toEqual([]);
   });
 
   it("copies a city's configuration to another city (organization-wide administrators only)", async () => {

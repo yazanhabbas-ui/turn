@@ -1,4 +1,5 @@
 import { averageScore, SCORES, satisfiedPct } from "../feedback/csat";
+import { isNegative, NEGATIVE_DEFAULT, negativePct } from "../feedback/negative";
 import { mean } from "../reports/compute";
 import { zonedParts, zonedToUtc } from "../schedule/time";
 import { change, type Change } from "./progress";
@@ -107,6 +108,13 @@ export type AgentReport = {
     avg: number | null;
     responses: number;
     satisfiedPct: number | null;
+    /** Scores up to this count as negative (the `feedback.lowScoreThreshold` setting, D63). */
+    threshold: number;
+    negativeCount: number;
+    negativePct: number | null;
+    /** The agent's own average of the previous period, and every agent of the branch together (aggregate only). */
+    previousAvg: number | null;
+    branchAvg: number | null;
     distribution: { score: number; count: number }[];
     /** Latest written comments of the period. */
     comments: { at: number; score: number; comment: string; displayNumber: string }[];
@@ -140,6 +148,8 @@ export function computeAgentReport(input: {
   branchFacts: AggregateFact[] | null;
   /** False when visitor feedback is switched off: no satisfaction block, no scores. */
   feedbackOn: boolean;
+  /** Scores up to this are negative (default 2). */
+  negativeThreshold?: number;
   /** Hall hosting totals of the period; ignored when the agent hosted no session. */
   hosted?: { sessions: number; visitors: number };
 }): AgentReport {
@@ -182,11 +192,17 @@ export function computeAgentReport(input: {
   const branch = input.branchFacts ? statsOf(strip(input.branchFacts)) : null;
 
   const scores = own.map((f) => f.score).filter((s): s is number => s !== null);
+  const threshold = input.negativeThreshold ?? NEGATIVE_DEFAULT;
   const csat = input.feedbackOn
     ? {
         avg: averageScore(scores),
         responses: scores.length,
         satisfiedPct: scores.length ? satisfiedPct(scores) : null,
+        threshold,
+        negativeCount: scores.filter((x) => isNegative(x, threshold)).length,
+        negativePct: negativePct(scores, threshold),
+        previousAvg: prev.avgScore,
+        branchAvg: branch?.avgScore ?? null,
         distribution: SCORES.map((score) => ({ score, count: scores.filter((s) => s === score).length })),
         comments: own
           .filter((f) => f.score !== null && f.comment)

@@ -7,6 +7,7 @@ import { EmptyState, ErrorState, LoadingRows } from "@/components/admin/form";
 import { api, useApiMutation, useApiQuery } from "@/components/admin/use-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import type { DigitSystem } from "@/domain/i18n/digits";
 import { cn } from "@/lib/utils";
 import type { SettingValue } from "@/server/settings/registry";
@@ -83,7 +84,7 @@ export function ArabicVoice({
         <Choice
           selected={!usingPack}
           title={t("browserVoice")}
-          hint={t("browserVoiceHint")}
+          tip={t("browserVoiceHint")}
           onUse={() => browser.mutate(undefined)}
           busy={browser.isPending}
           inUse={t("inUse")}
@@ -129,7 +130,7 @@ export function ArabicVoice({
           <Plus aria-hidden />
           {t("addBundled")}
         </Button>
-        <span className="text-muted-foreground text-xs">{t("bundledNote")}</span>
+        <InfoTip>{t("bundledNote")}</InfoTip>
       </div>
     </div>
   );
@@ -139,6 +140,7 @@ function Choice({
   selected,
   title,
   hint,
+  tip,
   onUse,
   busy,
   inUse,
@@ -147,7 +149,8 @@ function Choice({
 }: {
   selected: boolean;
   title: string;
-  hint: string;
+  hint?: string;
+  tip?: string;
   onUse: () => void;
   busy: boolean;
   inUse: string;
@@ -164,6 +167,7 @@ function Choice({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2 font-medium">
           {title}
+          {tip && <InfoTip>{tip}</InfoTip>}
           {selected && (
             <Badge>
               <Check aria-hidden />
@@ -171,7 +175,7 @@ function Choice({
             </Badge>
           )}
         </div>
-        <div className="text-muted-foreground text-xs">{hint}</div>
+        {hint && <div className="text-muted-foreground text-xs">{hint}</div>}
       </div>
       {extra}
       {!selected && (

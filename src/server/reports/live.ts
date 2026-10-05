@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { serviceDay } from "@/domain/schedule/time";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/db/schema";
 import { ACTIVE_MEMBER } from "@/domain/halls/state";
 import { averageScore, satisfiedPct } from "@/domain/feedback/csat";
+import { truncateComment } from "@/domain/feedback/negative";
 import type { Actor } from "../admin/actor";
 import { now as clockNow } from "../clock";
 import { getSetting } from "../settings/service";
@@ -88,6 +89,17 @@ export async function liveView(actor: Actor, branchId?: string) {
             .innerJoin(tickets, eq(tickets.id, csatResponses.ticketId))
             .where(and(eq(csatResponses.branchId, branch.id), eq(tickets.serviceDay, day)))
         ).map((r) => r.score)
+      : null;
+
+  // Recent negative ratings (D63): ticket, desk, agent, reason and score; never the visitor's name or phone.
+  const negative =
+    feedbackSettings.enabled && wallboard.showNegativeRatings
+      ? await negativeRatings(branch.id, now, {
+          threshold: feedbackSettings.lowScoreThreshold,
+          limit: wallboard.negativeRatingsCount,
+          hours: wallboard.negativeRatingsHours,
+          withComment: wallboard.showNegativeComment,
+        })
       : null;
 
   const names = new Map(
@@ -200,6 +212,24 @@ export async function liveView(actor: Actor, branchId?: string) {
       .sort((a, b) => waitMin(b) - waitMin(a))
       .slice(0, 10)
       .map((t) => ({ ticketId: t.id, displayNumber: t.displayNumber, reasonId: t.reasonId, waitMin: round1(waitMin(t)) })),
+    /** Recent negative ratings of the branch; null when the panel is off or visitor feedback is disabled. */
+    negativeRatings: negative
+      ? {
+          threshold: feedbackSettings.lowScoreThreshold,
+          hours: wallboard.negativeRatingsHours,
+          total: negative.total,
+          items: negative.rows.map((r) => ({
+            id: r.id,
+            displayNumber: r.displayNumber,
+            score: r.score,
+            at: r.at.toISOString(),
+            desk: r.deskId ? { number: r.deskNumber, name: r.deskName } : null,
+            agent: r.agentId ? { name: names.get(r.agentId) ?? {} } : null,
+            reason: r.reasonId ? (reasonById.get(r.reasonId)?.name ?? null) : null,
+            comment: r.comment ? truncateComment(r.comment, 120) : null,
+          })),
+        }
+      : null,
     /** Halls with their host, status, occupancy and visitors; empty when halls are off or the branch has none. */
     halls: hallBoard,
     thresholds: { longWaitMinutes: settings.longWaitMinutes, queueLimit: settings.queueLimit },
@@ -211,6 +241,43 @@ export async function liveView(actor: Actor, branchId?: string) {
       createdAt: a.createdAt.toISOString(),
     })),
   };
+}
+
+/** The newest answers at or below the negative threshold within the look-back window, with how many there are in all. */
+async function negativeRatings(
+  branchId: string,
+  now: number,
+  o: { threshold: number; limit: number; hours: number; withComment: boolean },
+) {
+  const where = and(
+    eq(csatResponses.branchId, branchId),
+    lte(csatResponses.score, o.threshold),
+    gte(csatResponses.at, new Date(now - o.hours * 60 * MIN)),
+    lte(csatResponses.at, new Date(now)),
+  );
+  const [rows, [total]] = await Promise.all([
+    db()
+      .select({
+        id: csatResponses.id,
+        score: csatResponses.score,
+        at: csatResponses.at,
+        agentId: csatResponses.agentId,
+        reasonId: csatResponses.reasonId,
+        comment: csatResponses.comment,
+        displayNumber: tickets.displayNumber,
+        deskId: tickets.deskId,
+        deskNumber: desks.number,
+        deskName: desks.name,
+      })
+      .from(csatResponses)
+      .innerJoin(tickets, eq(tickets.id, csatResponses.ticketId))
+      .leftJoin(desks, eq(desks.id, tickets.deskId))
+      .where(where)
+      .orderBy(desc(csatResponses.at), desc(csatResponses.id))
+      .limit(o.limit),
+    db().select({ n: count() }).from(csatResponses).where(where),
+  ]);
+  return { rows: o.withComment ? rows : rows.map((r) => ({ ...r, comment: null })), total: total?.n ?? 0 };
 }
 
 export type LiveHall = {

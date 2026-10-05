@@ -1,6 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
+import { negativeScores } from "@/domain/feedback/negative";
 import { Field as FormField, LocalizedInput } from "@/components/admin/form";
 import { NativeSelect } from "@/components/ui/native-select";
 import type { SettingValue } from "@/server/settings/registry";
@@ -11,14 +12,14 @@ import { SettingForm } from "../setting-form";
 /** Visitor feedback. The level it applies to (organization, city or branch) is picked at the top of the page. */
 export function FeedbackSection({ initial }: { initial: SettingValue<"feedback"> }) {
   const t = useTranslations("settings");
+  const format = useFormatter();
 
   return (
     <div className="space-y-4">
-      <p className="text-muted-foreground text-sm">{t("feedbackIntro")}</p>
       <SettingForm k="feedback" initial={initial}>
         {(v, set) => (
           <>
-            <SettingCard title={t("cards.feedbackAsk")} columns={2}>
+            <SettingCard title={t("cards.feedbackAsk")} description={t("feedbackIntro")} columns={2}>
               <div className="sm:col-span-2">
                 <Check
                   id="fb-enabled"
@@ -46,7 +47,12 @@ export function FeedbackSection({ initial }: { initial: SettingValue<"feedback">
               <NumField
                 id="fb-low"
                 label={t("feedbackLowScore")}
-                hint={t("feedbackLowScoreHint")}
+                hint={`${t("feedbackLowScoreHint")} ${t("feedbackLowScoreExample", {
+                  scores: format.list(
+                    negativeScores(v.lowScoreThreshold).map((n) => format.number(n)),
+                    { type: "unit" },
+                  ),
+                })}`}
                 value={v.lowScoreThreshold}
                 min={1}
                 max={4}
@@ -66,7 +72,7 @@ export function FeedbackSection({ initial }: { initial: SettingValue<"feedback">
                 onChange={(askNps) => set({ askNps })}
               />
             </SettingCard>
-            <SettingCard title={t("cards.feedbackTexts")}>
+            <SettingCard title={t("cards.feedbackTexts")} description={t("feedbackPrivacyNote")}>
               <LocalizedInput
                 id="fb-prompt"
                 label={t("feedbackPrompt")}
@@ -93,7 +99,6 @@ export function FeedbackSection({ initial }: { initial: SettingValue<"feedback">
                 onChange={(thanks) => set({ thanks })}
               />
             </SettingCard>
-            <p className="text-muted-foreground text-sm">{t("feedbackPrivacyNote")}</p>
           </>
         )}
       </SettingForm>

@@ -12,7 +12,6 @@ There are two administrator roles. They use the same screens, but they do not se
 | Cities        | Creates, edits and archives cities                     | Cannot open the **Cities** page                                                  |
 | Roles         | Creates, edits and clones roles                        | Can view roles only                                                              |
 | Settings      | Every section, at organization, city and branch level  | Only the sections a city or branch may override, for their own city and branches |
-| Notifications | Channel status, test messages, limits, message wording | Branch-level event choices and the delivery log                                  |
 | Users         | Can give any role, including organization-wide ones    | Can only give roles and scopes they hold themselves                              |
 | Backup status | Sees the **Database backup** card on the Overview      | Does not see it                                                                  |
 
@@ -41,6 +40,7 @@ Under the counters you may see warning cards:
 
 - A **coverage** card appears when some branches have no way to issue tickets (no receptionist, agent walk-in issuing off and no kiosk paired). It has an **Open branches** button.
 - A second card appears when a branch has services served in halls but nobody can serve them. It has an **Open settings** button.
+- The card **Visitor ratings by agent** (if your role may view reports) lists the ratings visitors gave, with the visitor, the agent, the stars and the comment. It has its own **From** and **To** dates and an **Agent** filter. See 4.15.
 - The **Database backup** card (super admin only) shows **Backed up**, **Backup is overdue**, **Last backup failed** or **No backup recorded**.
 
 The sidebar lists the admin pages:
@@ -57,7 +57,6 @@ The sidebar lists the admin pages:
 | **Distribution rules**  | How tickets reach agents                                                   |
 | **Simulate**            | Test rules on a replayed day                                               |
 | **Screens**             | Waiting-room screens, kiosks, announcements, voice (see the screens guide) |
-| **Notifications**       | WhatsApp, SMS and email to visitors                                        |
 | **Settings**            | All options                                                                |
 | **Privacy requests**    | Export or erase a visitor's data                                           |
 | **Audit log**           | Who changed what, and when                                                 |
@@ -78,7 +77,7 @@ Set things up in this order, because each step needs the one before it.
 6. **Agent groups** (optional): put agents in teams.
 7. **Shifts**: **Settings > Agents**.
 8. **Distribution rules**: choose how tickets reach agents, and test with **Simulate**.
-9. **Settings review**: numbering, reception, wait estimate, security, privacy, notifications.
+9. **Settings review**: numbering, reception, wait estimate, security and privacy.
 10. **Screens, voice and kiosks**: follow the screens guide.
 
 The **Going live checklist** at the end of this guide repeats the essentials.
@@ -131,10 +130,10 @@ You can archive a reason you no longer use. It disappears from reception, but hi
 2. Enter **Email**, **Full name**, **Mobile** and **Preferred language**.
 3. Under **Roles**, press **Add role**. For each row choose the **Role** and the **Scope**: **Whole organization**, a city (all its branches) or a single branch. A city admin cannot choose the whole organization.
 4. For people who serve visitors, switch on **Serves visitors** and set **Works at branch**, **Default desk** (or **Default hall** for a host), **Max tickets at once**, **Distribution weight**, **Groups** and **Shift**.
-5. **Initial password**: type one, or leave it empty. If you leave it empty, Dor creates a set-password link, valid for 72 hours, and emails it to the user as an activation email (when email is configured). The link is also shown on screen so you can copy it if email is not set up.
+5. **Initial password**: type one, or leave it empty. If you leave it empty, Dor creates a set-password link, valid for 72 hours, and shows it on screen so you can copy it and send it to the user. If your server is set up to send email, Dor also emails the link to the user as an activation email.
 6. Save.
 
-> **Note:** The activation, invitation and approval emails use built-in wording in Arabic and English. You do not need to write them.
+> **Note:** The account emails Dor can send (activation, password link, approval) use built-in wording in Arabic and English. You do not need to write them, and they are sent only if your server is set up for email.
 
 Open any user from the list to edit them. The dialog also has these actions:
 
@@ -152,15 +151,15 @@ A padlock next to a user means the account is locked after too many failed sign-
 
 ### 4.6 Invite people
 
-An invitation lets a person choose their own password.
+An invitation lets a person choose their own password. Invitations are link-only: Dor creates a link and you give it to the person yourself, for example in your own chat or email. Dor does not send it for you.
 
 1. In **Users**, press **Invite**.
-2. Enter the **Recipient** details (**Email** and/or **Mobile**) and the name.
+2. Enter the person's name, **Email** and/or **Mobile** (at least one of them is needed).
 3. Choose the **Role** and the branch, and the **Invitation language**.
-4. Under **Send via** tick **Email**, **WhatsApp** or **SMS**, or choose **Copy link only**. Press **Create invitation**.
-5. Dor shows the link. If a channel is not set up it says "is not configured. Copy the link and send it yourself."
+4. Press **Create invitation**.
+5. Dor shows "Invitation created. Share this link:" with a copy button. Copy the link and send it to the person.
 
-Open the **Invitations** tab to follow each invitation: **Pending**, **Accepted**, **Expired** or **Revoked**. **Resend** creates a new link and the old one stops working. **Revoke** cancels a pending invitation. An invitation stays valid for the number of hours set in **Settings > Security > Invitation validity (hours)**.
+Open the **Invitations** tab to follow each invitation: **Pending**, **Accepted**, **Expired** or **Revoked**. **Resend** creates a new link (which you copy again) and the old one stops working. **Revoke** cancels a pending invitation. An invitation stays valid for the number of hours set in **Settings > Security > Invitation validity (hours)**.
 
 ### 4.7 Approve or reject sign-up requests
 
@@ -168,7 +167,7 @@ If you switch on **Let people request an account on the sign-up page (an adminis
 
 1. Open **Users** and then the **Requests** tab. A number badge shows how many are waiting.
    ![The Requests tab with pending account requests](shot:admin-requests)
-2. Press **Approve** on a request. Choose the **Role** and branch, then confirm. The person can sign in immediately with the password they chose and receives an email.
+2. Press **Approve** on a request. Choose the **Role** and branch, then confirm. The person can sign in immediately with the password they chose.
 3. Or press **Reject**. The person is told the request was not approved, and may apply again.
 
 Nobody gets access before you approve. Turn the setting off when you no longer want requests.
@@ -245,7 +244,7 @@ The **Applies to** switcher decides the level you are editing. Values are inheri
 | **Self check-in**                       | Kiosk on or off, printing, limits, services offered, welcome text                                                                                                                | Branch              |
 | **Wi-Fi**                               | Guest Wi-Fi details printed on the ticket                                                                                                                                        | Branch              |
 | **Waiting time**                        | How the estimate shown to visitors is worked out (fixed, per reason, or learned from real visits), rounding, safety margin, wording                                              | Branch              |
-| **Visitor page**                        | The page opened from the ticket QR code, and when to notify the visitor                                                                                                          | City                |
+| **Visitor page**                        | The page opened from the ticket QR code: turn it on or off                                                                                                                            | City                |
 | **Feedback**                            | Ask visitors to rate the visit (faces or stars), comment, recommend question, what counts as a low score                                                                         | Branch              |
 | **Priority lanes**                      | Priority levels, their weight and whether they form a separate lane                                                                                                              | Organization        |
 | **Agents**                              | Several visitors at once, shifts                                                                                                                                                 | City                |
@@ -254,8 +253,8 @@ The **Applies to** switcher decides the level you are editing. Values are inheri
 | **Wallboard**                           | Look of the live wallboard and the waiting-room screens' default look                                                                                                            | Branch              |
 | **Reports**                             | Service level minutes and target, target utilisation, forecast history                                                                                                           | City                |
 | **Alerts**                              | Thresholds for long wait, queue size, idle agent, no-show spike, low satisfaction, and **Email recipients**                                                                      | Branch              |
-| **Security**                            | See 4.15                                                                                                                                                                         | Organization        |
-| **Data retention**, **Data protection** | See 4.17                                                                                                                                                                         | Organization        |
+| **Security**                            | See 4.14                                                                                                                                                                         | Organization        |
+| **Data retention**, **Data protection** | See 4.16                                                                                                                                                                         | Organization        |
 
 The **service day**: the **Daily numbering reset time** (in **Tickets**) is the branch-local time at which ticket numbers start again from 1.
 
@@ -266,18 +265,7 @@ Two more options in **Tickets**:
 
 ![Settings](shot:admin-settings)
 
-### 4.14 Notifications and message templates
-
-Open **Notifications**. It tells visitors their number, their turn and their call. It has four tabs:
-
-- **Channels**: shows **WhatsApp**, **SMS** and **Email** as **Configured**, **Not configured** or **Test mode (nothing is sent)**. Provider keys and passwords are set by whoever installs the server (for email, the SMTP settings; for WhatsApp, the WhatsApp Cloud API token; for SMS, an SMS gateway or Twilio). They are never shown here. Use **Send a test message** to send a sample to your own phone or email (super admin).
-- **Events and limits**: choose which events are sent (**Number issued**, **Turn is near**, **Called to the desk**, **Missed the call**, **Thank you after the visit**) on which channel, and the **Channel order**. Limits protect visitors from too many messages. Keep the **Opt-out footer**. Messages are sent only if the visitor agreed at reception and left a phone number or email. Branches can follow the default or have their own choice.
-- **Messages** (super admin): edit the wording per event and channel, with values you can insert (ticket number, desk, wait and so on). **Restore the default wording** goes back to the original. For WhatsApp you can enter the **WhatsApp approved template name**.
-- **Delivery log**: every message with its status (**Queued**, **Sending**, **Sent**, **Failed**, **Not sent**) and the reason when it was not sent. Use **Send again** on a failed one.
-
-![Notifications](shot:admin-notifications)
-
-### 4.15 Security settings (super admin)
+### 4.14 Security settings (super admin)
 
 In **Settings > Security**:
 
@@ -287,14 +275,26 @@ In **Settings > Security**:
 - **Let people request an account on the sign-up page...**: see 4.7.
 - **Roles that must use 2FA**: tick the roles. People in those roles must use two-step verification.
 
-### 4.16 Reports and scheduled reports
+### 4.15 Reports, visitor ratings and scheduled reports
 
-Open **Reports** from the top bar (it needs the report permissions, which both administrator roles have). Choose a period (**Today**, **Yesterday**, **Last 7 days**, **Last 30 days**, **This month** or custom dates) and filters (branch, visit reason, agent, hall, hours, weekdays). The page shows key figures, peak hours, queue length, agents, visit reasons, forecast, repeat visits, shifts, ticket sources, halls and visitor satisfaction.
+Open **Reports** from the top bar (it needs the report permissions, which both administrator roles have). Choose a period (**Today**, **Yesterday**, **Last 7 days**, **Last 30 days**, **This month** or custom dates) and filters (branch, visit reason, agent, hall, hours, weekdays). The filters and the **Download** button stay above the tabs. The page has eight tabs:
 
+| Tab                 | What it shows                                                                                        |
+| ------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Overview**        | Key figures in four groups (**Waiting**, **Service**, **Visitors**, **Satisfaction**) and peak hours |
+| **Volume & queue**  | Visitors per day, hour, weekday, branch and reason, ticket sources, queue length and throughput      |
+| **Staff**           | Agents, shifts and halls                                                                             |
+| **Reasons**         | Waits, service times and SLA per visit reason                                                        |
+| **Satisfaction**    | Scores and comments on low scores                                                                    |
+| **Visitor ratings** | Every rating with the visitor, desk, agent, stars and comment                                        |
+| **Repeat visitors** | Visitors who came back                                                                               |
+| **Forecast**        | Expected visitors and suggested agents                                                               |
+
+- **Visitor ratings** lists each rating with the ticket and time, the visitor's name and phone as recorded by reception or the kiosk (and where it was entered), the agent and desk, the stars and the comment. In this tab the dates follow the page filters and you can also pick an **Agent**. The same list, with its own dates, is the card **Visitor ratings by agent** on the **Overview** of Administration. The newest 500 are shown. The phone number shows only its last 3 digits unless your role has the visitor privacy (personal data) permission. On a phone each rating is a card.
 - **Download** exports **Excel (.xlsx)**, **CSV** or **PDF**, with the sections you pick.
 - Open **Scheduled reports** at the bottom and press **Add scheduled report** to email a report automatically. Choose the **Frequency** (**Every day** covers the previous day; **Every week** covers the seven days ending yesterday), **Send at**, **File format**, **Report language**, branch, **Recipients** (one email per line) and sections. **Send now** tests it. If email is not configured nothing is sent.
 
-### 4.17 Privacy tools and data retention
+### 4.16 Privacy tools and data retention
 
 **Privacy requests** handles a visitor asking for their data.
 
@@ -307,13 +307,13 @@ Every request is listed under **Request history** without the person's details. 
 
 **Retention** (**Settings > Data retention**, super admin): set the number of days after which visitor data is anonymized, ticket notes and intake answers are cleared, feedback comments are cleared, notification details are cleared, audit entries are deleted and expired sign-in records are deleted. **0** keeps that data until you erase it by hand. The job runs by itself about once a day. **Preview** shows what it would change without changing anything. **Run now** applies it for good. **Settings > Data protection** holds the **Consent text on the reception form** and **Require consent before issuing a ticket**.
 
-### 4.18 Audit log
+### 4.17 Audit log
 
 Open **Audit log**. Each row shows **When**, **Who**, **Action**, **Item** and **Details**, with **Before** and **After** values for changes. Filter by item type with **All items** and press **Load more** for older entries. Use it to answer "who changed this setting?"
 
 ![Audit log](shot:admin-audit)
 
-### 4.19 Backups
+### 4.18 Backups
 
 Backups are taken by scripts on the server, not from this application. Ask whoever runs the server to schedule them, and read the file `docs/backup-restore.md`. The **Database backup** card on the Overview shows whether the last backup succeeded.
 
@@ -323,7 +323,6 @@ Backups are taken by scripts on the server, not from this application. Ask whoev
 - Keep at least two administrators so you are never locked out.
 - Set each branch's time zone correctly before the first ticket.
 - Use **Simulate** before you change distribution rules on a busy branch.
-- Check the **Delivery log** after you configure a channel, and send yourself a test message.
 - Review the **Audit log** regularly, especially roles, users and settings.
 - Collect only the visitor data you need and set retention periods.
 - Make sure every visit reason has at least one primary agent and a branch has a way to issue tickets.
@@ -337,12 +336,11 @@ Backups are taken by scripts on the server, not from this application. Ask whoev
 | I cannot give a role to someone              | You can only give roles whose permissions you hold, and only within your own scope.                                                     |
 | Tickets for a service are never called       | Open the visit reason: nobody is assigned, or the assigned agents are not signed in or are outside their shift (**Settings > Agents**). |
 | A branch cannot issue tickets                | The Overview warning card tells you why. Add a receptionist, enable agent walk-in issuing, or pair a kiosk.                             |
-| New user did not get an email                | Email may not be configured (**Notifications > Channels**). Copy the link from the dialog and send it yourself.                         |
+| New user did not get an email                | Email may not be set up on the server. Copy the link from the dialog and send it yourself. Invitation links are never sent by Dor.      |
 | The invitation link stopped working          | It expired or was replaced by **Resend**. Resend it.                                                                                    |
 | A user is locked out                         | Open the user and press **Activate**, or wait for the lock duration. Use **Reset password** if needed.                                  |
 | A user lost their phone                      | Open the user and press **Reset 2FA**.                                                                                                  |
 | A setting change does not show at one branch | That branch may have its own override. Use the **Applies to** switcher and check the source badge.                                      |
-| Visitors do not get messages                 | Check the channel status, that the event is on, that the visitor agreed at reception, and the **Delivery log** reason.                  |
 | Ticket numbers restarted at an odd moment    | Check **Daily numbering reset time** and the branch time zone.                                                                          |
 
 ## 7. Quick reference
@@ -354,7 +352,7 @@ Backups are taken by scripts on the server, not from this application. Ask whoev
 | Add a service                      | **Visit reasons > Add reason**                        |
 | Assign agents to a service         | Visit reason > **Who serves this reason**             |
 | Create a user                      | **Users > Add user**                                  |
-| Invite by email, WhatsApp or SMS   | **Users > Invite**                                    |
+| Invite a person (copy the link)    | **Users > Invite**                                    |
 | Approve an account request         | **Users > Requests > Approve**                        |
 | Reset a password or 2FA            | Open the user > **Reset password** / **Reset 2FA**    |
 | Make a custom role                 | **Roles & permissions > Clone** or **New role**       |
@@ -362,8 +360,7 @@ Backups are taken by scripts on the server, not from this application. Ask whoev
 | Test rules safely                  | **Simulate > Run simulation**                         |
 | Change logo, colours, numbering    | **Settings**                                          |
 | Set password rules and 2FA         | **Settings > Security**                               |
-| Connect email, WhatsApp, SMS       | **Notifications > Channels** (keys set on the server) |
-| Edit visitor message wording       | **Notifications > Messages**                          |
+| See visitor ratings by agent       | **Overview** card, or **Reports > Visitor ratings**   |
 | Schedule a report email            | **Reports > Scheduled reports**                       |
 | Erase a visitor's data             | **Privacy requests**                                  |
 | See who changed something          | **Audit log**                                         |
@@ -380,7 +377,7 @@ Before the first day, make sure:
 5. **Distribution rules** are set and tried in **Simulate**.
 6. **Daily numbering reset time**, digits and wait estimate are set.
 7. **Settings > Security**: password policy, 2FA for administrators, invitation validity, and the sign-up setting decided.
-8. Email is configured; WhatsApp and SMS if you use them. A test message arrived. Visitor message wording is reviewed.
+8. If you use scheduled reports or account emails, email is set up on the server and a test arrived.
 9. Consent text and retention periods are set.
 10. Screens, voice and kiosks are paired and checked (see the screens guide).
 11. Backups are scheduled and the **Database backup** card is green.

@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Lookups, UserRow } from "../types";
 import { useLookups, useText } from "../use-lookups";
-import { ChannelLabel, InviteDialog, INVITES, InviteResultView, type InviteResult } from "./invite-dialog";
+import { InviteDialog, INVITES, InviteResultView, type InviteResult } from "./invite-dialog";
 import { SignupRequestsTable, usePendingSignups } from "./signup-requests";
 import { UserDialog } from "./user-dialog";
 
@@ -277,12 +277,6 @@ function InvitesTable({ lookups }: { lookups: Lookups }) {
                   <div className="text-muted-foreground text-xs">
                     <span dir="ltr">{i.email ?? i.phone}</span> · {text(i.roleName)}
                     {i.branchId && ` · ${text(lookups.branches.find((b) => b.id === i.branchId)?.name)}`}
-                    {i.channel !== "link" && (
-                      <>
-                        {" · "}
-                        <ChannelLabel channel={i.channel as "email"} />
-                      </>
-                    )}
                   </div>
                 </TableCell>
                 <TableCell>

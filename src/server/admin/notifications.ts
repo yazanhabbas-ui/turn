@@ -16,7 +16,7 @@ import { allowedBranches, auditMeta, orgOf, requireOrgWide, requirePermission, t
 
 /** Which channels can send right now. Nothing secret is ever returned: only configured / not configured / mock. */
 export function providersOverview(actor: Actor) {
-  requirePermission(actor, "admin.access");
+  requirePermission(actor, "branches.manage");
   return { providers: providerStatus(), variables: [...TEMPLATE_VARIABLES] };
 }
 
@@ -57,9 +57,9 @@ export const logFilter = z.object({
 
 /** The delivery log: masked recipients only. Branch-limited admins see their own branches. */
 export async function listNotificationLog(actor: Actor, filter: z.infer<typeof logFilter>) {
-  requirePermission(actor, "admin.access");
+  requirePermission(actor, "branches.manage");
   const conds: SQL[] = [eq(notificationsLog.organizationId, orgOf(actor)), sql`${notificationsLog.ticketId} is not null`];
-  const scope = allowedBranches(actor, "admin.access");
+  const scope = allowedBranches(actor, "branches.manage");
   if (scope !== "all") conds.push(scope.length ? inArray(notificationsLog.branchId, scope) : sql`false`);
   if (filter.branchId) conds.push(eq(notificationsLog.branchId, filter.branchId));
   if (filter.status) conds.push(eq(notificationsLog.status, filter.status));
@@ -104,13 +104,13 @@ export async function listNotificationLog(actor: Actor, filter: z.infer<typeof l
 
 /** Puts a failed (or skipped for a temporary reason) notification back in the queue. */
 export async function resendNotification(actor: Actor, id: string) {
-  requirePermission(actor, "admin.access");
+  requirePermission(actor, "branches.manage");
   const [row] = await db()
     .select()
     .from(notificationsLog)
     .where(and(eq(notificationsLog.id, id), eq(notificationsLog.organizationId, orgOf(actor))));
   if (!row || !row.ticketId) throw new AppError("not_found");
-  requirePermission(actor, "admin.access", row.branchId);
+  requirePermission(actor, "branches.manage", row.branchId);
   if (row.status !== "failed" && row.status !== "skipped") throw new AppError("conflict", { reason: "not_resendable" });
   const payload = row.payload as { channels?: string[] };
   if (!payload.channels?.length) throw new AppError("conflict", { reason: "not_resendable" });

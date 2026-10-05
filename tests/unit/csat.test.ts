@@ -188,7 +188,7 @@ describe("CSAT on the profile", () => {
     expect(c.periods.day.branchAvg).toBe(3);
     expect(c.trend).toHaveLength(14);
     expect(c.trend.at(-1)).toEqual({ date: "2026-09-29", avg: 4, responses: 2 });
-    expect(c.recent).toEqual([{ at: now - 30 * MIN, score: 5, comment: "kind" }]);
+    expect(c.recent).toEqual([{ at: now - 30 * MIN, score: 5, comment: "kind", displayNumber: null }]);
   });
   it("has no CSAT block when feedback is off", () => {
     const p = computeProgress({

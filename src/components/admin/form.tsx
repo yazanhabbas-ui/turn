@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Textarea } from "@/components/ui/textarea";
 import { LOCALE_CODES, LOCALES } from "@/i18n/locales";
 import { cn } from "@/lib/utils";
@@ -29,9 +30,11 @@ export function Field({
 }) {
   return (
     <div data-field="" className={cn("space-y-1.5", className)}>
-      <Label htmlFor={htmlFor}>{label}</Label>
+      <div className="flex items-center gap-1.5">
+        <Label htmlFor={htmlFor}>{label}</Label>
+        {hint && <InfoTip>{hint}</InfoTip>}
+      </div>
       {children}
-      {hint && !error && <p className="text-muted-foreground text-xs">{hint}</p>}
       {error && <p className="text-destructive text-xs">{error}</p>}
     </div>
   );
@@ -123,8 +126,10 @@ export function PageHeader({ title, description, actions }: { title: string; des
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-bold">{title}</h1>
-        {description && <p className="text-muted-foreground mt-1 max-w-2xl text-sm">{description}</p>}
+        <h1 className="flex items-center gap-2 text-2xl font-bold">
+          {title}
+          {description && <InfoTip>{description}</InfoTip>}
+        </h1>
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>

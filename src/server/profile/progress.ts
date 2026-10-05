@@ -117,23 +117,34 @@ export async function myProgress(actor: Actor, period: Period): Promise<Progress
         .orderBy(asc(agentStatusLog.at)),
     ]);
     // Visitor feedback on the agent's visits and (aggregated only) on the branch, over the last 70 days.
-    const feedbackOn = (await getSetting(org, "feedback", profile.branchId)).enabled;
+    const feedbackCfg = await getSetting(org, "feedback", profile.branchId);
+    const feedbackOn = feedbackCfg.enabled;
     let feedback: { own: ProgressFeedback[]; branch: ProgressFeedback[] | null } | undefined;
     if (feedbackOn) {
-      const rows = await db().execute<{ agent_id: string | null; score: number; comment: string | null; at: Date }>(sql`
-        select agent_id, score, comment, "at" from csat_responses
-        where branch_id = ${profile.branchId} and "at" >= ${new Date(now - 70 * 86_400_000)}`);
+      const rows = await db().execute<{
+        agent_id: string | null;
+        score: number;
+        comment: string | null;
+        at: Date;
+        display_number: string;
+      }>(sql`
+        select c.agent_id, c.score, c.comment, c."at", t.display_number from csat_responses c
+        join tickets t on t.id = c.ticket_id
+        where c.branch_id = ${profile.branchId} and c."at" >= ${new Date(now - 70 * 86_400_000)}`);
       const all: ProgressFeedback[] = rows.rows.map((r) => ({
         agentId: r.agent_id,
         score: r.score,
         comment: r.comment,
         at: new Date(r.at).getTime(),
+        // The ticket number only travels with the agent's own answers; the branch list stays anonymous.
+        displayNumber: r.agent_id === me ? r.display_number : undefined,
       }));
       feedback = { own: all.filter((x) => x.agentId === me), branch: all };
     }
     agent = {
       facts: mine.rows.map(toFact),
       feedback,
+      negativeThreshold: feedbackCfg.lowScoreThreshold,
       hosted: (await hostedSessionFacts(me, windowStart.getTime(), now + 1))
         .filter((s) => s.status === "CLOSED" && s.startedAt !== null && s.closedAt !== null)
         .map((s) => ({ closedAt: s.closedAt!, visitors: s.members.filter((m) => m === "ENTERED" || m === "DONE").length })),

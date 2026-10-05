@@ -27,7 +27,8 @@
     "forbidden": "Access denied",
     "forbiddenBody": "Your role does not include access to this page. Ask an administrator if you need it.",
     "errorBody": "Something went wrong while showing this page. Reloading usually fixes it, especially after the application was updated.",
-    "reload": "Reload page"
+    "reload": "Reload page",
+    "moreInfo": "More information"
   },
   "auth": {
     "signIn": "Sign in",
@@ -91,7 +92,8 @@
     "account": "My account",
     "chooseArea": "Choose where to work",
     "noAreas": "Your account has no workspace assigned yet. Ask an administrator to give you a role.",
-    "profile": "My profile"
+    "profile": "My profile",
+    "help": "Help center"
   },
   "admin": {
     "dashboard": "Overview",
@@ -144,7 +146,8 @@
       "verified": "restore tested",
       "failedAt": "The latest attempt failed ({when}). Check the backup log.",
       "noneHint": "Schedule scripts/backup.sh (or backup.ps1) so a backup runs every night. See docs/backup-restore.md."
-    }
+    },
+    "ratingsTitle": "Visitor ratings by agent"
   },
   "workspace": {
     "receptionEmpty": "The reception console opens here: choose a visit reason and issue a ticket in two taps.",
@@ -706,7 +709,8 @@
       "feedback": "Feedback",
       "retention": "Data retention",
       "selfCheckin": "Self check-in",
-      "halls": "Halls"
+      "halls": "Halls",
+      "pageContent": "Page content"
     },
     "companyName": "Company name",
     "logoUrl": "Logo URL",
@@ -958,7 +962,8 @@
       "feedback": "Ask visitors how their visit went, and what counts as a low score.",
       "retention": "How long personal data is kept before it is anonymized or deleted, and a button to run or preview it.",
       "selfCheckin": "A tablet where visitors take their own ticket, and its limits.",
-      "halls": "Rooms where one host receives several visitors together: grouping, starting and announcing."
+      "halls": "Rooms where one host receives several visitors together: grouping, starting and announcing.",
+      "pageContent": "Reword the kiosk and the visitor page, choose what they show, and preview the result."
     },
     "cards": {
       "preview": "Preview",
@@ -1042,8 +1047,8 @@
     "feedbackStyle": "Look of the rating",
     "feedbackStyleFaces": "Faces",
     "feedbackStyleStars": "Stars",
-    "feedbackLowScore": "Low score is up to",
-    "feedbackLowScoreHint": "Answers at or below this score raise an alert and appear under low scores in reports.",
+    "feedbackLowScore": "Negative rating: score up to",
+    "feedbackLowScoreHint": "One rule for everything: answers at or below this score count as negative. They raise a low-score alert, appear under low scores in reports, in the wallboard's negative ratings panel and in the agent's own ratings.",
     "feedbackAskComment": "Ask for a comment",
     "feedbackAskNps": "Also ask how likely they are to recommend us",
     "feedbackAskNpsHint": "A 0 to 10 question used for the recommend score (NPS).",
@@ -1184,7 +1189,88 @@
     "hallsAnnounceMode_hall_only_hint": "“The next group to hall 2”. No numbers are read.",
     "hallsAnnounceIntro": "Applies to the waiting-room screen and the voice announcement.",
     "hallsMaxAnnounced": "Most numbers read one by one",
-    "hallsMaxAnnouncedHint": "A larger group is read as a range, or as “the next group”."
+    "hallsMaxAnnouncedHint": "A larger group is read as a range, or as “the next group”.",
+    "feedbackLowScoreExample": "Example: scores {scores} are negative.",
+    "wallboardShowNegative": "Show the negative ratings panel",
+    "wallboardShowNegativeHint": "Lists the latest negative ratings with the ticket, the desk and the agent. Needs visitor feedback to be on. What counts as negative is set under Feedback.",
+    "wallboardNegativeCount": "Negative ratings to list (1-10)",
+    "wallboardNegativeHours": "Look back (hours, 1-168)",
+    "wallboardNegativeHoursHint": "Only ratings from this many hours back are listed.",
+    "wallboardShowNegativeComment": "Show the visitor's comment",
+    "wallboardShowNegativeCommentHint": "A shortened comment under each rating. Off by default; the wallboard may be on a shared screen.",
+    "pcIntro": "Reword the self check-in kiosk and the page visitors open from their ticket, and choose what they show. Texts you leave alone keep the built-in wording.",
+    "pcTabKiosk": "Kiosk",
+    "pcTabVisitor": "Visitor page",
+    "pcCardKioskOptions": "Kiosk layout",
+    "pcCardVisitorOptions": "Page layout",
+    "pcCardContact": "Contact and footer",
+    "pcCardTexts": "Texts",
+    "pcSearch": "Search texts",
+    "pcOnlyModified": "Show only modified",
+    "pcModifiedCount": "{count} modified",
+    "pcModified": "Modified",
+    "pcReset": "Reset to default",
+    "pcResetAll": "Reset all texts",
+    "pcNoMatch": "No texts match.",
+    "pcUsable": "You can use:",
+    "pcInsert": "Insert {name}",
+    "pcUnknownPlaceholder": "{name} is not available in this text.",
+    "pcTooLong": "At most {max} characters.",
+    "pcStrayBrace": "Curly brackets are only for the placeholders in the list.",
+    "pcNoteWelcome": "Welcome heading: left empty, the welcome text of Self check-in is used. The consent text is set in Data protection and the waiting-time wording in Waiting time.",
+    "pcNoteFeedback": "The rating questions and the thank-you text are set in Feedback; the waiting-time wording in Waiting time.",
+    "pcShowBranchName": "Show the branch name",
+    "pcShowLogo": "Show the logo",
+    "pcShowLanguageButtons": "Show the language buttons",
+    "pcShowReasonDescriptions": "Show a description under each service",
+    "pcHeaderStyle": "Header style",
+    "pcHeaderBrand": "Brand colour band",
+    "pcHeaderPlain": "Plain",
+    "pcSuccessStyle": "Ticket screen",
+    "pcSuccessTicket": "Ticket card",
+    "pcSuccessSimple": "Number and QR only",
+    "pcKioskResultNote": "The QR code and the waiting time are switched on in Self check-in.",
+    "pcTiles": "Services per row (wide screens)",
+    "pcTilesHint": "A portrait screen always shows one column.",
+    "pcVShowBranch": "Show the branch name",
+    "pcVShowQueuePosition": "Show how many are ahead",
+    "pcVShowEstimatedWait": "Show the estimated waiting time",
+    "pcVShowEstimatedWaitHint": "Also needs the estimate to be shown on tickets (Waiting time).",
+    "pcVShowDeskCard": "Show the desk or hall when called",
+    "pcVShowWifi": "Show the free Wi-Fi details",
+    "pcVShowWifiHint": "Only when Wi-Fi is switched on for the branch (Wi-Fi section).",
+    "pcVHideNotify": "Hide “Get updates on your phone”",
+    "pcSupportPhone": "Support phone",
+    "pcSupportEmail": "Support email",
+    "pcSupportHint": "Shown under “Need help?” on the visitor page. Leave empty to hide.",
+    "pcFooter": "Footer text",
+    "pcLinks": "Links",
+    "pcLinksHint": "Up to 3 links on the visitor page. Addresses must start with https://.",
+    "pcAddLink": "Add a link",
+    "pcLinkLabel": "Link text",
+    "pcLinkUrl": "Address",
+    "pcLinkRemove": "Remove link",
+    "pcLinkUrlInvalid": "Use a full address starting with https://.",
+    "pcPreview": "Live preview",
+    "pcPreviewHint": "The real page with your unsaved changes and sample data.",
+    "pcPreviewLang": "Language",
+    "pcLandscape": "Landscape",
+    "pcPortrait": "Portrait",
+    "pcScreen_home": "First screen",
+    "pcScreen_form": "Form",
+    "pcScreen_result": "Ticket",
+    "pcScreen_unavailable": "Unavailable",
+    "pcScreen_offline": "Offline",
+    "pcScreen_waiting": "Waiting",
+    "pcScreen_called": "Called",
+    "pcScreen_serving": "Serving",
+    "pcScreen_completed": "Completed",
+    "pcScreen_onHold": "On hold",
+    "pcScreen_noShow": "No-show",
+    "pcScreen_cancelled": "Cancelled",
+    "pcScreen_stop": "Stop messages",
+    "selfCheckinWelcomeNote": "Reword the whole kiosk (headings, buttons, messages) under Page content.",
+    "selfCheckinWelcomeLink": "Open Page content"
   },
   "audit": {
     "title": "Audit log",
@@ -1240,7 +1326,11 @@
     "approveHint": "Choose the role and branch for {email}. They can sign in right away with the password they chose.",
     "rejectTitle": "Reject this request?",
     "rejectBody": "The person is told their request was not approved. They can apply again later.",
-    "status": { "pending": "Pending", "approved": "Approved", "rejected": "Rejected" }
+    "status": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    }
   },
   "invitePage": {
     "title": "Join {organization}",
@@ -1734,7 +1824,8 @@
     },
     "calledHall": "Your group is called. Please go to the hall:",
     "servingHall": "Your session is under way in hall {hall}.",
-    "waitingGroup": "Please wait. You will be called together with a group to the hall."
+    "waitingGroup": "Please wait. You will be called together with a group to the hall.",
+    "helpTitle": "Need help?"
   },
   "screens": {
     "title": "Screens & voice",
@@ -2015,7 +2106,15 @@
     "hallInSession": "In session",
     "hallHost": "Host: {name}",
     "hallNoHost": "No host",
-    "hallOccupancy": "{n} / {capacity}"
+    "hallOccupancy": "{n} / {capacity}",
+    "negative": {
+      "title": "Negative ratings",
+      "badgeHint": "Negative ratings in the last {hours} hours",
+      "rule": "Scores {scores} · last {hours} hours",
+      "none": "No negative ratings.",
+      "desk": "Desk {desk}",
+      "score": "Score {n} out of 5"
+    }
   },
   "reportExport": {
     "title": "Queue performance report",
@@ -2247,7 +2346,13 @@
       "csatSatisfiedHint": "Scores of 4 or 5 out of 5.",
       "csatRate": "Feedback response rate",
       "nps": "Recommend score (NPS)",
-      "npsHint": "Promoters (9-10) minus detractors (0-6), from -100 to 100."
+      "npsHint": "Promoters (9-10) minus detractors (0-6), from -100 to 100.",
+      "groups": {
+        "waiting": "Waiting",
+        "service": "Service",
+        "visitors": "Visitors",
+        "satisfaction": "Satisfaction"
+      }
     },
     "sections": {
       "volume": "Visitor volume",
@@ -2434,6 +2539,47 @@
       "occupancy": "Occupancy",
       "avgSessionMin": "Avg session length",
       "noShowRate": "No-show rate"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "volume": "Volume & queue",
+      "staff": "Staff",
+      "reasons": "Reasons",
+      "satisfaction": "Satisfaction",
+      "ratings": "Visitor ratings",
+      "repeat": "Repeat visitors",
+      "forecast": "Forecast"
+    },
+    "ratings": {
+      "title": "Visitor ratings",
+      "hint": "Every rating with the visitor recorded by the reception or kiosk, the desk, the agent, the score and the comment.",
+      "agent": "Agent",
+      "allAgents": "All agents",
+      "from": "From",
+      "to": "To",
+      "summary": "{n} ratings · average {avg} / 5",
+      "empty": "No ratings in this period.",
+      "truncated": "Showing the newest 500 ratings. Narrow the dates or pick an agent.",
+      "score": "{n} out of 5",
+      "cols": {
+        "time": "Time",
+        "ticket": "Ticket",
+        "visitor": "Visitor",
+        "source": "Entered by",
+        "desk": "Desk",
+        "agent": "Agent",
+        "rating": "Rating",
+        "comment": "Comment",
+        "deskAgent": "Desk / agent"
+      },
+      "sources": {
+        "reception": "Reception",
+        "kiosk": "Kiosk",
+        "agent": "Agent",
+        "appointment": "Appointment",
+        "api": "API"
+      },
+      "deskN": "Desk {desk}"
     }
   },
   "reportSchedules": {
@@ -2762,7 +2908,7 @@
         "satisfied": "Satisfied (4 or 5)",
         "distribution": "Scores given",
         "comments": "Written comments",
-        "commentMeta": "{number} · score {score}",
+        "commentMeta": "Ticket {number} · score {score} · {date}",
         "none": "No answers in this period.",
         "off": "Visitor feedback is switched off."
       },
@@ -2788,7 +2934,9 @@
           "NO_SHOW": "No-show"
         },
         "loadMore": "Load more",
-        "empty": "No visits match."
+        "empty": "No visits match.",
+        "negativeOnly": "Negative ratings only",
+        "negativeMark": "(negative rating)"
       },
       "download": {
         "label": "Download",
@@ -2860,6 +3008,24 @@
           "NO_SHOW": "No-show"
         }
       }
+    },
+    "rating": {
+      "title": "My average rating",
+      "empty": "No ratings yet in this period.",
+      "none": "–",
+      "outOf": "/ 5",
+      "outOfValue": "{n} / 5",
+      "starsAria": "{n} out of 5 stars",
+      "ratings": "{count, plural, one {# rating} other {# ratings}}",
+      "satisfied": "Satisfied (4-5)",
+      "negative": "Negative (scores {scores})",
+      "negativeValue": "{count} ({pct})",
+      "branch": "Branch average",
+      "previous": "Previous period",
+      "previousNone": "No ratings in the previous period",
+      "trendUp": "up {n} from then",
+      "trendDown": "down {n} from then",
+      "trendSame": "unchanged"
     }
   },
   "logoUpload": {
@@ -3165,7 +3331,12 @@
     "askStaffError": "This service needs a member of staff. Please ask the agent.",
     "invalidPhone": "Please check the phone number.",
     "missingField": "Please fill in the required details.",
-    "genericError": "Something went wrong. Please ask the staff."
+    "genericError": "Something went wrong. Please ask the staff.",
+    "welcome": "Welcome, choose a service to get your number",
+    "phonePlaceholder": "09xx xxx xxx",
+    "consentHeading": "Your privacy",
+    "languageNameAr": "العربية",
+    "languageNameEn": "English"
   },
   "walkIn": {
     "button": "New walk-in visitor",
@@ -3208,5 +3379,47 @@
       "no_hall": "No hall accepts some hall services",
       "no_host": "No agent hosts a hall"
     }
+  },
+  "help": {
+    "title": "Help center",
+    "description": "The manuals for your role, in the language you are using. Open one in your browser or download it.",
+    "open": "Open",
+    "download": "Download",
+    "empty": "No manuals are installed on this server yet.",
+    "lang": {
+      "ar": "العربية (Arabic)",
+      "en": "English"
+    },
+    "topics": {
+      "all": {
+        "title": "Full user manual",
+        "for": "Every chapter in one file, with contents"
+      },
+      "overview": {
+        "title": "Overview",
+        "for": "Everyone: how a visit flows, roles, signing in, glossary, FAQ"
+      },
+      "agent": {
+        "title": "Agent",
+        "for": "Serving visitors: calling, transfers, breaks"
+      },
+      "supervisor": {
+        "title": "Supervisor",
+        "for": "Floor monitoring, wallboard, reports and visitor ratings"
+      },
+      "receptionist": {
+        "title": "Receptionist",
+        "for": "Issuing tickets, appointments, printing"
+      },
+      "admin": {
+        "title": "Administrator",
+        "for": "Setup, users, roles, rules and settings"
+      },
+      "screens": {
+        "title": "Screens and kiosks",
+        "for": "Display screens, self check-in kiosks, wallboard and voice"
+      }
+    },
+    "otherLanguage": "Also in {language}"
   }
 }

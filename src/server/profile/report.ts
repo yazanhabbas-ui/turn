@@ -13,6 +13,7 @@ import {
   type ReportFact,
   type ReportRange,
 } from "@/domain/profile/agent-report";
+import { isNegative } from "@/domain/feedback/negative";
 import { hostedSummary } from "@/domain/reports/halls";
 import { can } from "@/domain/rbac/permissions";
 import { hostedSessionFacts } from "../halls/hosted";
@@ -34,6 +35,8 @@ export type ReportQuery = z.infer<typeof reportQuery>;
 export const detailsQuery = z.object({
   outcome: z.enum(["COMPLETED", "NO_SHOW"]).optional(),
   reasonId: z.string().uuid().optional(),
+  /** Only visits the visitor rated negatively (score up to the `feedback.lowScoreThreshold` setting). */
+  negativeOnly: z.boolean().optional(),
   /** Cursor: the `next` of the previous page. */
   before: z
     .string()
@@ -125,7 +128,8 @@ export async function myReport(actor: Actor, q: ReportQuery): Promise<AgentRepor
   const range = resolveRange(q, tz);
   const cur = rangeBounds(range, tz);
   const prev = rangeBounds(previousRange(range), tz);
-  const feedbackOn = (await getSetting(org, "feedback", profile.branchId)).enabled;
+  const feedbackCfg = await getSetting(org, "feedback", profile.branchId);
+  const feedbackOn = feedbackCfg.enabled;
 
   const [own, previous, branch] = await Promise.all([
     ownRows(org, me, cur.start, cur.end),
@@ -143,6 +147,7 @@ export async function myReport(actor: Actor, q: ReportQuery): Promise<AgentRepor
     previousFacts: previous.map((r) => toFact(r, feedbackOn)),
     branchFacts: branch.rows.map((r) => toFact(r, feedbackOn)),
     feedbackOn,
+    negativeThreshold: feedbackCfg.lowScoreThreshold,
   });
 }
 
@@ -159,6 +164,8 @@ export type DetailRow = {
   waitMin: number | null;
   serviceMin: number | null;
   score: number | null;
+  /** Rated at or below the negative threshold (highlighted on screen). */
+  negative: boolean;
   /** Visitor name; null when the ticket has no visitor record or it was anonymised. */
   visitorName: string | null;
   /** Masked (last three digits) unless the viewer holds `visitors.privacy`, like the repeat-visitors report. */
@@ -167,7 +174,7 @@ export type DetailRow = {
 
 const min1 = (a: number, b: number) => Math.round((Math.max(0, b - a) / 60_000) * 10) / 10;
 
-function toDetail(r: FactRow, fullPhone: boolean, feedbackOn: boolean): DetailRow {
+function toDetail(r: FactRow, fullPhone: boolean, feedbackOn: boolean, threshold: number): DetailRow {
   const f = toFact(r, feedbackOn);
   const alive = r.has_visitor && !r.visitor_anonymized_at;
   const digits = alive ? (r.visitor_phone ?? "") : "";
@@ -184,6 +191,7 @@ function toDetail(r: FactRow, fullPhone: boolean, feedbackOn: boolean): DetailRo
     waitMin: f.firstCalledAt === null ? null : min1(f.arrivedAt, f.firstCalledAt),
     serviceMin: f.status === "COMPLETED" && f.startedAt !== null ? min1(f.startedAt, f.finishedAt) : null,
     score: f.score,
+    negative: f.score !== null && isNegative(f.score, threshold),
     visitorName: alive ? r.visitor_name : null,
     visitorPhone: digits ? (fullPhone ? digits : `••••${digits.slice(-3)}`) : null,
   };
@@ -194,17 +202,19 @@ async function detailRows(actor: Actor, q: ReportQuery, f: Omit<DetailsQuery, "l
   const { profile, tz, org, me } = await agentContext(actor);
   const range = resolveRange(q, tz);
   const { start, end } = rangeBounds(range, tz);
-  const feedbackOn = (await getSetting(org, "feedback", profile.branchId)).enabled;
+  const feedbackCfg = await getSetting(org, "feedback", profile.branchId);
+  const feedbackOn = feedbackCfg.enabled;
+  const threshold = feedbackCfg.lowScoreThreshold;
   const fullPhone = can(actor.auth.grants, "visitors.privacy");
   let cursor = sql``;
   if (f.before) {
     const [at, id] = f.before.split("_");
     cursor = sql`and (t.finished_at, t.id) < (${new Date(Number(at))}, ${id}::uuid)`;
   }
-  const extra = sql`${f.outcome ? sql`and t.status = ${f.outcome}` : sql``} ${f.reasonId ? sql`and t.reason_id = ${f.reasonId}::uuid` : sql``} ${cursor}`;
+  const extra = sql`${f.outcome ? sql`and t.status = ${f.outcome}` : sql``} ${f.reasonId ? sql`and t.reason_id = ${f.reasonId}::uuid` : sql``} ${f.negativeOnly && feedbackOn ? sql`and c.score <= ${threshold}` : sql``} ${cursor}`;
   const tail = sql`order by t.finished_at desc, t.id desc ${limit === null ? sql`limit 10000` : sql`limit ${limit + 1}`}`;
   const rows = await ownRows(org, me, start, end, extra, tail);
-  return { rows: rows.map((r) => toDetail(r, fullPhone, feedbackOn)), range, tz, feedbackOn };
+  return { rows: rows.map((r) => toDetail(r, fullPhone, feedbackOn, threshold)), range, tz, feedbackOn };
 }
 
 /** One page of the served-visitors detail report (newest first), filterable by outcome and reason. */

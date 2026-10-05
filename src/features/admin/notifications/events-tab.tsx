@@ -6,6 +6,7 @@ import { useState } from "react";
 import { ErrorState, Field, LoadingRows, LocalizedInput } from "@/components/admin/form";
 import { api, useApiMutation, useApiQuery } from "@/components/admin/use-api";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Switch } from "@/components/ui/switch";
 import { NOTIFICATION_CHANNELS, NOTIFICATION_EVENTS } from "@/domain/notifications/policy";
@@ -99,8 +100,10 @@ export function EventsTab({ organization }: { organization: boolean }) {
                         {NOTIFICATION_EVENTS.map((e) => (
                           <tr key={e} className="border-b last:border-0">
                             <th scope="row" className="py-2.5 pe-3 text-start font-normal">
-                              <span className="font-medium">{t(`events.names.${e}`)}</span>
-                              <span className="text-muted-foreground block text-xs">{t(`events.hints.${e}`)}</span>
+                              <span className="inline-flex items-center gap-1.5">
+                                <span className="font-medium">{t(`events.names.${e}`)}</span>
+                                <InfoTip>{t(`events.hints.${e}`)}</InfoTip>
+                              </span>
                             </th>
                             <td className="px-3 text-center">
                               <Switch

@@ -9,9 +9,10 @@ import { listUsers } from "@/server/admin/users";
 import { pickText } from "@/i18n/locales";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import { providerStatus } from "@/server/messaging/providers";
 import { requireAuth } from "@/server/auth/current";
 import { BackupCard } from "@/components/admin/backup-card";
+import { RatingsPanel } from "@/features/reports/ratings-panel";
+import { InfoTip } from "@/components/ui/info-tip";
 import { CoverageCard } from "@/components/admin/coverage-card";
 
 export default async function AdminOverviewPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -59,20 +60,20 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
   ] as const;
 
   // First-day checklist: only what this administrator can act on, and only until everything is in place.
-  const emailOn = providerStatus().some((p) => p.channel === "email" && p.state !== "not_configured");
   const steps = [
     { key: "reasons", done: r.n > 0, href: "/admin/reasons", allowed: can(auth.grants, "reasons.view") },
     { key: "desks", done: d.n > 0, href: "/admin/branches", allowed: true },
     { key: "team", done: u.n > 1, href: "/admin/users", allowed: can(auth.grants, "users.invite") },
     { key: "screen", done: screens.n > 0, href: "/admin/screens", allowed: can(auth.grants, "displays.manage") },
-    { key: "email", done: emailOn, href: "/admin/notifications", allowed: can(auth.grants, "settings.manage") },
   ].filter((s) => s.allowed);
   const stepsDone = steps.filter((s) => s.done).length;
 
   return (
     <div className="mx-auto max-w-6xl">
-      <h1 className="text-2xl font-bold">{t("welcome", { name: pickText(auth.user.displayName, locale, auth.user.email) })}</h1>
-      <p className="text-muted-foreground mt-1">{t("overviewHint")}</p>
+      <div className="flex items-center gap-1.5">
+        <h1 className="text-2xl font-bold">{t("welcome", { name: pickText(auth.user.displayName, locale, auth.user.email) })}</h1>
+        <InfoTip>{t("overviewHint")}</InfoTip>
+      </div>
       <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
         {stats.map((s) => {
           const card = (
@@ -135,6 +136,14 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
               </li>
             ))}
           </ul>
+        </section>
+      )}
+      {can(auth.grants, "reports.view") && (
+        <section className="bg-card mt-4 rounded-xl border p-4 shadow-sm" aria-labelledby="visitor-ratings">
+          <h2 id="visitor-ratings" className="mb-3 font-semibold">
+            {t("ratingsTitle")}
+          </h2>
+          <RatingsPanel />
         </section>
       )}
       <CoverageCard actor={actor} locale={locale} />

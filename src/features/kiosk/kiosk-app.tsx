@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { dirOf } from "@/i18n/locales";
+import { dirOf, pickText } from "@/i18n/locales";
 import { Pairing } from "../display/pairing";
 import { makeT, type Dicts } from "../display/text";
+import { makePageT } from "../pagecontent/make-t";
 import { PrintTicket, type PrintJob } from "../reception/print-ticket";
 import type { ReceptionContext, Ticket } from "../queue/types";
-import { Form, Home, Message, Offline, Result, Unavailable } from "./kiosk-screens";
+import { Form, Home, KioskShell, Message, Offline, Result, Unavailable } from "./kiosk-screens";
 import {
   clearToken,
   issueAtKiosk,
@@ -82,7 +83,10 @@ function Kiosk({
   const [printJob, setPrintJob] = useState<PrintJob | null>(null);
   const key = useRef(newKey());
   const issuing = useRef(false);
-  const t = makeT(dicts[lang === "en" ? "en" : "ar"]);
+  // The administrator's own wording (page content, D66) on top of the message files.
+  const t = makePageT(dicts[lang === "en" ? "en" : "ar"], lang, ctx?.pageContent?.texts, {
+    branch: ctx ? pickText(ctx.branch.name, lang) : undefined,
+  });
 
   // The configured first language wins until a visitor picks another one.
   const picked = useRef(false);
@@ -185,17 +189,9 @@ function Kiosk({
   const printDone = useCallback(() => setPrintJob(null), []);
   // The kiosk wears the same themes and brand colours as the waiting-room screens of the branch (dark, light, brand).
   const shell = (children: React.ReactNode) => (
-    <div
-      dir={dirOf(lang)}
-      lang={lang}
-      data-theme={ctx?.theme ?? "dark"}
-      className="dor-display min-h-dvh touch-manipulation overscroll-none select-none"
-      style={
-        { "--dsp-primary": ctx?.branding.primaryColor, "--dsp-accent-brand": ctx?.branding.accentColor } as React.CSSProperties
-      }
-    >
+    <KioskShell lang={lang} theme={ctx?.theme} branding={ctx?.branding}>
       {children}
-    </div>
+    </KioskShell>
   );
 
   if (!ctx) {

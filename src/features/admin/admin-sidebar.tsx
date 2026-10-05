@@ -1,47 +1,14 @@
 "use client";
 
-import {
-  BellRing,
-  ChevronDown,
-  Building2,
-  FlaskConical,
-  Route,
-  KeyRound,
-  LayoutDashboard,
-  MapPinned,
-  ListChecks,
-  Monitor,
-  ScrollText,
-  ShieldCheck,
-  Settings,
-  UsersRound,
-  UserRoundCog,
-} from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { SETTINGS_ACTIVE, SETTINGS_GO, type SettingsGoDetail } from "./settings/nav-events";
+import { ADMIN_NAV_ITEMS as ITEMS } from "./admin-nav";
 import { GROUPS, sectionsFor, type SectionId } from "./settings/sections/registry";
-
-/** Admin navigation. Each item is shown only when the user holds its permission. */
-const ITEMS = [
-  { href: "/admin", key: "dashboard", icon: LayoutDashboard, permission: "admin.access" },
-  { href: "/admin/users", key: "users", icon: UserRoundCog, permission: "users.view" },
-  { href: "/admin/roles", key: "roles", icon: KeyRound, permission: "roles.view" },
-  { href: "/admin/cities", key: "cities", icon: MapPinned, permission: "cities.manage" },
-  { href: "/admin/branches", key: "branches", icon: Building2, permission: "admin.access" },
-  { href: "/admin/reasons", key: "reasons", icon: ListChecks, permission: "reasons.view" },
-  { href: "/admin/groups", key: "groups", icon: UsersRound, permission: "reasons.view" },
-  { href: "/admin/distribution", key: "distribution", icon: Route, permission: "distribution.manage" },
-  { href: "/admin/simulate", key: "simulate", icon: FlaskConical, permission: "distribution.simulate" },
-  { href: "/admin/screens", key: "screens", icon: Monitor, permission: "displays.manage" },
-  { href: "/admin/notifications", key: "notifications", icon: BellRing, permission: "admin.access" },
-  { href: "/admin/settings", key: "settings", icon: Settings, permission: "settings.manage", also: ["branches.manage"] },
-  { href: "/admin/privacy", key: "privacy", icon: ShieldCheck, permission: "visitors.privacy" },
-  { href: "/admin/audit", key: "audit", icon: ScrollText, permission: "audit.view" },
-] as const;
 
 /**
  * "Settings" with its sections as a dropdown list underneath. Choosing a section opens it on the settings page (through

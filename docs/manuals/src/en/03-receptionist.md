@@ -96,7 +96,7 @@ If your administrator chose the "big confirmation" style, a window **Ticket issu
 Each reason has its own fields. The common ones are **Visitor name**, **Mobile number**, **Company**, **Email**, **Last 4 digits of ID** and **Notes**.
 
 - Fields with a red star are required. Press **Add details (optional)** to see the others.
-- A mobile number lets Dor recognize a returning visitor and show their history to the agent. It also lets Dor send messages about the turn (see "What the visitor receives").
+- A mobile number lets Dor recognize a returning visitor and show their history to the agent. If the visitor later rates the visit, the name and number you typed are shown with the rating to supervisors, so type them correctly.
 - If you type any personal detail and your organization requires consent, a **Consent** tick box appears with a sentence in the visitor's language. Read it to the visitor, or let them read it. Tick it only when they agree. **Issue ticket** stays grey until it is ticked.
 - If a field is missing or wrong, a red message tells you which one ("Please fill in: ...").
 
@@ -174,7 +174,7 @@ To find a ticket quickly, type the number, the name or the phone in **Search by 
 
 If you work in more than one branch, choose the branch in the **Branch** list at the top. The reasons and the queue change to that branch.
 
-## What the visitor sees and receives
+## What the visitor sees
 
 ### The status page on the phone
 
@@ -189,21 +189,11 @@ When the visitor scans the QR code on the ticket, their phone opens a page with 
 
 The page updates by itself every few seconds and opens in the language chosen at reception. If your administrator has switched the page off, the visitor sees "This ticket was not found or the page is turned off." and the printed ticket has no QR code.
 
-If the visitor gave no phone number, the page can show **Get updates on your phone**: the visitor types a number, ticks the agreement and presses **Send me updates**. This appears only when a message channel is configured.
-
-### Messages (WhatsApp, SMS, email)
-
-If your administrator turned notifications on, a visitor with a phone number or email can receive messages such as: number issued with a link to follow the line, your turn is near, you are called to the desk, you missed your call, and a thank-you after the visit. Dor tries WhatsApp first, then SMS, then email, as set by the administrator.
-
-Messages are sent only with consent when your organization requires it. This is why the consent tick box matters at reception.
-
-### Stopping messages
-
-Every SMS and email can include a link to a page **Stop messages**. The visitor presses **Yes, stop messages** and receives nothing more. You cannot do this for them from reception. If a visitor asks to stop and has no message, tell them to use the link in the last message, or ask your administrator (privacy requests belong to the administrator).
+Dor does not send messages (WhatsApp, SMS or email) to visitors about their turn. The visitor follows the turn on this page and on the waiting-room screen, so tell the visitor to keep the page open and to watch the screen.
 
 ### Feedback
 
-After a visit is completed, the status page can show **How was your visit?** with faces or stars from 1 to 5, an optional comment, and sometimes a recommendation question. A feedback link can also arrive in the thank-you message. Visitors answer once. You do not see or enter the answers at reception.
+After a visit is completed, the status page can show **How was your visit?** with faces or stars from 1 to 5, an optional comment, and sometimes a recommendation question. Visitors answer once. You do not see or enter the answers at reception.
 
 ### Groups and halls
 
@@ -226,7 +216,7 @@ The tickets issued at the kiosk appear in your live queue like any other. Pairin
 
 - Keep the reason buttons in front of you. Learn the shortcut keys of the busiest reasons. Press **Esc** to clear a selection.
 - Choose the priority before the reason. It resets to normal after each ticket, so the next visitor is not marked by mistake.
-- Ask for a mobile number every time. It gives the visitor updates and helps the agent.
+- Ask for a mobile number every time. It helps Dor recognize a returning visitor and helps the agent.
 - Say the ticket number and where to wait. Point to the display screen.
 - Watch the **Waiting** and **Agents available** counters. If many wait and no agent is available, tell your supervisor.
 - Search the live queue before issuing a second ticket to a visitor who says they already have one.
@@ -250,7 +240,6 @@ The tickets issued at the kiosk appear in your live queue like any other. Pairin
 | "No appointment with this code."                                     | Check the code with the visitor. Letters are turned to capitals for you.                                                     |
 | A reason I need is missing                                           | It may not be offered at your branch. Ask your administrator.                                                                |
 | I cannot see **Check in appointment**, **Edit** or **Cancel ticket** | Your role does not have that permission. Ask your administrator.                                                             |
-| The visitor wants no more messages                                   | Tell them to press the stop link in the message.                                                                             |
 
 ## Quick reference
 

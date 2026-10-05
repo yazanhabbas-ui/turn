@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { ErrorState, Field, LoadingRows } from "@/components/admin/form";
 import { api, useApiMutation, useApiQuery } from "@/components/admin/use-api";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
@@ -93,7 +94,10 @@ function TemplateEditor({ item }: { item: Item }) {
     <div className="grid gap-4 lg:grid-cols-2">
       <div className="bg-card space-y-4 rounded-xl border p-4 shadow-sm">
         <div>
-          <p className="mb-1.5 text-sm font-medium">{t("templates.variables")}</p>
+          <div className="mb-1.5 flex items-center gap-1.5">
+            <p className="text-sm font-medium">{t("templates.variables")}</p>
+            <InfoTip>{t("templates.variablesHint")}</InfoTip>
+          </div>
           <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("templates.variables")}>
             {TEMPLATE_VARIABLES.map((v) => (
               <button
@@ -108,7 +112,6 @@ function TemplateEditor({ item }: { item: Item }) {
               </button>
             ))}
           </div>
-          <p className="text-muted-foreground mt-1.5 text-xs">{t("templates.variablesHint")}</p>
         </div>
         {isEmail &&
           LANGS.map((l) => (

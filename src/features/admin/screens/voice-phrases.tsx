@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ErrorState, LoadingRows } from "@/components/admin/form";
 import { api, useApiMutation, useApiQuery } from "@/components/admin/use-api";
 import { Button } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { arabicDeskWords, arabicTicketWords, type TicketReading } from "@/domain/display/arabic-speech";
@@ -89,9 +90,9 @@ export function VoicePhrases({
 
   return (
     <div className="bg-card max-w-3xl space-y-4 rounded-xl border p-4 shadow-sm md:p-6">
-      <p className="text-muted-foreground text-sm">{t("phrasesHint")}</p>
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium">{t("placeholders")}</span>
+        <InfoTip>{t("phrasesHint")}</InfoTip>
         {PLACEHOLDERS.map((p) => (
           <Button key={p} type="button" variant="outline" size="sm" dir="ltr" className="font-mono" onClick={() => insert(p)}>
             {`{${p}}`}
@@ -111,7 +112,10 @@ export function VoicePhrases({
             : announcementText(body[code] ?? "", { ...SAMPLE, reading }, digits);
         return (
           <div key={code} className="space-y-1.5">
-            <Label htmlFor={`ph-${code}`}>{code === "ar" ? t("langAr") : t("langEn")}</Label>
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor={`ph-${code}`}>{code === "ar" ? t("langAr") : t("langEn")}</Label>
+              {code === LANGS[0].code && <InfoTip>{t("testHint")}</InfoTip>}
+            </div>
             <Textarea
               id={`ph-${code}`}
               ref={(el) => {
@@ -137,7 +141,6 @@ export function VoicePhrases({
           </div>
         );
       })}
-      <p className="text-muted-foreground text-xs">{t("testHint")}</p>
       <div className="flex justify-end border-t pt-4">
         <Button type="button" disabled={save.isPending} onClick={() => save.mutate(undefined)}>
           {tu("save")}

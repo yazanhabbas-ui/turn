@@ -38,8 +38,7 @@ export function SelfCheckinSection({ initial }: { initial: SettingValue<"selfChe
         };
         return (
           <>
-            <p className="text-muted-foreground text-sm">{t("selfCheckinIntro")}</p>
-            <SettingCard title={t("cards.selfCheckin")} columns={2}>
+            <SettingCard title={t("cards.selfCheckin")} description={t("selfCheckinIntro")} columns={2}>
               <Check
                 id="sc-enabled"
                 label={t("selfCheckinEnabled")}
@@ -133,6 +132,12 @@ export function SelfCheckinSection({ initial }: { initial: SettingValue<"selfChe
                 value={v.welcomeText}
                 onChange={(welcomeText) => set({ welcomeText })}
               />
+              <p className="text-muted-foreground text-xs">
+                {t("selfCheckinWelcomeNote")}{" "}
+                <Link href="/admin/settings?section=pageContent" className="text-brand underline">
+                  {t("selfCheckinWelcomeLink")}
+                </Link>
+              </p>
               <p className="text-muted-foreground flex items-center gap-2 text-xs">
                 <ScanLine className="size-4" aria-hidden />
                 <Link href="/admin/screens" className="text-brand underline">

@@ -86,14 +86,14 @@ erDiagram
 
 ## Tickets
 
-| Table              | Purpose                                                                                                                                                                                                                                                                         |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `visitors`         | Minimal PII (name, phone, company), normalized/transliterated name, **phone HMAC hash**, visit count, last agent, `anonymized_at`                                                                                                                                               |
-| `appointments`     | Pre-booked visits with a lookup code, check-in → ticket                                                                                                                                                                                                                         |
-| `tickets`          | Number/prefix/`display_number`, `service_day`, status, priority, language, `public_token` (status page), assigned/serving agent, desk, `arrived_at` (kept on transfer), timestamps, intake values, idempotency key, `version`                                                   |
-| `ticket_events`    | Append-only: every transition, with from/to status, actor, agent, desk, queue, payload. **Reports read from here.**                                                                                                                                                             |
-| `csat_responses`   | One per completed ticket (unique): agent, reason, score 1–5, optional NPS 0–10, comment (max 500, personal data, erased with the visit), channel (`status_page`, `link`, `kiosk`), language, `at`. See D53                                                                      |
-| `privacy_requests` | Data-subject requests and staff anonymisations (D56): `type` access or erasure, `status`, `subject_kind` visitor or user, `subject_ref` (keyed hash of the id, never a name or number), `requested_at`, `completed_at`, `performed_by`, `note` (the reason), `summary` (counts) |
+| Table              | Purpose                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `visitors`         | Minimal PII (name, phone, company), normalized/transliterated name, **phone HMAC hash**, visit count, last agent, `anonymized_at`                                                                                                                                                                                                                           |
+| `appointments`     | Pre-booked visits with a lookup code, check-in → ticket                                                                                                                                                                                                                                                                                                     |
+| `tickets`          | Number/prefix/`display_number`, `service_day`, status, priority, language, `public_token` (status page), assigned/serving agent, desk, `arrived_at` (kept on transfer), timestamps, intake values, idempotency key, `version`                                                                                                                               |
+| `ticket_events`    | Append-only: every transition, with from/to status, actor, agent, desk, queue, payload. **Reports read from here.**                                                                                                                                                                                                                                         |
+| `csat_responses`   | One per completed ticket (unique): agent, reason, score 1–5, optional NPS 0–10, comment (max 500, personal data, erased with the visit), channel (`status_page`, `link`, `kiosk`), language, `at`. See D53. The desk where the visit was served is the ticket's own `desk_id` (kept after completion), used by the wallboard's negative-ratings panel (D65) |
+| `privacy_requests` | Data-subject requests and staff anonymisations (D56): `type` access or erasure, `status`, `subject_kind` visitor or user, `subject_ref` (keyed hash of the id, never a name or number), `requested_at`, `completed_at`, `performed_by`, `note` (the reason), `summary` (counts)                                                                             |
 
 **Ticket states:** `APPOINTMENT_PENDING`, `WAITING`, `CALLED`, `SERVING`, `ON_HOLD`, `COMPLETED`, `NO_SHOW`, `CANCELLED`. A transfer is an event (`TRANSFERRED`) that returns the ticket to `WAITING` in another queue with its original `arrived_at`.
 
@@ -140,6 +140,10 @@ Shifts (`shifts.city_id`) and message templates (`message_templates.city_id`) ar
 ## Self check-in (D61)
 
 `visit_reasons.requires_staff` (boolean, default false) hides a reason from the kiosk ("please ask the agent"). Intake fields (JSON on the reason) may carry `selfService` (boolean; unset = default by key). `tickets.source` takes `reception`, `agent`, `kiosk`, `appointment` or `api`. Settings `reception.agentIssuing` and the `selfCheckin` group resolve organization, city, branch like other settings. Permission `tickets.issue_self`.
+
+## Page content (D66, no migration)
+
+The wording and options of the kiosk and of the visitor page are the JSON setting `pageContent` in `settings` (organization, `city_id` or `branch_id` row, resolved like every setting, D60). Only changed texts are stored (`kiosk.texts` and `visitor.texts`: `{ id: { ar?, en? } }`); the defaults stay in the message files and the catalogue (`src/domain/pagecontent/catalog.ts`) maps ids to message paths. Saved ids are never removed from the catalogue.
 
 ## Halls (D62, migration 0018)
 

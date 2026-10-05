@@ -8,6 +8,7 @@ import { CopyField, Field, LocalizedInput } from "@/components/admin/form";
 import { api, useApiMutation } from "@/components/admin/use-api";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { LOCALE_CODES, LOCALES } from "@/i18n/locales";
@@ -202,8 +203,12 @@ export function UserDialog({
             </div>
 
             <fieldset className="space-y-2">
-              <legend className="text-sm font-medium">{t("roles")}</legend>
-              <p className="text-muted-foreground text-xs">{t("rolesHint")}</p>
+              <legend className="text-sm font-medium">
+                <span className="flex items-center gap-1.5">
+                  {t("roles")}
+                  <InfoTip>{t("rolesHint")}</InfoTip>
+                </span>
+              </legend>
               {form.grants.map((g, i) => (
                 <div key={i} className="flex gap-2">
                   <NativeSelect
@@ -298,8 +303,8 @@ export function UserDialog({
                   }
                 />
                 {t("agentSection")}
+                <InfoTip>{t("agentHint")}</InfoTip>
               </label>
-              <p className="text-muted-foreground text-xs">{t("agentHint")}</p>
               {form.agent && (
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field label={t("agentBranch")} htmlFor="a-branch">

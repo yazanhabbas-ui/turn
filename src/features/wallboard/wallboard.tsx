@@ -12,6 +12,7 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ConnectionPill } from "@/features/queue/bits";
 import { useLiveQuery } from "@/features/queue/use-queue";
+import { NegativeRatingsPanel, type NegativeRatings } from "./negative-ratings";
 
 type L = Record<string, string>;
 type Live = {
@@ -26,6 +27,10 @@ type Live = {
     showBranch: boolean;
     showClock: boolean;
     showCsat?: boolean;
+    showNegativeRatings?: boolean;
+    negativeRatingsCount?: number;
+    negativeRatingsHours?: number;
+    showNegativeComment?: boolean;
     textScale: number;
   };
   tiles: {
@@ -78,6 +83,8 @@ type Live = {
   longWaits: { ticketId: string; displayNumber: string; reasonId: string; waitMin: number }[];
   thresholds: { longWaitMinutes: number; queueLimit: number };
   alerts: { id: string; type: string; severity: string; payload: Record<string, unknown>; createdAt: string }[];
+  /** Recent negative ratings; null when the panel is off or visitor feedback is disabled. */
+  negativeRatings?: NegativeRatings | null;
 };
 type Meta = { meta?: { branches?: { id: string; name: L }[] } };
 
@@ -468,6 +475,7 @@ export function Wallboard({ canAck }: { canAck: boolean }) {
                   </ul>
                 )}
               </section>
+              {data.negativeRatings && <NegativeRatingsPanel data={data.negativeRatings} th={th} tick={tick} />}
               <section className={cn("rounded-xl border p-4", th.card)}>
                 <h2 className="mb-3 border-s-4 ps-2 text-lg font-semibold 2xl:text-2xl" style={ACCENT}>
                   {t("byReason")}
