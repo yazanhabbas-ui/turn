@@ -1,39 +1,96 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { ErrorState, PageHeader } from "@/components/admin/form";
 import { useApiQuery } from "@/components/admin/use-api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLookups } from "../use-lookups";
-import { AgentsSection } from "./sections/agents-section";
-import { AlertsSection } from "./sections/alerts-section";
-import { BrandingSection } from "./sections/branding-section";
-import { BreakLimitSection } from "./sections/break-limit-section";
-import { BreaksSection } from "./sections/breaks-section";
-import { FeedbackSection } from "./sections/feedback-section";
-import { PageContentSection } from "./sections/page-content-section";
-import { PrioritiesSection } from "./sections/priorities-section";
-import { PrivacySection } from "./sections/privacy-section";
-import { ReceptionSection } from "./sections/reception-section";
-import { RegionalSection } from "./sections/regional-section";
 import { sectionsFor, SECTIONS, type SectionId } from "./sections/registry";
-import { HallsSection } from "./sections/halls-section";
-import { SelfCheckinSection } from "./sections/self-checkin-section";
-import { RetentionSection } from "./sections/retention-section";
-import { ReportsSection } from "./sections/reports-section";
-import { SecuritySection } from "./sections/security-section";
-import { TicketingSection } from "./sections/ticketing-section";
 import type { AllSettings } from "./sections/types";
-import { VisitorStatusSection } from "./sections/visitor-status-section";
-import { WallboardSection } from "./sections/wallboard-section";
-import { WifiSection } from "./sections/wifi-section";
 import { defaultScope, ScopeSwitcher, scopeAllowed, type ScopeAccess } from "./scope-switcher";
 import { ScopedSection, useSourceLabel, type Sources } from "./scoped-section";
 import { SETTINGS } from "./setting-form";
 import { parseScope, scopeParam, scopeQuery, SettingsScopeContext, type SettingsScope } from "./settings-context";
 import { SettingsShell } from "./settings-shell";
-import { WaitEstimateTab } from "./wait-estimate-tab";
+
+/** A section fetches its own code the first time it is opened, so the settings page itself stays small. */
+function SectionLoading() {
+  return (
+    <div className="space-y-4" aria-busy="true">
+      <Skeleton className="h-40 w-full rounded-xl" />
+      <Skeleton className="h-56 w-full rounded-xl" />
+    </div>
+  );
+}
+
+const AgentsSection = dynamic(() => import("./sections/agents-section").then((m) => m.AgentsSection), {
+  loading: () => <SectionLoading />,
+});
+const AlertsSection = dynamic(() => import("./sections/alerts-section").then((m) => m.AlertsSection), {
+  loading: () => <SectionLoading />,
+});
+const HelpCenterSection = dynamic(() => import("./sections/help-center-section").then((m) => m.HelpCenterSection), {
+  loading: () => <SectionLoading />,
+});
+const BrandingSection = dynamic(() => import("./sections/branding-section").then((m) => m.BrandingSection), {
+  loading: () => <SectionLoading />,
+});
+const BreakLimitSection = dynamic(() => import("./sections/break-limit-section").then((m) => m.BreakLimitSection), {
+  loading: () => <SectionLoading />,
+});
+const BreaksSection = dynamic(() => import("./sections/breaks-section").then((m) => m.BreaksSection), {
+  loading: () => <SectionLoading />,
+});
+const FeedbackSection = dynamic(() => import("./sections/feedback-section").then((m) => m.FeedbackSection), {
+  loading: () => <SectionLoading />,
+});
+const PageContentSection = dynamic(() => import("./sections/page-content-section").then((m) => m.PageContentSection), {
+  loading: () => <SectionLoading />,
+});
+const PrioritiesSection = dynamic(() => import("./sections/priorities-section").then((m) => m.PrioritiesSection), {
+  loading: () => <SectionLoading />,
+});
+const PrivacySection = dynamic(() => import("./sections/privacy-section").then((m) => m.PrivacySection), {
+  loading: () => <SectionLoading />,
+});
+const ReceptionSection = dynamic(() => import("./sections/reception-section").then((m) => m.ReceptionSection), {
+  loading: () => <SectionLoading />,
+});
+const RegionalSection = dynamic(() => import("./sections/regional-section").then((m) => m.RegionalSection), {
+  loading: () => <SectionLoading />,
+});
+const HallsSection = dynamic(() => import("./sections/halls-section").then((m) => m.HallsSection), {
+  loading: () => <SectionLoading />,
+});
+const SelfCheckinSection = dynamic(() => import("./sections/self-checkin-section").then((m) => m.SelfCheckinSection), {
+  loading: () => <SectionLoading />,
+});
+const RetentionSection = dynamic(() => import("./sections/retention-section").then((m) => m.RetentionSection), {
+  loading: () => <SectionLoading />,
+});
+const ReportsSection = dynamic(() => import("./sections/reports-section").then((m) => m.ReportsSection), {
+  loading: () => <SectionLoading />,
+});
+const SecuritySection = dynamic(() => import("./sections/security-section").then((m) => m.SecuritySection), {
+  loading: () => <SectionLoading />,
+});
+const TicketingSection = dynamic(() => import("./sections/ticketing-section").then((m) => m.TicketingSection), {
+  loading: () => <SectionLoading />,
+});
+const VisitorStatusSection = dynamic(() => import("./sections/visitor-status-section").then((m) => m.VisitorStatusSection), {
+  loading: () => <SectionLoading />,
+});
+const WallboardSection = dynamic(() => import("./sections/wallboard-section").then((m) => m.WallboardSection), {
+  loading: () => <SectionLoading />,
+});
+const WifiSection = dynamic(() => import("./sections/wifi-section").then((m) => m.WifiSection), {
+  loading: () => <SectionLoading />,
+});
+const WaitEstimateTab = dynamic(() => import("./wait-estimate-tab").then((m) => m.WaitEstimateTab), {
+  loading: () => <SectionLoading />,
+});
 
 function SettingsSkeleton() {
   const t = useTranslations("settings");
@@ -142,6 +199,8 @@ function ScopedSettings({
         return <WifiSection initial={s.wifi} />;
       case "waitEstimate":
         return <WaitEstimateTab initial={s.waitEstimate} />;
+      case "helpCenter":
+        return <HelpCenterSection initial={s.helpCenter} />;
       case "visitorStatus":
         return <VisitorStatusSection initial={s.visitorStatus} />;
       case "pageContent":

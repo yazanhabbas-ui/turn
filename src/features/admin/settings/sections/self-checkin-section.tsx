@@ -134,7 +134,7 @@ export function SelfCheckinSection({ initial }: { initial: SettingValue<"selfChe
               />
               <p className="text-muted-foreground text-xs">
                 {t("selfCheckinWelcomeNote")}{" "}
-                <Link href="/admin/settings?section=pageContent" className="text-brand underline">
+                <Link href="/settings?section=pageContent" className="text-brand underline">
                   {t("selfCheckinWelcomeLink")}
                 </Link>
               </p>

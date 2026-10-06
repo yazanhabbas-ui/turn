@@ -1,5 +1,6 @@
 import {
   BellRing,
+  BookOpen,
   Coffee,
   ConciergeBell,
   DatabaseZap,
@@ -34,6 +35,7 @@ import type { SettingKey } from "@/server/settings/registry";
 export type SectionId =
   | "branding"
   | "regional"
+  | "helpCenter"
   | "ticketing"
   | "reception"
   | "selfCheckin"
@@ -94,6 +96,15 @@ export const SECTIONS: SectionDef[] = [
       { key: "welcomeText", anchor: "br-welcome" },
       { key: "ticketFooter", anchor: "br-footer" },
     ],
+  },
+  {
+    id: "helpCenter",
+    group: "general",
+    icon: BookOpen,
+    scope: "organization",
+    keys: ["helpCenter"],
+    keywords: ["help", "manual", "manuals", "guide", "knowledge base", "مساعدة", "دليل", "أدلة", "المعرفة"],
+    fields: [{ key: "helpCenterEnabled", anchor: "hc-enabled" }],
   },
   {
     id: "regional",
@@ -225,9 +236,7 @@ export const SECTIONS: SectionDef[] = [
     scope: "city",
     keys: ["visitorStatus"],
     keywords: ["status page", "notification", "phone", "صفحة الزائر", "إشعار"],
-    fields: [
-      { key: "visitorStatusEnabled", anchor: "vs-enabled" },
-    ],
+    fields: [{ key: "visitorStatusEnabled", anchor: "vs-enabled" }],
   },
   {
     id: "pageContent",

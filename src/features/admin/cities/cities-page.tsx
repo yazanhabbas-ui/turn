@@ -112,7 +112,7 @@ function ConfigOverview({ city, others, data }: { city: City; others: City[]; da
           variant="outline"
           size="sm"
           nativeButton={false}
-          render={<Link href={{ pathname: "/admin/settings", query: { scope: `city:${city.id}` } }} />}
+          render={<Link href={{ pathname: "/settings", query: { scope: `city:${city.id}` } }} />}
         >
           {t("open")}
         </Button>

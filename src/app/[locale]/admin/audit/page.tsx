@@ -1,18 +1,7 @@
-import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Forbidden } from "@/components/app/app-shell";
-import { AuditPage } from "@/features/admin/audit/audit-page";
-import { requireAuth } from "@/server/auth/current";
+import { redirect } from "@/i18n/navigation";
 
-export async function generateMetadata() {
-  const t = await getTranslations("audit");
-  return { title: t("title") };
-}
-
+/** The audit log moved into the Settings app; old links and bookmarks land there. */
 export default async function Page({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  setRequestLocale(locale);
-  const { allowed } = await requireAuth(locale, "audit.view");
-  if (!allowed) return <Forbidden />;
-
-  return <AuditPage />;
+  redirect({ href: "/settings/audit", locale });
 }

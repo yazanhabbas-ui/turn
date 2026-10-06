@@ -93,7 +93,8 @@
     "chooseArea": "Choose where to work",
     "noAreas": "Your account has no workspace assigned yet. Ask an administrator to give you a role.",
     "profile": "My profile",
-    "help": "Help center"
+    "help": "Help center",
+    "settings": "Settings"
   },
   "admin": {
     "dashboard": "Overview",
@@ -710,7 +711,8 @@
       "retention": "Data retention",
       "selfCheckin": "Self check-in",
       "halls": "Halls",
-      "pageContent": "Page content"
+      "pageContent": "Page content",
+      "helpCenter": "Help center"
     },
     "companyName": "Company name",
     "logoUrl": "Logo URL",
@@ -963,7 +965,8 @@
       "retention": "How long personal data is kept before it is anonymized or deleted, and a button to run or preview it.",
       "selfCheckin": "A tablet where visitors take their own ticket, and its limits.",
       "halls": "Rooms where one host receives several visitors together: grouping, starting and announcing.",
-      "pageContent": "Reword the kiosk and the visitor page, choose what they show, and preview the result."
+      "pageContent": "Reword the kiosk and the visitor page, choose what they show, and preview the result.",
+      "helpCenter": "Show or hide the Help center (the user manuals) for everyone."
     },
     "cards": {
       "preview": "Preview",
@@ -1009,7 +1012,8 @@
       "selfCheckinWelcome": "Welcome text",
       "hallsGeneral": "Halls and grouping",
       "hallsSession": "During the session",
-      "hallsAnnounce": "Announcing a group"
+      "hallsAnnounce": "Announcing a group",
+      "helpCenter": "Help center"
     },
     "ui": {
       "search": "Search settings…",
@@ -1270,7 +1274,10 @@
     "pcScreen_cancelled": "Cancelled",
     "pcScreen_stop": "Stop messages",
     "selfCheckinWelcomeNote": "Reword the whole kiosk (headings, buttons, messages) under Page content.",
-    "selfCheckinWelcomeLink": "Open Page content"
+    "selfCheckinWelcomeLink": "Open Page content",
+    "helpCenterIntro": "The Help center gives each person the manuals for their role, in the language they use. Turn it off to hide it everywhere.",
+    "helpCenterEnabled": "Show the Help center",
+    "helpCenterEnabledHint": "When off, the book icon in the top bar and the Help center page are removed, and the manual files are no longer served."
   },
   "audit": {
     "title": "Audit log",

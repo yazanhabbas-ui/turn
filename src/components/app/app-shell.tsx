@@ -7,6 +7,7 @@ import { AREAS, type AreaKey } from "@/lib/areas";
 import { cn } from "@/lib/utils";
 import type { AuthContext } from "@/server/auth/session";
 import { getBranding } from "@/server/branding";
+import { helpCenterEnabled } from "@/server/help/enabled";
 import { AreaMenu } from "./area-menu";
 import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
@@ -27,7 +28,10 @@ export async function AppShell({
 }) {
   const locale = await getLocale();
   const t = await getTranslations("areas");
-  const branding = await getBranding(auth.user.organizationId);
+  const [branding, helpOn] = await Promise.all([
+    getBranding(auth.user.organizationId),
+    helpCenterEnabled(auth.user.organizationId),
+  ]);
   const darkLogo = branding.logoDarkUrl && branding.logoDarkUrl !== branding.logoUrl ? branding.logoDarkUrl : null;
   const areas = AREAS.filter((a) => can(auth.grants, a.permission));
 
@@ -47,7 +51,11 @@ export async function AppShell({
                 />
                 {darkLogo && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={darkLogo} alt={pickText(branding.companyName, locale)} className="hidden h-8 w-auto min-w-0 object-contain dark:block" />
+                  <img
+                    src={darkLogo}
+                    alt={pickText(branding.companyName, locale)}
+                    className="hidden h-8 w-auto min-w-0 object-contain dark:block"
+                  />
                 )}
               </>
             ) : (
@@ -82,17 +90,19 @@ export async function AppShell({
             ))}
           </nav>
           <div className="ms-auto flex items-center gap-1">
-            <Link
-              href="/help"
-              title={t("help")}
-              aria-label={t("help")}
-              className={cn(
-                "text-muted-foreground hover:bg-muted hover:text-foreground inline-flex size-8 items-center justify-center rounded-md",
-                area === "help" && "bg-muted text-foreground",
-              )}
-            >
-              <BookOpen className="size-4" aria-hidden />
-            </Link>
+            {helpOn && (
+              <Link
+                href="/help"
+                title={t("help")}
+                aria-label={t("help")}
+                className={cn(
+                  "text-muted-foreground hover:bg-muted hover:text-foreground inline-flex size-8 items-center justify-center rounded-md",
+                  area === "help" && "bg-muted text-foreground",
+                )}
+              >
+                <BookOpen className="size-4" aria-hidden />
+              </Link>
+            )}
             <ThemeToggle />
             <LanguageSwitcher signedIn compact />
             <Link

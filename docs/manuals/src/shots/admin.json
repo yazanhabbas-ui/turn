@@ -51,7 +51,7 @@
   {
     "name": "admin-audit",
     "user": "admin@dor.local",
-    "path": "/admin/audit",
+    "path": "/settings/audit",
     "note": "Audit log table with recent entries"
   },
   {

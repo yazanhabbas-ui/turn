@@ -1,5 +1,6 @@
 import { TriangleAlert } from "lucide-react";
 import { getTranslations } from "next-intl/server";
+import { can } from "@/domain/rbac/permissions";
 import { issuingCoverage } from "@/server/admin/coverage";
 import type { Actor } from "@/server/admin/actor";
 import { Link } from "@/i18n/navigation";
@@ -44,9 +45,11 @@ export async function CoverageCard({ actor, locale }: { actor: Actor; locale: st
         <Link href="/admin/branches" className="text-brand underline">
           {t("goBranches")}
         </Link>
-        <Link href="/admin/settings" className="text-brand underline">
-          {t("goHallSettings")}
-        </Link>
+        {can(actor.auth.grants, "settings.manage") && (
+          <Link href="/settings" className="text-brand underline">
+            {t("goHallSettings")}
+          </Link>
+        )}
       </div>
     </div>
   );

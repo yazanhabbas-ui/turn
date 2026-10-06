@@ -108,7 +108,7 @@ For most reasons you do nothing: the next free agent calls the ticket. For some 
 
 ### Calling visitors by the last digits of their phone number
 
-If your administrator turned on **Call visitors by the last digits of their phone number** (**Settings > Tickets**), a **Visitor phone number** field appears above the visit reasons. This is for desks with no ticket printer.
+If your administrator turned on **Call visitors by the last digits of their phone number** (a super admin turns it on in the **Settings** app, under **Tickets**), a **Visitor phone number** field appears above the visit reasons. This is for desks with no ticket printer.
 
 1. Type the visitor's phone number in **Visitor phone number**. The line next to it shows how it will be called, for example **Will be called as 472**.
 2. Choose the visit reason as usual.

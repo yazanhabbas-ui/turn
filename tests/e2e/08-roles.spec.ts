@@ -44,7 +44,7 @@ test.describe("role isolation", () => {
 
   test("an agent gets the forbidden screen in the admin area, and the admin APIs refuse them", async ({ browser }) => {
     const { page, context } = await signedIn(browser, ACCOUNTS.khalid);
-    for (const path of ["/admin", "/admin/users", "/admin/settings"]) {
+    for (const path of ["/admin", "/admin/users", "/settings"]) {
       await page.goto(path);
       await expect(page.getByRole("heading", { name: ar("common.forbidden") })).toBeVisible();
       await expect(page.getByText(ar("common.forbiddenBody"))).toBeVisible();
@@ -81,7 +81,7 @@ test.describe("role isolation", () => {
     const { page, context } = await signedIn(browser, ACCOUNTS.reception);
     await page.goto("/agent");
     await expect(page.getByRole("heading", { name: ar("common.forbidden") })).toBeVisible();
-    await page.goto("/admin/settings");
+    await page.goto("/settings");
     await expect(page.getByRole("heading", { name: ar("common.forbidden") })).toBeVisible();
     await page.goto("/reception");
     await expect(page.getByRole("heading", { name: ar("reception.chooseReason") })).toBeVisible();

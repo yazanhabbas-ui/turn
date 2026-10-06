@@ -7,9 +7,7 @@ import {
   MapPinned,
   ListChecks,
   Monitor,
-  ScrollText,
   ShieldCheck,
-  Settings,
   UsersRound,
   UserRoundCog,
 } from "lucide-react";
@@ -26,7 +24,5 @@ export const ADMIN_NAV_ITEMS = [
   { href: "/admin/distribution", key: "distribution", icon: Route, permission: "distribution.manage" },
   { href: "/admin/simulate", key: "simulate", icon: FlaskConical, permission: "distribution.simulate" },
   { href: "/admin/screens", key: "screens", icon: Monitor, permission: "displays.manage" },
-  { href: "/admin/settings", key: "settings", icon: Settings, permission: "settings.manage", also: ["branches.manage"] },
   { href: "/admin/privacy", key: "privacy", icon: ShieldCheck, permission: "visitors.privacy" },
-  { href: "/admin/audit", key: "audit", icon: ScrollText, permission: "audit.view" },
 ] as const;

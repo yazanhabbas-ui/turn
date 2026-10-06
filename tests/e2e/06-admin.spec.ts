@@ -36,7 +36,7 @@ test.describe("administration", () => {
     const { page, context } = await signedIn(browser, ACCOUNTS.admin);
     const errors = watchErrors(page);
 
-    await page.goto("/admin/settings");
+    await page.goto("/settings");
     // Search: typing finds the Wi-Fi section and opens it.
     const search = page.getByRole("searchbox", { name: ar("settings.ui.search") });
     await search.fill(ar("settings.tabs.wifi"));
@@ -77,7 +77,7 @@ test.describe("administration", () => {
   test("branding: upload a logo, it is served; removing it brings the letter back", async ({ browser }) => {
     const admin = await as(ACCOUNTS.admin);
     const { page, context } = await signedIn(browser, ACCOUNTS.admin);
-    await page.goto("/admin/settings?section=branding");
+    await page.goto("/settings?section=branding");
 
     await page
       .locator('input[type="file"]')

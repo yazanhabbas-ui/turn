@@ -11,13 +11,15 @@ There are two administrator roles. They use the same screens, but they do not se
 | Scope         | The whole organization: every city and branch          | Only the city (or branches) the role was given for                               |
 | Cities        | Creates, edits and archives cities                     | Cannot open the **Cities** page                                                  |
 | Roles         | Creates, edits and clones roles                        | Can view roles only                                                              |
-| Settings      | Every section, at organization, city and branch level  | Only the sections a city or branch may override, for their own city and branches |
+| Settings app  | Has it. Every section, at organization, city and branch level | Has no **Settings** app. Asks a super admin to change a setting |
 | Users         | Can give any role, including organization-wide ones    | Can only give roles and scopes they hold themselves                              |
 | Backup status | Sees the **Database backup** card on the Overview      | Does not see it                                                                  |
 
 Your sidebar only shows the pages your role allows. If a page described here is missing, your role does not include it.
 
-> **Note:** Every change an administrator makes takes effect immediately and is written to the **Audit log**. There is nothing to restart.
+**Settings** is not part of Administration. It is a separate app, **Settings**, in the top bar next to **Administration**. Only super admins see it. Wherever this guide says to open a setting, a super admin does it there. A city admin asks a super admin.
+
+> **Note:** Every change an administrator makes takes effect immediately and is written to the **Audit log** (in the **Settings** app, super admins only). There is nothing to restart.
 
 ## 2. Before you start
 
@@ -26,7 +28,7 @@ Your sidebar only shows the pages your role allows. If a page described here is 
 3. Press your name at the top of the page to open **My profile**, then follow the link **Password, two-step verification and language**. There you can **Change password**, set the **Interface language** (Arabic or English) and turn on two-step verification with an authenticator app. The light or dark theme can be switched from the top bar.
 4. If your account has several workspaces, the top bar shows them as links. Pick **Administration**.
 
-> **Tip:** Turn on two-step verification for every administrator account. In **Settings > Security** you can make it compulsory for whole roles.
+> **Tip:** Turn on two-step verification for every administrator account. In the **Settings** app, under **Security**, a super admin can make it compulsory for whole roles.
 
 ![The Overview page of the super admin](shot:admin-overview)
 
@@ -39,7 +41,7 @@ The **Overview** is the first page. It greets you and shows five counters: **Bra
 Under the counters you may see warning cards:
 
 - A **coverage** card appears when some branches have no way to issue tickets (no receptionist, agent walk-in issuing off and no kiosk paired). It has an **Open branches** button.
-- A second card appears when a branch has services served in halls but nobody can serve them. It has an **Open settings** button.
+- A second card appears when a branch has services served in halls but nobody can serve them. It has an **Open settings** button, which opens the **Settings** app (super admins only).
 - The card **Visitor ratings by agent** (if your role may view reports) lists the ratings visitors gave, with the visitor, the agent, the stars and the comment. It has its own **From** and **To** dates and an **Agent** filter. See 4.15.
 - The **Database backup** card (super admin only) shows **Backed up**, **Backup is overdue**, **Last backup failed** or **No backup recorded**.
 
@@ -57,11 +59,9 @@ The sidebar lists the admin pages:
 | **Distribution rules**  | How tickets reach agents                                                   |
 | **Simulate**            | Test rules on a replayed day                                               |
 | **Screens**             | Waiting-room screens, kiosks, announcements, voice (see the screens guide) |
-| **Settings**            | All options                                                                |
 | **Privacy requests**    | Export or erase a visitor's data                                           |
-| **Audit log**           | Who changed what, and when                                                 |
 
-Reports and the live wallboard are separate workspaces in the top bar, not part of the Administration sidebar.
+Settings, Reports and the live wallboard are separate workspaces in the top bar, not part of the Administration sidebar. **Settings** appears there only for super admins. The **Audit log** is not an Administration page either: it is in the **Settings** app (see 4.17).
 
 ## 4. Everyday tasks
 
@@ -69,15 +69,15 @@ Reports and the live wallboard are separate workspaces in the top bar, not part 
 
 Set things up in this order, because each step needs the one before it.
 
-1. **Branding**: **Settings > Branding**. Set the **Company name**, upload the **Logo**, choose colours.
+1. **Branding** (super admin, in the **Settings** app): **Settings > Branding**. Set the **Company name**, upload the **Logo**, choose colours.
 2. **Cities** (super admin): add each city.
 3. **Branches and desks**: add branches, floors and desks. Add halls if you use them.
 4. **Visit reasons**: define each service, its ticket prefix, the data to collect, and who serves it.
 5. **Users and agents**: create the people, give them roles, set up agents.
 6. **Agent groups** (optional): put agents in teams.
-7. **Shifts**: **Settings > Agents**.
+7. **Shifts** (super admin, in the **Settings** app): **Settings > Agents**.
 8. **Distribution rules**: choose how tickets reach agents, and test with **Simulate**.
-9. **Settings review**: numbering, reception, wait estimate, security and privacy.
+9. **Settings review** (super admin, in the **Settings** app): numbering, reception, wait estimate, security and privacy.
 10. **Screens, voice and kiosks**: follow the screens guide.
 
 The **Going live checklist** at the end of this guide repeats the essentials.
@@ -100,7 +100,7 @@ You can archive a city only when it has no active branches.
 4. On the branch card, press **Add floor** if the building has several floors.
 5. Press **Add desk**. Enter the **Number** (it is shown on screens and spoken, for example "Desk 3"), choose the **Floor** and, if you use multi-zone screens, a **Zone**.
 
-Use the city filter at the top to narrow the list. If you use halls (rooms where one host receives several visitors together), add them in the branch's **Halls** block with **Add hall**: **Hall number**, **Capacity** (at least 2) and **Services accepted**. Halls only work once you switch them on in **Settings > Halls**.
+Use the city filter at the top to narrow the list. If you use halls (rooms where one host receives several visitors together), add them in the branch's **Halls** block with **Add hall**: **Hall number**, **Capacity** (at least 2) and **Services accepted**. Halls only work once a super admin switches them on in the **Settings** app, under **Halls**.
 
 ![Branches and desks](shot:admin-branches)
 
@@ -159,11 +159,11 @@ An invitation lets a person choose their own password. Invitations are link-only
 4. Press **Create invitation**.
 5. Dor shows "Invitation created. Share this link:" with a copy button. Copy the link and send it to the person.
 
-Open the **Invitations** tab to follow each invitation: **Pending**, **Accepted**, **Expired** or **Revoked**. **Resend** creates a new link (which you copy again) and the old one stops working. **Revoke** cancels a pending invitation. An invitation stays valid for the number of hours set in **Settings > Security > Invitation validity (hours)**.
+Open the **Invitations** tab to follow each invitation: **Pending**, **Accepted**, **Expired** or **Revoked**. **Resend** creates a new link (which you copy again) and the old one stops working. **Revoke** cancels a pending invitation. An invitation stays valid for the number of hours set by a super admin in the **Settings** app, under **Security > Invitation validity (hours)**.
 
 ### 4.7 Approve or reject sign-up requests
 
-If you switch on **Let people request an account on the sign-up page (an administrator approves each request)** in **Settings > Security**, a **Request an account** link appears on the sign-in page. People fill in their name, email, phone and a password.
+If a super admin switches on **Let people request an account on the sign-up page (an administrator approves each request)** in the **Settings** app, under **Security**, a **Request an account** link appears on the sign-in page. People fill in their name, email, phone and a password.
 
 1. Open **Users** and then the **Requests** tab. A number badge shows how many are waiting.
    ![The Requests tab with pending account requests](shot:admin-requests)
@@ -194,10 +194,10 @@ A group is a team, such as "Customer service". Assign a group to a visit reason 
 
 ### 4.10 Shifts and breaks
 
-- **Shifts**: **Settings > Agents**, press **Add shift**. Give it a **Code**, a start and an end. If the end is earlier than the start, the shift runs past midnight. A city has its own shifts as well as the organization's. Then assign shifts to agents in the user dialog.
+- **Shifts**: in the **Settings** app (super admin), open **Agents**, press **Add shift**. Give it a **Code**, a start and an end. If the end is earlier than the start, the shift runs past midnight. A city has its own shifts as well as the organization's. Then assign shifts to agents in the user dialog.
 - **How shifts are used** has three choices. **Ignored**: shifts are only labels. **Guide (recommended)**: used in reports, and agents outside their shift get no automatic assignments but can still be called manually. **Strict**: an agent cannot become available outside their shift and is signed out after it ends (with a grace period in minutes).
-- **Break types**: **Settings > Break types** (super admin). Add types with a **Maximum minutes** and whether they **Count as productive time**.
-- **Break limit**: **Settings > Break limit** limits how many agents of a branch may be on a break at once.
+- **Break types**: in the **Settings** app, under **Break types** (super admin). Add types with a **Maximum minutes** and whether they **Count as productive time**.
+- **Break limit**: in the **Settings** app, **Break limit** limits how many agents of a branch may be on a break at once.
 
 ### 4.11 Distribution rules
 
@@ -231,13 +231,16 @@ The simulator uses the same engine as the live system but changes no real ticket
 
 ### 4.13 Settings
 
-Open **Settings** in the left menu: its sections appear as a dropdown list underneath, grouped as General, Visitors & tickets, Agents & service, Screens & reports, Security & privacy. Choose one to open it. A **Search settings...** box at the top of the page finds any option.
+Settings is its own app, separate from Administration. Only super admins have it: press **Settings** in the top bar, next to **Administration**. City admins and other administrators do not see it. They still use Administration for users, branches and desks, visit reasons, agent groups, distribution rules, screens and privacy requests, as their permissions allow, and they ask a super admin to change a setting. They cannot open the audit log either (see 4.17). The old address `/admin/settings` redirects to the Settings app.
+
+In the Settings app the left menu lists the sections, grouped as General, Visitors & tickets, Agents & service, Screens & reports, Security & privacy. Choose one to open it. A **Search settings...** box at the top of the page finds any option.
 
 The **Applies to** switcher decides the level you are editing. Values are inherited from the organization, then the city, then the branch. For a section that allows it, switch on **Override for this city** (or branch) to give that level its own value. **Reset to default** removes the override. Each section shows where its current value comes from. A bar shows **You have unsaved changes**; press **Save** or **Discard**.
 
 | Section                                 | What you set                                                                                                                                                                     | Level               |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
 | **Branding**                            | **Company name**, **Logo** (PNG, JPEG, WebP or still GIF up to 5 MB) and a separate **Logo for dark backgrounds**, primary and accent colours, font, welcome text, ticket footer | Organization        |
+| **Help center**                         | **Show the Help center**: the book icon in the top bar and the Help center page (the manuals). When it is off they are hidden for everyone | Organization        |
 | **Language & calendar**                 | Digits on screens, tickets and voice (Western or Arabic-Indic), time format (12 or 24 hours), phone country code, **Show Hijri date**                                            | City                |
 | **Tickets**                             | **Number digits** (3 gives `A-007`), **Separator**, **Daily numbering reset time**, **Print QR code on tickets**                                                                 | City                |
 | **Reception**                           | One-tap issuing, automatic printing, priority and language choices, what happens after issuing, whether agents can issue walk-in tickets                                         | Branch              |
@@ -267,7 +270,7 @@ Two more options in **Tickets**:
 
 ### 4.14 Security settings (super admin)
 
-In **Settings > Security**:
+In the **Settings** app, under **Security**:
 
 - **Password policy**: **Minimum length**, and whether to require an uppercase letter, lowercase letter, number or symbol.
 - **Lock after failed sign-ins** and **Lock duration (min)**.
@@ -305,11 +308,11 @@ Open **Reports** from the top bar (it needs the report permissions, which both a
 
 Every request is listed under **Request history** without the person's details. To remove a staff member's personal data, use **Anonymize** in the user dialog.
 
-**Retention** (**Settings > Data retention**, super admin): set the number of days after which visitor data is anonymized, ticket notes and intake answers are cleared, feedback comments are cleared, notification details are cleared, audit entries are deleted and expired sign-in records are deleted. **0** keeps that data until you erase it by hand. The job runs by itself about once a day. **Preview** shows what it would change without changing anything. **Run now** applies it for good. **Settings > Data protection** holds the **Consent text on the reception form** and **Require consent before issuing a ticket**.
+**Retention** (**Settings** app, **Data retention**, super admin): set the number of days after which visitor data is anonymized, ticket notes and intake answers are cleared, feedback comments are cleared, notification details are cleared, audit entries are deleted and expired sign-in records are deleted. **0** keeps that data until you erase it by hand. The job runs by itself about once a day. **Preview** shows what it would change without changing anything. **Run now** applies it for good. **Data protection**, in the same app, holds the **Consent text on the reception form** and **Require consent before issuing a ticket**.
 
 ### 4.17 Audit log
 
-Open **Audit log**. Each row shows **When**, **Who**, **Action**, **Item** and **Details**, with **Before** and **After** values for changes. Filter by item type with **All items** and press **Load more** for older entries. Use it to answer "who changed this setting?"
+Open the **Settings** app and press **Audit log** at the bottom of its left menu (address `/settings/audit`). Only super admins can open it. City admins and other administrators have no **Audit log** in Administration and cannot open it, and the old address `/admin/audit` redirects to the new one. Each row shows **When**, **Who**, **Action**, **Item** and **Details**, with **Before** and **After** values for changes. Filter by item type with **All items** and press **Load more** for older entries. Use it to answer "who changed this setting?"
 
 ![Audit log](shot:admin-audit)
 
@@ -323,7 +326,7 @@ Backups are taken by scripts on the server, not from this application. Ask whoev
 - Keep at least two administrators so you are never locked out.
 - Set each branch's time zone correctly before the first ticket.
 - Use **Simulate** before you change distribution rules on a busy branch.
-- Review the **Audit log** regularly, especially roles, users and settings.
+- Have a super admin review the **Audit log** (**Settings** app) regularly, especially roles, users and settings.
 - Collect only the visitor data you need and set retention periods.
 - Make sure every visit reason has at least one primary agent and a branch has a way to issue tickets.
 
@@ -331,16 +334,16 @@ Backups are taken by scripts on the server, not from this application. Ask whoev
 
 | Problem                                      | What to do                                                                                                                              |
 | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| A page in this guide is not in my sidebar    | Your role does not include it. A city admin has no **Cities** page and sees fewer **Settings** sections. Ask a super admin.             |
+| A page in this guide is not in my sidebar    | Your role does not include it. A city admin has no **Cities** page and no **Settings** app. Ask a super admin.             |
 | "Access denied"                              | Your role lacks the permission. Ask a super admin to change your role.                                                                  |
 | I cannot give a role to someone              | You can only give roles whose permissions you hold, and only within your own scope.                                                     |
-| Tickets for a service are never called       | Open the visit reason: nobody is assigned, or the assigned agents are not signed in or are outside their shift (**Settings > Agents**). |
+| Tickets for a service are never called       | Open the visit reason: nobody is assigned, or the assigned agents are not signed in or are outside their shift (**Settings** app, **Agents**). |
 | A branch cannot issue tickets                | The Overview warning card tells you why. Add a receptionist, enable agent walk-in issuing, or pair a kiosk.                             |
 | New user did not get an email                | Email may not be set up on the server. Copy the link from the dialog and send it yourself. Invitation links are never sent by Dor.      |
 | The invitation link stopped working          | It expired or was replaced by **Resend**. Resend it.                                                                                    |
 | A user is locked out                         | Open the user and press **Activate**, or wait for the lock duration. Use **Reset password** if needed.                                  |
 | A user lost their phone                      | Open the user and press **Reset 2FA**.                                                                                                  |
-| A setting change does not show at one branch | That branch may have its own override. Use the **Applies to** switcher and check the source badge.                                      |
+| A setting change does not show at one branch | That branch may have its own override. A super admin can use the **Applies to** switcher in the **Settings** app and check the source badge. |
 | Ticket numbers restarted at an odd moment    | Check **Daily numbering reset time** and the branch time zone.                                                                          |
 
 ## 7. Quick reference
@@ -358,12 +361,12 @@ Backups are taken by scripts on the server, not from this application. Ask whoev
 | Make a custom role                 | **Roles & permissions > Clone** or **New role**       |
 | Change how tickets are assigned    | **Distribution rules**                                |
 | Test rules safely                  | **Simulate > Run simulation**                         |
-| Change logo, colours, numbering    | **Settings**                                          |
-| Set password rules and 2FA         | **Settings > Security**                               |
+| Change logo, colours, numbering    | **Settings** app (super admin)                        |
+| Set password rules and 2FA         | **Settings** app > **Security** (super admin)         |
 | See visitor ratings by agent       | **Overview** card, or **Reports > Visitor ratings**   |
 | Schedule a report email            | **Reports > Scheduled reports**                       |
 | Erase a visitor's data             | **Privacy requests**                                  |
-| See who changed something          | **Audit log**                                         |
+| See who changed something          | **Settings** app > **Audit log** (super admin)        |
 | Pair screens and kiosks, set voice | **Screens** (see the screens guide)                   |
 
 ## 8. Going live checklist
@@ -376,7 +379,7 @@ Before the first day, make sure:
 4. All staff have accounts, the right role and scope, and agents have a **Default desk** and **Shift**.
 5. **Distribution rules** are set and tried in **Simulate**.
 6. **Daily numbering reset time**, digits and wait estimate are set.
-7. **Settings > Security**: password policy, 2FA for administrators, invitation validity, and the sign-up setting decided.
+7. **Settings** app, **Security**: password policy, 2FA for administrators, invitation validity, and the sign-up setting decided.
 8. If you use scheduled reports or account emails, email is set up on the server and a test arrived.
 9. Consent text and retention periods are set.
 10. Screens, voice and kiosks are paired and checked (see the screens guide).

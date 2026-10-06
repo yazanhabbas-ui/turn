@@ -56,7 +56,7 @@ export function HallsBlock({ branch, canManage }: { branch: Branch; canManage: b
         <p className="bg-muted text-muted-foreground mb-3 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm">
           <TriangleAlert className="size-4 shrink-0" aria-hidden />
           {t("hallsOff")}
-          <Link href="/admin/settings" className="text-brand underline">
+          <Link href="/settings" className="text-brand underline">
             {t("hallsOffAction")}
           </Link>
         </p>

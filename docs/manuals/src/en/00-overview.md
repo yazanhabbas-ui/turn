@@ -34,13 +34,14 @@ Each person has one or more roles. A role decides which areas appear after you s
 | Receptionist           | Issues tickets for walk-in visitors, checks in appointments, edits or cancels tickets, reprints tickets                     | **Reception**                        | Receptionist manual  |
 | Agent                  | Calls and serves visitors at a desk, holds, transfers, completes tickets                                                    | **Agent workspace**                  | Agent manual         |
 | Supervisor             | Watches the queue live, reacts to alerts, reads reports, may reassign tickets                                               | **Live wallboard** and **Reports**   | Supervisor manual    |
-| City Admin             | Runs one city or one branch: users, branches, desks, visit reasons, screens, rules, reports                                 | **Administration**                   | Administrator manual |
-| Super Admin            | Everything a City Admin does, for all cities, plus organization-wide settings such as cities, roles, branding and security | **Administration**                   | Administrator manual |
+| City Admin             | Runs one city or one branch: users, branches, desks, visit reasons, screens, rules, reports. Has no **Settings** app        | **Administration**                   | Administrator manual |
+| Super Admin            | Everything a City Admin does, for all cities, plus cities and roles in **Administration** and the **Settings** app (branding, security and all other settings) | **Administration** and **Settings**  | Administrator manual |
 | Screen and kiosk setup | An administrator pairs the waiting-room screens and kiosks with a pairing code                                              | **Administration**, then **Screens** | Administrator manual |
 
 Good to know:
 
 - Receptionist, Agent, City Admin and Super Admin are the built-in roles. The supervisor is usually a custom role that your administrator builds from permissions, so its exact abilities can differ between organizations.
+- **Settings** is a separate app in the top bar, next to **Administration**. Only super admins see it. If you are a city admin and a setting needs changing, ask a super admin.
 - A role can apply to the whole organization, to one city or to one branch.
 - If you see **Access denied**, your role does not include that page. Ask an administrator.
 - If you see "Your account has no workspace assigned yet", you have no role yet. Ask an administrator to give you one.
@@ -204,3 +205,4 @@ Notes:
 2. Ask your supervisor or colleague at the same branch.
 3. Contact your administrator for accounts, passwords, roles, desks, screens and settings. Give them the screen name, what you pressed and the message you saw, and the ticket number if there is one.
 4. If a page says **Something went wrong**, press **Reload page** first. This often fixes it after an application update.
+5. The manuals are also in the **Help center**, opened with the book icon in the top bar. A super admin can hide the Help center for everyone (**Settings** app, **Help center**). When it is hidden, the icon and the page are gone and the manuals cannot be opened, so ask your administrator for the manual.

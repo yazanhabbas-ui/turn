@@ -141,6 +141,12 @@ export const SETTINGS = {
       notifyTurnsAway: z.number().int().min(1).max(10).default(2),
     })
     .prefault({}),
+  /** The Help center (user manuals): organization-wide, off hides the book icon, the page and the manual files. */
+  helpCenter: z
+    .object({
+      enabled: z.boolean().default(true),
+    })
+    .prefault({}),
   /** Visitor feedback (satisfaction): the card on the status page after a visit, its wording, and what counts as a low score. */
   feedback: z
     .object({

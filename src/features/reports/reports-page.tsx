@@ -123,6 +123,8 @@ export function ReportsPage({ canExport, canSchedule }: { canExport: boolean; ca
     queryKey: ["reports", "forecast", filters.branchId],
     queryFn: () => api<Forecast>(forecastPath),
     placeholderData: keepPreviousData,
+    // Only the Forecast tab shows it, so it is fetched when that tab is opened.
+    enabled: tab === "forecast",
   });
 
   const reportTz = report.data?.timezone;

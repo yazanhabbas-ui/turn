@@ -1,4 +1,4 @@
-import { BarChart3, LayoutDashboard, MonitorPlay, Presentation, UserRoundCheck } from "lucide-react";
+import { BarChart3, LayoutDashboard, MonitorPlay, Presentation, Settings, UserRoundCheck } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { AppShell } from "@/components/app/app-shell";
 import { can } from "@/domain/rbac/permissions";
@@ -8,6 +8,7 @@ import { requireAuth } from "@/server/auth/current";
 
 const ICONS = {
   admin: LayoutDashboard,
+  settings: Settings,
   reception: UserRoundCheck,
   agent: MonitorPlay,
   reports: BarChart3,

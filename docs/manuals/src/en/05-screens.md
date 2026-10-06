@@ -62,7 +62,7 @@ A waiting-room screen is a full-screen page. It has a header with the clock and 
    - **Classic**: the latest call large, recent calls in a list beside it.
    - **Single**: only the current call, as large as possible.
    - **Multi-desk**: a grid with the current ticket of every desk.
-4. Choose the **Look of the screen**: **Use the default**, **Dark**, **Light** or **Brand colour**. "Use the default" follows the default look set in **Settings → Branding**.
+4. Choose the **Look of the screen**: **Use the default**, **Dark**, **Light** or **Brand colour**. "Use the default" follows the default look set in **Settings → Branding** (the **Settings** app, super admin).
 5. Click **Save**. A window opens with a large **Pairing code** and the address of the screen.
 6. On the TV or PC, open the browser and go to the address shown (it ends with `/display`). Type the code and press **Pair**. You can also open the address with the code added, for example `/display?code=ABC123`, which pairs without typing. This is handy when you set up a TV remotely.
 7. The screen loads and starts showing the queue. On the Screens tab its badges change to **Online** and **Paired**.
@@ -118,7 +118,7 @@ If the network drops, the screen keeps showing the last known state, shows **Rec
 
 A kiosk is a tablet where visitors take their own ticket. It is paired like a screen.
 
-1. First open **Admin → Settings → Self check-in** and switch on **Self check-in is on**. Until it is on, a paired kiosk only shows "Self check-in is not available here. Please ask the staff to give you a ticket."
+1. First, a super admin opens the **Settings** app (top bar) and goes to **Self check-in** and switches on **Self check-in is on**. Until it is on, a paired kiosk only shows "Self check-in is not available here. Please ask the staff to give you a ticket."
 2. In the same tab you can also set: **Print the ticket**, **Show the estimated wait**, **Show a QR code to follow the ticket**, **Seconds before returning to the start**, **Most visitors waiting in the branch** (0 = no limit), **Tickets per minute per kiosk**, **Services offered** and **Welcome text on the kiosk**. A service that needs a staff member is shown on the kiosk as "Please ask the agent".
 3. Go to **Admin → Screens** and click **Add kiosk**.
 4. Type a **Name** and choose the **Branch**. Choose the **Languages**: **Arabic, then English**, **English, then Arabic**, **Arabic only** or **English only**. The first language is shown at the start and the visitor can switch. Choose the look (**Follow the screen theme**, **Dark**, **Light** or **Brand**).
@@ -208,7 +208,7 @@ If you may manage announcements, open the **Announcements** tab.
 
 ### 4.10 Group calls to a hall
 
-If your organization uses halls, where one agent receives several visitors together, the screen shows the call as one card: "Hall 2" with every ticket number called. The voice reads the hall and the numbers. How the numbers are read is set in **Settings → Halls → How a group is announced**: **Read every number**, **Read as a range** or **Name the hall only**. Call languages, repeats and pauses follow the voice settings above. **Hall occupancy (3 / 8)** on a screen shows how many visitors are in the hall.
+If your organization uses halls, where one agent receives several visitors together, the screen shows the call as one card: "Hall 2" with every ticket number called. The voice reads the hall and the numbers. How the numbers are read is set in **Settings → Halls → How a group is announced** (the **Settings** app, super admin): **Read every number**, **Read as a range** or **Name the hall only**. Call languages, repeats and pauses follow the voice settings above. **Hall occupancy (3 / 8)** on a screen shows how many visitors are in the hall.
 
 ### 4.11 The live wallboard
 
@@ -220,7 +220,7 @@ The wallboard is a live operations page for supervisors. Open **Live wallboard**
 - Press **F** or use the **Fullscreen** button to fill a TV. Use the sun or moon button to switch to light or dark.
 - The page updates by itself and shows **Updated … s ago**. If it cannot load, it shows "Could not load live data. Retrying...".
 - Supervisors who may manage alerts see an **Acknowledge** button on each alert.
-- The look is set in **Settings → Wallboard**: **Look** (**Dark**, **Light** or dark tinted with the brand colour), **Text size (%)**, **Wallboard title (optional)**, and whether to show the logo, company name, branch name, clock and date, and today's visitor satisfaction.
+- The look is set in **Settings → Wallboard** (the **Settings** app, super admin): **Look** (**Dark**, **Light** or dark tinted with the brand colour), **Text size (%)**, **Wallboard title (optional)**, and whether to show the logo, company name, branch name, clock and date, and today's visitor satisfaction.
 - The wallboard shows ticket numbers and counts only, never visitor details.
 
 ## 5. Good practice and tips
@@ -254,7 +254,7 @@ The wallboard is a live operations page for supervisors. Open **Live wallboard**
 | The badge shows **Offline** or **Reconnecting…**.                       | Check the network and the address. The screen keeps showing the last state and recovers by itself.                                                                                                                                                                               |
 | The screen shows a different language or too many desks.                | Edit the screen: set **Arabic** and **English**, and **Desk zones**.                                                                                                                                                                                                             |
 | No ticker or slides on the screen.                                      | Tick **News ticker** and **Slides** on that screen, and make sure the announcement is active and inside its dates.                                                                                                                                                               |
-| The kiosk says "Self check-in is not available here".                   | Switch on **Self check-in is on** in **Settings → Self check-in**.                                                                                                                                                                                                               |
+| The kiosk says "Self check-in is not available here".                   | A super admin switches on **Self check-in is on** in the **Settings** app, under **Self check-in**.                                                                                                                                                                                                               |
 | The kiosk says "We cannot reach the system".                            | Check the tablet's connection. The kiosk will not issue tickets without a connection.                                                                                                                                                                                            |
 | The kiosk says "The line is full right now".                            | The **Most visitors waiting in the branch** limit was reached. Raise it (0 = no limit) or serve the queue.                                                                                                                                                                       |
 | A service on the kiosk says "Please ask the agent".                     | That service needs a staff member (for example it requires details a visitor may not type). Change this in the visit reason.                                                                                                                                                     |
@@ -282,5 +282,5 @@ The wallboard is a live operations page for supervisors. Open **Live wallboard**
 | **Reset to natural defaults** | Voice tab                        | Restores the timing defaults.                                               |
 | **Add audio pack**            | Voice tab                        | Adds your own recorded clips.                                               |
 | **Add announcement**          | Announcements tab                | Adds a ticker line or a slide.                                              |
-| Self check-in settings        | Admin → Settings → Self check-in | Turns the kiosk on and sets its limits and wording.                         |
-| Wallboard look                | Admin → Settings → Wallboard     | Look, text size, title and what is shown.                                   |
+| Self check-in settings        | Settings app → Self check-in     | Turns the kiosk on and sets its limits and wording.                         |
+| Wallboard look                | Settings app → Wallboard         | Look, text size, title and what is shown.                                   |

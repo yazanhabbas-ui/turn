@@ -1,7 +1,9 @@
+import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { AppShell } from "@/components/app/app-shell";
 import { HelpPage } from "@/features/help/help-page";
 import { requireAuth } from "@/server/auth/current";
+import { helpCenterEnabled } from "@/server/help/enabled";
 import { manualsFor, type ManualLang } from "@/server/help/manuals";
 
 export async function generateMetadata() {
@@ -14,6 +16,7 @@ export default async function Page({ params }: { params: Promise<{ locale: strin
   const { locale } = await params;
   setRequestLocale(locale);
   const { auth } = await requireAuth(locale);
+  if (!(await helpCenterEnabled(auth.user.organizationId))) notFound();
   const lang: ManualLang = locale === "ar" ? "ar" : "en";
   const other: ManualLang = lang === "ar" ? "en" : "ar";
   return (
